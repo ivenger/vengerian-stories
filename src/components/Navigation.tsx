@@ -1,10 +1,15 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X, CircleDot } from "lucide-react";
 
 const Navigation = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+  
+  const isActive = (path: string) => {
+    return location.pathname === path;
+  };
 
   const toggleMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -19,11 +24,13 @@ const Navigation = () => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex space-x-8">
-          <Link to="/" className="text-gray-700 hover:text-black transition-colors">
+          <Link to="/" className="flex items-center text-gray-700 hover:text-black transition-colors">
             Home
+            {isActive('/') && <CircleDot className="ml-1" size={14} />}
           </Link>
-          <Link to="/about" className="text-gray-700 hover:text-black transition-colors">
+          <Link to="/about" className="flex items-center text-gray-700 hover:text-black transition-colors">
             About
+            {isActive('/about') && <CircleDot className="ml-1" size={14} />}
           </Link>
         </div>
 
@@ -43,17 +50,19 @@ const Navigation = () => {
           <div className="flex flex-col space-y-4">
             <Link 
               to="/" 
-              className="text-gray-700 hover:text-black transition-colors"
+              className="flex items-center text-gray-700 hover:text-black transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
+              {isActive('/') && <CircleDot className="ml-1" size={14} />}
             </Link>
             <Link 
               to="/about" 
-              className="text-gray-700 hover:text-black transition-colors"
+              className="flex items-center text-gray-700 hover:text-black transition-colors"
               onClick={() => setMobileMenuOpen(false)}
             >
               About
+              {isActive('/about') && <CircleDot className="ml-1" size={14} />}
             </Link>
           </div>
         </div>

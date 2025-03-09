@@ -1,6 +1,6 @@
 
 import { useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import { blogPosts } from "../data/blogPosts";
@@ -22,6 +22,11 @@ const BlogPost = () => {
   
   if (!post) return null;
 
+  // Find related posts in other languages
+  const relatedPosts = post.translations ? 
+    blogPosts.filter(p => post.translations && post.translations.includes(p.id)) : 
+    [];
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
@@ -30,11 +35,28 @@ const BlogPost = () => {
         <article className="max-w-2xl mx-auto">
           <header className="mb-12">
             <h1 className="text-3xl md:text-4xl font-bold mb-4">{post.title}</h1>
-            <div className="flex items-center text-sm text-gray-500">
+            <div className="flex items-center text-sm text-gray-500 mb-2">
               <span>{post.date}</span>
               <span className="mx-2">•</span>
-              <span>{post.readingTime}</span>
+              <span>{post.language}</span>
             </div>
+            
+            {relatedPosts.length > 0 && (
+              <div className="text-sm text-gray-500">
+                Also available in:{" "}
+                {relatedPosts.map((p, index) => (
+                  <span key={p.id}>
+                    <Link 
+                      to={`/blog/${p.id}`}
+                      className="text-gray-700 hover:text-black underline"
+                    >
+                      {p.language}
+                    </Link>
+                    {index < relatedPosts.length - 1 && ", "}
+                  </span>
+                ))}
+              </div>
+            )}
           </header>
           
           <div 

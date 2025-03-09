@@ -17,7 +17,7 @@ const BlogCard = ({ post }: BlogCardProps) => {
       <div className="flex items-center text-sm text-gray-500 mb-4">
         <span>{post.date}</span>
         <span className="mx-2">•</span>
-        <span>{post.readingTime}</span>
+        <span>{post.language}</span>
       </div>
       <p className="text-gray-700">{post.excerpt}</p>
       <Link 
