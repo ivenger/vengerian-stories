@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, CircleDot } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 const Navigation = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,13 +24,23 @@ const Navigation = () => {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex space-x-8">
-          <Link to="/" className="flex items-center text-gray-700 hover:text-black transition-colors">
+          <Link 
+            to="/" 
+            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+              isActive('/') ? 'font-medium' : ''
+            }`}
+          >
             Home
-            {isActive('/') && <CircleDot className="ml-1" size={14} />}
+            {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
-          <Link to="/about" className="flex items-center text-gray-700 hover:text-black transition-colors">
+          <Link 
+            to="/about" 
+            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+              isActive('/about') ? 'font-medium' : ''
+            }`}
+          >
             About
-            {isActive('/about') && <CircleDot className="ml-1" size={14} />}
+            {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
         </div>
 
@@ -50,19 +60,23 @@ const Navigation = () => {
           <div className="flex flex-col space-y-4">
             <Link 
               to="/" 
-              className="flex items-center text-gray-700 hover:text-black transition-colors"
+              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+                isActive('/') ? 'font-medium' : ''
+              }`}
               onClick={() => setMobileMenuOpen(false)}
             >
               Home
-              {isActive('/') && <CircleDot className="ml-1" size={14} />}
+              {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
             </Link>
             <Link 
               to="/about" 
-              className="flex items-center text-gray-700 hover:text-black transition-colors"
+              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+                isActive('/about') ? 'font-medium' : ''
+              }`}
               onClick={() => setMobileMenuOpen(false)}
             >
               About
-              {isActive('/about') && <CircleDot className="ml-1" size={14} />}
+              {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
             </Link>
           </div>
         </div>
