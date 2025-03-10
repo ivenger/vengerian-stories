@@ -7,10 +7,7 @@ import MarkdownEditor from "../components/MarkdownEditor";
 import { useToast } from "../hooks/use-toast";
 import { BlogPost, blogPosts } from "../data/blogPosts";
 import { format } from "date-fns";
-import { Globe, FileText, Trash2, XCircle, Users } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import AdminRoleManager from "../components/AdminRoleManager";
-import { useAuth } from "../context/AuthContext";
+import { Globe, FileText, Trash2, XCircle } from "lucide-react";
 
 // Function to parse query parameters
 const useQuery = () => {
@@ -22,11 +19,9 @@ const Admin = () => {
   const [posts, setPosts] = useState(blogPosts);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
-  const [activeTab, setActiveTab] = useState("posts");
   const query = useQuery();
   const editId = query.get("editId");
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
 
   // Check if we need to edit a specific post (from URL parameter)
   useEffect(() => {
@@ -45,18 +40,6 @@ const Admin = () => {
       }
     }
   }, [editId, posts, toast, navigate]);
-
-  // Redirect if not admin
-  useEffect(() => {
-    if (!isAdmin) {
-      navigate("/");
-      toast({
-        title: "Access Denied",
-        description: "You need administrator privileges to access this page.",
-        variant: "destructive"
-      });
-    }
-  }, [isAdmin, navigate, toast]);
 
   // Create a new post with default values
   const createNewPost = () => {
@@ -172,109 +155,85 @@ const Admin = () => {
       : <FileText size={16} className="text-amber-700" />;
   };
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-white">
-        <Navigation />
-        <main className="container mx-auto px-4 py-8">
-          <h1 className="text-3xl font-bold mb-8">Access Denied</h1>
-          <p>You need administrator privileges to access this page.</p>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
+        <h1 className="text-3xl font-bold mb-8">Blog Admin</h1>
         
         {!isEditing ? (
-          <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="posts">Blog Posts</TabsTrigger>
-              <TabsTrigger value="users">User Management</TabsTrigger>
-            </TabsList>
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold">All Posts</h2>
+              <button
+                onClick={createNewPost}
+                className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+              >
+                Create New Post
+              </button>
+            </div>
             
-            <TabsContent value="posts">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold">All Posts</h2>
-                <button
-                  onClick={createNewPost}
-                  className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+            <div className="grid gap-4">
+              {posts.map((post) => (
+                <div 
+                  key={post.id}
+                  className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
-                  Create New Post
-                </button>
-              </div>
-              
-              <div className="grid gap-4">
-                {posts.map((post) => (
-                  <div 
-                    key={post.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-lg">{post.title}</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status || 'draft')}`}>
-                            {getStatusIcon(post.status || 'draft')}
-                            {post.status || 'draft'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {post.date} • {post.language}
-                        </p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-lg">{post.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status || 'draft')}`}>
+                          {getStatusIcon(post.status || 'draft')}
+                          {post.status || 'draft'}
+                        </span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        {post.status === "draft" ? (
-                          <button
-                            onClick={() => publishPost(post)}
-                            className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
-                            title="Publish post"
-                          >
-                            <Globe size={14} />
-                            Publish
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => unpublishPost(post)}
-                            className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
-                            title="Unpublish post"
-                          >
-                            <XCircle size={14} />
-                            Unpublish
-                          </button>
-                        )}
-                        <button
-                          onClick={() => editPost(post)}
-                          className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => deletePost(post.id)}
-                          className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
-                          title="Delete post"
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {post.date} • {post.language}
+                      </p>
                     </div>
-                    <p className="mt-2 text-gray-700">{post.excerpt}</p>
+                    <div className="flex items-center space-x-2">
+                      {post.status === "draft" ? (
+                        <button
+                          onClick={() => publishPost(post)}
+                          className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
+                          title="Publish post"
+                        >
+                          <Globe size={14} />
+                          Publish
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => unpublishPost(post)}
+                          className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
+                          title="Unpublish post"
+                        >
+                          <XCircle size={14} />
+                          Unpublish
+                        </button>
+                      )}
+                      <button
+                        onClick={() => editPost(post)}
+                        className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deletePost(post.id)}
+                        className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="users">
-              <AdminRoleManager />
-            </TabsContent>
-          </Tabs>
+                  <p className="mt-2 text-gray-700">{post.excerpt}</p>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : (
           <MarkdownEditor 
             post={selectedPost!} 

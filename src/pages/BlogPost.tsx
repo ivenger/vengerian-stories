@@ -6,13 +6,11 @@ import Footer from "../components/Footer";
 import { blogPosts } from "../data/blogPosts";
 import { Pencil } from "lucide-react";
 import MarkdownEditor from "../components/MarkdownEditor";
-import { useAuth } from "../context/AuthContext";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
-  const { isAdmin } = useAuth();
   
   const post = blogPosts.find(post => post.id === id);
   
@@ -99,15 +97,13 @@ const BlogPost = () => {
               ← Back to all posts
             </button>
             
-            {isAdmin && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors"
-              >
-                <Pencil size={16} />
-                Edit post
-              </button>
-            )}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors"
+            >
+              <Pencil size={16} />
+              Edit post
+            </button>
           </div>
         </article>
       </main>
