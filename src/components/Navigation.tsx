@@ -42,6 +42,15 @@ const Navigation = () => {
             About
             {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
+          <Link 
+            to="/admin" 
+            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+              isActive('/admin') ? 'font-medium' : ''
+            }`}
+          >
+            Admin
+            {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+          </Link>
         </div>
 
         {/* Mobile Menu Button */}
@@ -77,6 +86,16 @@ const Navigation = () => {
             >
               About
               {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+            </Link>
+            <Link 
+              to="/admin" 
+              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+                isActive('/admin') ? 'font-medium' : ''
+              }`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Admin
+              {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
             </Link>
           </div>
         </div>
