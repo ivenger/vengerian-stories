@@ -4,11 +4,9 @@ import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import BlogCard from "../components/BlogCard";
 import { blogPosts } from "../data/blogPosts";
-import { useAuth } from "../context/AuthContext";
 
 const Index = () => {
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-  const { isAdmin } = useAuth();
   
   const languages = ["English", "Russian", "Hebrew"];
   
@@ -58,12 +56,7 @@ const Index = () => {
         <section className="max-w-2xl mx-auto">
           {filteredPosts.length > 0 ? (
             filteredPosts.map((post) => (
-              <BlogCard 
-                key={post.id} 
-                post={post} 
-                showStatus={false} 
-                showEdit={isAdmin}
-              />
+              <BlogCard key={post.id} post={post} />
             ))
           ) : (
             <p className="text-center text-gray-500">No posts available in this language.</p>
