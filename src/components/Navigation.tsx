@@ -1,105 +1,63 @@
 
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import AuthNav from "./AuthNav";
 
 const Navigation = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const { isAdmin } = useAuth();
   
+  // Check which link is active
   const isActive = (path: string) => {
     return location.pathname === path;
   };
-
-  const toggleMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
+  
   return (
-    <nav className="py-6 mb-8 border-b border-gray-200">
+    <nav className="py-6 border-b border-gray-100">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-medium tracking-tight">
-          Minimal Writing
+        <Link to="/" className="text-xl font-semibold text-gray-900">
+          MinimalBlog
         </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex space-x-8">
+        
+        <div className="flex items-center space-x-8">
           <Link 
-            to="/" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/') ? 'font-medium' : ''
+            to="/"
+            className={`text-sm ${
+              isActive("/") 
+                ? "text-gray-900 font-medium" 
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
             Home
-            {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
+          
+          {isAdmin && (
+            <Link 
+              to="/admin"
+              className={`text-sm ${
+                isActive("/admin") 
+                  ? "text-gray-900 font-medium" 
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              Admin
+            </Link>
+          )}
+          
           <Link 
-            to="/about" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/about') ? 'font-medium' : ''
+            to="/about"
+            className={`text-sm ${
+              isActive("/about") 
+                ? "text-gray-900 font-medium" 
+                : "text-gray-600 hover:text-gray-900"
             }`}
           >
             About
-            {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
-          <Link 
-            to="/admin" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/admin') ? 'font-medium' : ''
-            }`}
-          >
-            Admin
-            {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-          </Link>
+          
+          <AuthNav />
         </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={toggleMenu}
-          className="md:hidden text-gray-700 hover:text-black transition-colors"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
       </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-white z-10 py-4 px-6 border-b border-gray-200">
-          <div className="flex flex-col space-y-4">
-            <Link 
-              to="/" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/') ? 'font-medium' : ''
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Home
-              {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
-            <Link 
-              to="/about" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/about') ? 'font-medium' : ''
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              About
-              {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
-            <Link 
-              to="/admin" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/admin') ? 'font-medium' : ''
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Admin
-              {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
-          </div>
-        </div>
-      )}
     </nav>
   );
 };
