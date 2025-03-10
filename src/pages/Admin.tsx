@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import MarkdownEditor from "../components/MarkdownEditor";
@@ -7,11 +8,37 @@ import { useToast } from "../hooks/use-toast";
 import { BlogPost, blogPosts } from "../data/blogPosts";
 import { format } from "date-fns";
 
+// Function to parse query parameters
+const useQuery = () => {
+  return new URLSearchParams(useLocation().search);
+};
+
 const Admin = () => {
   const { toast } = useToast();
   const [posts, setPosts] = useState(blogPosts);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogPost | null>(null);
+  const query = useQuery();
+  const editId = query.get("editId");
+  const navigate = useNavigate();
+
+  // Check if we need to edit a specific post (from URL parameter)
+  useEffect(() => {
+    if (editId) {
+      const postToEdit = posts.find(p => p.id === editId);
+      if (postToEdit) {
+        setSelectedPost({...postToEdit});
+        setIsEditing(true);
+      } else {
+        toast({
+          title: "Error",
+          description: `Post with ID ${editId} not found.`,
+          variant: "destructive"
+        });
+        navigate("/admin");
+      }
+    }
+  }, [editId, posts, toast, navigate]);
 
   // Create a new post with default values
   const createNewPost = () => {
@@ -53,6 +80,11 @@ const Admin = () => {
       description: "Post saved successfully. The changes will be reflected in the blogPosts.ts file.",
     });
     
+    // Clear the editId parameter if it exists
+    if (editId) {
+      navigate("/admin");
+    }
+    
     // In a real application, we would send this to a backend to update the blogPosts.ts file
     console.log("Updated posts:", JSON.stringify(posts, null, 2));
   };
@@ -61,6 +93,11 @@ const Admin = () => {
   const cancelEditing = () => {
     setIsEditing(false);
     setSelectedPost(null);
+    
+    // Clear the editId parameter if it exists
+    if (editId) {
+      navigate("/admin");
+    }
   };
 
   return (

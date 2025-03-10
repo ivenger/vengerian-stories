@@ -1,13 +1,16 @@
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import { blogPosts } from "../data/blogPosts";
+import { Pencil } from "lucide-react";
+import MarkdownEditor from "../components/MarkdownEditor";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [isEditing, setIsEditing] = useState(false);
   
   const post = blogPosts.find(post => post.id === id);
   
@@ -26,6 +29,28 @@ const BlogPost = () => {
   const relatedPosts = post.translations ? 
     blogPosts.filter(p => post.translations && post.translations.includes(p.id)) : 
     [];
+
+  const handleSaveEdit = (updatedPost) => {
+    console.log("Post updated:", updatedPost);
+    setIsEditing(false);
+    // In a real application, we would update the blogPosts.ts file here
+  };
+
+  if (isEditing) {
+    return (
+      <div className="min-h-screen bg-white">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8">
+          <MarkdownEditor 
+            post={post} 
+            onSave={handleSaveEdit}
+            onCancel={() => setIsEditing(false)}
+          />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -64,12 +89,20 @@ const BlogPost = () => {
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
           
-          <div className="mt-16 pt-8 border-t border-gray-200">
+          <div className="mt-16 pt-8 border-t border-gray-200 flex justify-between items-center">
             <button 
               onClick={() => navigate("/")}
               className="text-gray-700 hover:text-black transition-colors"
             >
               ← Back to all posts
+            </button>
+            
+            <button
+              onClick={() => setIsEditing(true)}
+              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors"
+            >
+              <Pencil size={16} />
+              Edit post
             </button>
           </div>
         </article>
