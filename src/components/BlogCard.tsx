@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BlogPost } from "../data/blogPosts";
-import { Pencil } from "lucide-react";
+import { Pencil, Globe, FileText } from "lucide-react";
 
 interface BlogCardProps {
   post: BlogPost;
@@ -16,13 +16,33 @@ const BlogCard = ({ post }: BlogCardProps) => {
     navigate(`/admin?editId=${post.id}`);
   };
 
+  const getStatusIcon = (status: string | undefined) => {
+    return status === "published" 
+      ? <Globe size={14} className="text-green-700" /> 
+      : <FileText size={14} className="text-amber-700" />;
+  };
+
+  const getStatusColor = (status: string | undefined) => {
+    return status === "published" 
+      ? "bg-green-100 text-green-800" 
+      : "bg-amber-100 text-amber-800";
+  };
+
   return (
     <article className="mb-12 relative">
-      <Link to={`/blog/${post.id}`}>
-        <h2 className="text-2xl font-semibold mb-2 hover:text-gray-700 transition-colors">
-          {post.title}
-        </h2>
-      </Link>
+      <div className="flex items-center gap-2">
+        <Link to={`/blog/${post.id}`} className="flex-grow">
+          <h2 className="text-2xl font-semibold mb-2 hover:text-gray-700 transition-colors">
+            {post.title}
+          </h2>
+        </Link>
+        {post.status && (
+          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status)}`}>
+            {getStatusIcon(post.status)}
+            {post.status}
+          </span>
+        )}
+      </div>
       <div className="flex items-center text-sm text-gray-500 mb-4">
         <span>{post.date}</span>
         <span className="mx-2">•</span>

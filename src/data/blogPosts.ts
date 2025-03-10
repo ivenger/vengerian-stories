@@ -6,6 +6,7 @@ export interface BlogPost {
   content: string;
   date: string;
   language: string;
+  status?: "draft" | "published"; // New field for post status
   translations?: string[]; // IDs of related posts in other languages
 }
 
@@ -27,6 +28,7 @@ export const blogPosts: BlogPost[] = [
     `,
     date: "June 15, 2024",
     language: "English",
+    status: "published", // Add default status to existing posts
     translations: ["4"]
   },
   {
@@ -45,7 +47,8 @@ export const blogPosts: BlogPost[] = [
       <p>As writer Natalie Goldberg says, "Pay attention to your life. It pays you back with material."</p>
     `,
     date: "June 7, 2024",
-    language: "English"
+    language: "English",
+    status: "published"
   },
   {
     id: "3",
@@ -63,7 +66,8 @@ export const blogPosts: BlogPost[] = [
       <p>Remember that simplicity isn't a style; it's a clarity of thought. When you truly understand what you want to say and care about communicating it to others, simplicity follows naturally.</p>
     `,
     date: "May 28, 2024",
-    language: "English"
+    language: "English",
+    status: "published"
   },
   {
     id: "4",
@@ -82,6 +86,7 @@ export const blogPosts: BlogPost[] = [
     `,
     date: "15 июня 2024",
     language: "Russian",
+    status: "published",
     translations: ["1"]
   },
   {
@@ -100,6 +105,7 @@ export const blogPosts: BlogPost[] = [
       <p>זכור שפשטות אינה סגנון; זוהי בהירות של מחשבה. כאשר אתה באמת מבין מה אתה רוצה לומר ואכפת לך לתקשר זאת לאחרים, פשטות באה באופן טבעי.</p>
     `,
     date: "28 במאי 2024",
-    language: "Hebrew"
+    language: "Hebrew",
+    status: "published"
   }
 ];

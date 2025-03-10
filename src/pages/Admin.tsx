@@ -7,6 +7,7 @@ import MarkdownEditor from "../components/MarkdownEditor";
 import { useToast } from "../hooks/use-toast";
 import { BlogPost, blogPosts } from "../data/blogPosts";
 import { format } from "date-fns";
+import { Globe, FileText, Trash2, XCircle } from "lucide-react";
 
 // Function to parse query parameters
 const useQuery = () => {
@@ -49,6 +50,7 @@ const Admin = () => {
       content: "Start writing your post here...",
       date: format(new Date(), "MMMM d, yyyy"),
       language: "English",
+      status: "draft", // New posts start as drafts
       translations: []
     };
     
@@ -100,6 +102,59 @@ const Admin = () => {
     }
   };
 
+  // Change post status to published
+  const publishPost = (post: BlogPost) => {
+    const updatedPosts = posts.map(p => 
+      p.id === post.id ? { ...p, status: "published" as const } : p
+    );
+    setPosts(updatedPosts);
+    
+    toast({
+      title: "Success",
+      description: `"${post.title}" has been published.`,
+    });
+  };
+
+  // Change post status to draft
+  const unpublishPost = (post: BlogPost) => {
+    const updatedPosts = posts.map(p => 
+      p.id === post.id ? { ...p, status: "draft" as const } : p
+    );
+    setPosts(updatedPosts);
+    
+    toast({
+      title: "Success",
+      description: `"${post.title}" has been unpublished and is now a draft.`,
+    });
+  };
+
+  // Delete a post
+  const deletePost = (postId: string) => {
+    if (window.confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+      const updatedPosts = posts.filter(p => p.id !== postId);
+      setPosts(updatedPosts);
+      
+      toast({
+        title: "Success",
+        description: "Post has been deleted.",
+      });
+    }
+  };
+
+  // Get status tag color
+  const getStatusColor = (status: string) => {
+    return status === "published" 
+      ? "bg-green-100 text-green-800" 
+      : "bg-amber-100 text-amber-800";
+  };
+
+  // Get status icon
+  const getStatusIcon = (status: string) => {
+    return status === "published" 
+      ? <Globe size={16} className="text-green-700" /> 
+      : <FileText size={16} className="text-amber-700" />;
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
@@ -127,17 +182,52 @@ const Admin = () => {
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-medium text-lg">{post.title}</h3>
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-medium text-lg">{post.title}</h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status || 'draft')}`}>
+                          {getStatusIcon(post.status || 'draft')}
+                          {post.status || 'draft'}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500 mt-1">
                         {post.date} • {post.language}
                       </p>
                     </div>
-                    <button
-                      onClick={() => editPost(post)}
-                      className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
-                    >
-                      Edit
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      {post.status === "draft" ? (
+                        <button
+                          onClick={() => publishPost(post)}
+                          className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
+                          title="Publish post"
+                        >
+                          <Globe size={14} />
+                          Publish
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => unpublishPost(post)}
+                          className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
+                          title="Unpublish post"
+                        >
+                          <XCircle size={14} />
+                          Unpublish
+                        </button>
+                      )}
+                      <button
+                        onClick={() => editPost(post)}
+                        className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => deletePost(post.id)}
+                        className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                        title="Delete post"
+                      >
+                        <Trash2 size={14} />
+                        Delete
+                      </button>
+                    </div>
                   </div>
                   <p className="mt-2 text-gray-700">{post.excerpt}</p>
                 </div>
