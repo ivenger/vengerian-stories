@@ -54,6 +54,18 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   // Make a copy to avoid modifying the original
   const postToSave = { ...post };
   
+  // Ensure all required fields are present
+  if (!postToSave.language || !Array.isArray(postToSave.language)) {
+    postToSave.language = [postToSave.language || "English"];
+  }
+  
+  if (!postToSave.title_language || !Array.isArray(postToSave.title_language)) {
+    postToSave.title_language = ["en"];
+  }
+  
+  // Log the post being saved for debugging
+  console.log('Saving post:', postToSave);
+  
   // If post has an ID, update it; otherwise, insert a new one
   const { data, error } = await supabase
     .from('entries')

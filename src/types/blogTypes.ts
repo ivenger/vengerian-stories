@@ -14,5 +14,3 @@ export interface BlogEntry {
   updated_at?: string;
   translations?: string[]; // Field used in MarkdownEditor
 }
-
-// Removed BlogContent type as content is now always a string
