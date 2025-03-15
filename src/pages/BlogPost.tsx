@@ -1,51 +1,87 @@
 
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
-import { blogPosts } from "../data/blogPosts";
-import { Pencil } from "lucide-react";
-import MarkdownEditor from "../components/MarkdownEditor";
+import { fetchPostById } from "../services/blogService";
+import { BlogEntry } from "../types/blogTypes";
+import { useToast } from "@/components/ui/use-toast";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
+  const [post, setPost] = useState<BlogEntry | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [isEditing, setIsEditing] = useState(false);
-  
-  const post = blogPosts.find(post => post.id === id);
-  
+  const { toast } = useToast();
+
   useEffect(() => {
-    if (!post) {
-      navigate("/404");
+    const loadPost = async () => {
+      if (!id) return;
+
+      try {
+        setLoading(true);
+        const fetchedPost = await fetchPostById(id);
+        
+        if (fetchedPost) {
+          setPost(fetchedPost);
+        } else {
+          navigate("/not-found");
+        }
+      } catch (error) {
+        console.error("Failed to load post:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load the blog post. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPost();
+  }, [id, navigate, toast]);
+
+  // Function to get HTML content based on post content structure
+  const getContent = () => {
+    if (!post) return "";
+    
+    if (typeof post.content === "string") {
+      return post.content;
+    } else if (typeof post.content === "object") {
+      // If it's a language object, return content for the primary language
+      const primaryLanguage = post.language[0];
+      return post.content[primaryLanguage] || "";
     }
     
-    // Scroll to top when post loads
-    window.scrollTo(0, 0);
-  }, [post, navigate]);
-  
-  if (!post) return null;
-
-  // Find related posts in other languages
-  const relatedPosts = post.translations ? 
-    blogPosts.filter(p => post.translations && post.translations.includes(p.id)) : 
-    [];
-
-  const handleSaveEdit = (updatedPost) => {
-    console.log("Post updated:", updatedPost);
-    setIsEditing(false);
-    // In a real application, we would update the blogPosts.ts file here
+    return "";
   };
 
-  if (isEditing) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-gray-50">
         <Navigation />
-        <main className="container mx-auto px-4 py-8">
-          <MarkdownEditor 
-            post={post} 
-            onSave={handleSaveEdit}
-            onCancel={() => setIsEditing(false)}
-          />
+        <main className="container mx-auto px-4 py-12">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!post) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <main className="container mx-auto px-4 py-12">
+          <div className="text-center">
+            <h1 className="text-2xl font-semibold mb-4">Post Not Found</h1>
+            <Link to="/" className="text-blue-600 hover:text-blue-800">
+              ← Back to Home
+            </Link>
+          </div>
         </main>
         <Footer />
       </div>
@@ -53,61 +89,38 @@ const BlogPost = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <Navigation />
-      
-      <main className="container mx-auto px-4">
-        <article className="max-w-2xl mx-auto">
-          <header className="mb-12">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">{post.title}</h1>
-            <div className="flex items-center text-sm text-gray-500 mb-2">
-              <span>{post.date}</span>
-              <span className="mx-2">•</span>
-              <span>{post.language}</span>
+      <main className="container mx-auto px-4 py-12">
+        <article className="max-w-3xl mx-auto">
+          <Link to="/" className="inline-block mb-8 text-gray-600 hover:text-gray-900">
+            ← Back to all stories
+          </Link>
+          
+          {post.image_url && (
+            <div className="mb-8">
+              <img 
+                src={post.image_url} 
+                alt={post.title} 
+                className="w-full h-auto rounded-lg shadow-md"
+              />
             </div>
-            
-            {relatedPosts.length > 0 && (
-              <div className="text-sm text-gray-500">
-                Also available in:{" "}
-                {relatedPosts.map((p, index) => (
-                  <span key={p.id}>
-                    <Link 
-                      to={`/blog/${p.id}`}
-                      className="text-gray-700 hover:text-black underline"
-                    >
-                      {p.language}
-                    </Link>
-                    {index < relatedPosts.length - 1 && ", "}
-                  </span>
-                ))}
-              </div>
-            )}
-          </header>
+          )}
+          
+          <h1 className="text-4xl font-cursive font-semibold mb-4">{post.title}</h1>
+          
+          <div className="flex items-center text-sm text-gray-500 mb-8">
+            <span>{post.date}</span>
+            <span className="mx-2">•</span>
+            <span>{post.language.join(", ")}</span>
+          </div>
           
           <div 
-            className="prose prose-lg max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            className="prose max-w-none"
+            dangerouslySetInnerHTML={{ __html: getContent() }}
           />
-          
-          <div className="mt-16 pt-8 border-t border-gray-200 flex justify-between items-center">
-            <button 
-              onClick={() => navigate("/")}
-              className="text-gray-700 hover:text-black transition-colors"
-            >
-              ← Back to all posts
-            </button>
-            
-            <button
-              onClick={() => setIsEditing(true)}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-md transition-colors"
-            >
-              <Pencil size={16} />
-              Edit post
-            </button>
-          </div>
         </article>
       </main>
-      
       <Footer />
     </div>
   );
