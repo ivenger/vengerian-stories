@@ -50,14 +50,9 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
 };
 
 // Save a blog post (create or update)
-export const savePost = async (post: BlogEntry, publish: boolean = false): Promise<BlogEntry> => {
+export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   // Make a copy to avoid modifying the original
   const postToSave = { ...post };
-  
-  // Set status to published if requested
-  if (publish) {
-    postToSave.status = 'published';
-  }
   
   // Ensure all required fields are present
   if (!postToSave.language || !Array.isArray(postToSave.language)) {

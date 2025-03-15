@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import BlogCard from "../components/BlogCard";
 import Footer from "../components/Footer";
@@ -12,36 +13,26 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  const loadPosts = useCallback(async () => {
-    try {
-      setLoading(true);
-      const publishedPosts = await fetchPublishedPosts();
-      setPosts(publishedPosts);
-    } catch (error) {
-      console.error("Failed to load posts:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load blog posts. Please try again later.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    const loadPosts = async () => {
+      try {
+        setLoading(true);
+        const publishedPosts = await fetchPublishedPosts();
+        setPosts(publishedPosts);
+      } catch (error) {
+        console.error("Failed to load posts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load blog posts. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const handlePostUpdated = (updatedPost: BlogEntry) => {
-    if (updatedPost.status === "published") {
-      loadPosts();
-    } else {
-      setPosts(prevPosts => 
-        prevPosts.map(p => p.id === updatedPost.id ? updatedPost : p)
-      );
-    }
-  };
+    loadPosts();
+  }, [toast]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -67,11 +58,7 @@ const Index = () => {
         ) : (
           <div className="grid gap-8">
             {posts.map((post) => (
-              <BlogCard 
-                key={post.id} 
-                post={post} 
-                onPostUpdated={handlePostUpdated}
-              />
+              <BlogCard key={post.id} post={post} />
             ))}
           </div>
         )}
