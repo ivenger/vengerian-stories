@@ -56,11 +56,15 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   
   // Ensure all required fields are present
   if (!postToSave.language || !Array.isArray(postToSave.language)) {
-    postToSave.language = [postToSave.language || "English"];
+    postToSave.language = Array.isArray(postToSave.language) 
+      ? postToSave.language 
+      : [postToSave.language || "English"];
   }
   
   if (!postToSave.title_language || !Array.isArray(postToSave.title_language)) {
-    postToSave.title_language = ["en"];
+    postToSave.title_language = Array.isArray(postToSave.title_language) 
+      ? postToSave.title_language 
+      : [postToSave.title_language || "en"];
   }
   
   // Log the post being saved for debugging
