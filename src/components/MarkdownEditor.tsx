@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -140,13 +139,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     } catch (error) {
       return "";
     }
-  };
-
-  // Helper function for toast notification
-  const toast = {
-    title: "",
-    description: "",
-    variant: "default" as "default" | "destructive"
   };
 
   return (
