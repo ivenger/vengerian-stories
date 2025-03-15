@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { format, parse } from "date-fns";
 import { uploadImage } from "../services/blogService";
+import { useToast } from "../hooks/use-toast";
 
 interface MarkdownEditorProps {
   post: BlogEntry;
@@ -22,6 +23,7 @@ interface MarkdownEditorProps {
 }
 
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
+  const { toast } = useToast();
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
   const [content, setContent] = useState<string | Record<string, string>>(post.content);

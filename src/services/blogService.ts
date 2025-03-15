@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -18,8 +17,8 @@ export const fetchPublishedPosts = async (): Promise<BlogEntry[]> => {
   // Parse content field if it's JSON
   const parsedData = data?.map(post => ({
     ...post,
-    content: typeof post.content === 'object' ? post.content : post.content
-  })) || [];
+    content: typeof post.content === 'string' ? post.content : post.content as Record<string, string>
+  })) as BlogEntry[] || [];
   
   return parsedData;
 };
@@ -39,8 +38,8 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
   // Parse content field if it's JSON
   const parsedData = data?.map(post => ({
     ...post,
-    content: typeof post.content === 'object' ? post.content : post.content
-  })) || [];
+    content: typeof post.content === 'string' ? post.content : post.content as Record<string, string>
+  })) as BlogEntry[] || [];
   
   return parsedData;
 };
@@ -63,8 +62,8 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
   // Parse content field if it's JSON
   return {
     ...data,
-    content: typeof data.content === 'object' ? data.content : data.content
-  };
+    content: typeof data.content === 'string' ? data.content : data.content as Record<string, string>
+  } as BlogEntry;
 };
 
 // Save a blog post (create or update)
@@ -87,8 +86,8 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   // Parse content field if it's JSON
   return {
     ...data!,
-    content: typeof data!.content === 'object' ? data!.content : data!.content
-  };
+    content: typeof data!.content === 'string' ? data!.content : data!.content as Record<string, string>
+  } as BlogEntry;
 };
 
 // Delete a blog post

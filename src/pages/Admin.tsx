@@ -8,7 +8,7 @@ import { useToast } from "../hooks/use-toast";
 import { BlogEntry } from "../types/blogTypes";
 import { format } from "date-fns";
 import { Globe, FileText, Trash2, XCircle } from "lucide-react";
-import { fetchAllPosts, savePost, deletePost } from "../services/blogService";
+import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
 
 // Function to parse query parameters
 const useQuery = () => {
@@ -93,7 +93,7 @@ const Admin = () => {
   const savePost = async (post: BlogEntry) => {
     try {
       // Save to Supabase
-      const savedPost = await savePost(post);
+      const savedPost = await saveBlogPost(post);
       
       // Update local state
       setPosts(prevPosts => {
@@ -146,7 +146,7 @@ const Admin = () => {
   const publishPost = async (post: BlogEntry) => {
     try {
       const updatedPost = { ...post, status: "published" as const };
-      const savedPost = await savePost(updatedPost);
+      const savedPost = await saveBlogPost(updatedPost);
       
       setPosts(prevPosts => 
         prevPosts.map(p => p.id === savedPost.id ? savedPost : p)
@@ -170,7 +170,7 @@ const Admin = () => {
   const unpublishPost = async (post: BlogEntry) => {
     try {
       const updatedPost = { ...post, status: "draft" as const };
-      const savedPost = await savePost(updatedPost);
+      const savedPost = await saveBlogPost(updatedPost);
       
       setPosts(prevPosts => 
         prevPosts.map(p => p.id === savedPost.id ? savedPost : p)
