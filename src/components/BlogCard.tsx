@@ -3,19 +3,53 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BlogEntry } from "../types/blogTypes";
 import { Pencil, Globe, FileText } from "lucide-react";
+import { savePost } from "../services/blogService";
+import { useToast } from "@/components/ui/use-toast";
 
 interface BlogCardProps {
   post: BlogEntry;
+  onPostUpdated?: (post: BlogEntry) => void;
 }
 
 const BlogCard = ({
-  post
+  post,
+  onPostUpdated
 }: BlogCardProps) => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isPublishing, setIsPublishing] = useState(false);
   
   const handleEdit = (e: React.MouseEvent) => {
     e.preventDefault(); // Prevent navigation to blog post
     navigate(`/admin?editId=${post.id}`);
+  };
+
+  const handlePublish = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      setIsPublishing(true);
+      const updatedPost = { ...post, status: "published" };
+      const publishedPost = await savePost(updatedPost);
+      
+      toast({
+        title: "Success",
+        description: "Post published successfully."
+      });
+      
+      if (onPostUpdated) {
+        onPostUpdated(publishedPost);
+      }
+    } catch (error) {
+      console.error("Error publishing post:", error);
+      toast({
+        title: "Error",
+        description: "Failed to publish post."
+      });
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   // Get main image if available
@@ -35,6 +69,12 @@ const BlogCard = ({
         <span>{post.date}</span>
         <span className="mx-2">•</span>
         <span>{Array.isArray(post.language) ? post.language.join(', ') : post.language}</span>
+        {post.status === "draft" && (
+          <>
+            <span className="mx-2">•</span>
+            <span className="text-amber-600">Draft</span>
+          </>
+        )}
       </div>
       
       {imageUrl && (
@@ -59,14 +99,27 @@ const BlogCard = ({
           Continue reading →
         </Link>
         
-        <button 
-          onClick={handleEdit} 
-          className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors" 
-          title="Edit post"
-        >
-          <Pencil size={14} />
-          <span>Edit</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {post.status === "draft" && (
+            <button 
+              onClick={handlePublish}
+              disabled={isPublishing}
+              className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800 transition-colors"
+              title="Publish post"
+            >
+              <Globe size={14} />
+              <span>{isPublishing ? "Publishing..." : "Publish"}</span>
+            </button>
+          )}
+          <button 
+            onClick={handleEdit} 
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 transition-colors" 
+            title="Edit post"
+          >
+            <Pencil size={14} />
+            <span>Edit</span>
+          </button>
+        </div>
       </div>
     </article>
   );
