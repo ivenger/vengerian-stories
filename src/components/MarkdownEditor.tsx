@@ -25,7 +25,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const { toast } = useToast();
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
-  const [content, setContent] = useState<string | Record<string, string>>(post.content);
+  const [content, setContent] = useState<string>(post.content || "");
   const [date, setDate] = useState(post.date);
   const [language, setLanguage] = useState(post.language[0] || "English");
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
@@ -41,15 +41,13 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const getFormattedContent = () => {
     // This is a very basic markdown-to-html conversion
     // In a real app, you'd use a proper markdown parser
-    let formatted = typeof content === 'string' 
-      ? content
-          .replace(/# (.*)/g, '<h1>$1</h1>')
-          .replace(/## (.*)/g, '<h2>$1</h2>')
-          .replace(/### (.*)/g, '<h3>$1</h3>')
-          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.+?)\*/g, '<em>$1</em>')
-          .replace(/\n/g, '<br />')
-      : JSON.stringify(content);
+    let formatted = content
+      .replace(/# (.*)/g, '<h1>$1</h1>')
+      .replace(/## (.*)/g, '<h2>$1</h2>')
+      .replace(/### (.*)/g, '<h3>$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/\n/g, '<br />');
 
     // Convert URL-like text to actual links
     formatted = formatted.replace(
@@ -102,7 +100,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     const updatedPost: BlogEntry = {
       ...post,
       title,
-      excerpt,
+      excerpt: excerpt || null,
       content,
       date,
       language: [language],
@@ -341,7 +339,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               </div>
             </label>
             <textarea
-              value={typeof content === 'string' ? content : JSON.stringify(content, null, 2)}
+              value={content}
               onChange={(e) => setContent(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900 font-mono text-sm"
               placeholder="Write your post content here using Markdown..."

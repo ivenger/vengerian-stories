@@ -11,9 +11,10 @@ export type Database = {
     Tables: {
       entries: {
         Row: {
-          content: Json
+          content: string
           created_at: string
           date: string
+          excerpt: string | null
           id: string
           image_url: string | null
           language: string[]
@@ -23,9 +24,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          content: Json
+          content: string
           created_at?: string
           date: string
+          excerpt?: string | null
           id?: string
           image_url?: string | null
           language: string[]
@@ -35,9 +37,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          content?: Json
+          content?: string
           created_at?: string
           date?: string
+          excerpt?: string | null
           id?: string
           image_url?: string | null
           language?: string[]

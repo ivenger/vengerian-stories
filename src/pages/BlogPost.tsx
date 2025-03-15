@@ -42,21 +42,6 @@ const BlogPost = () => {
     loadPost();
   }, [id, navigate, toast]);
 
-  // Function to get HTML content based on post content structure
-  const getContent = () => {
-    if (!post) return "";
-    
-    if (typeof post.content === "string") {
-      return post.content;
-    } else if (typeof post.content === "object") {
-      // If it's a language object, return content for the primary language
-      const primaryLanguage = post.language[0];
-      return post.content[primaryLanguage] || "";
-    }
-    
-    return "";
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -117,7 +102,7 @@ const BlogPost = () => {
           
           <div 
             className="prose max-w-none"
-            dangerouslySetInnerHTML={{ __html: getContent() }}
+            dangerouslySetInnerHTML={{ __html: post.content ? post.content.replace(/\n/g, '<br />') : '' }}
           />
         </article>
       </main>

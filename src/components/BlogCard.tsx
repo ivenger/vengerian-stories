@@ -48,9 +48,7 @@ const BlogCard = ({
       )}
       
       <p className="text-gray-700">
-        {typeof post.content === 'string' 
-          ? post.content.substring(0, 150).replace(/<[^>]*>?/gm, '') + '...'
-          : 'Read more...'}
+        {post.excerpt || (post.content ? post.content.substring(0, 150).replace(/<[^>]*>?/gm, '') + '...' : 'Read more...')}
       </p>
       
       <div className="flex justify-between items-center mt-4">

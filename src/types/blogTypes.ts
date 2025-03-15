@@ -1,19 +1,18 @@
 
-// Blog post types that align with our Supabase schema
+// Blog post types that align with our updated Supabase schema
 export interface BlogEntry {
   id: string;
   title: string;
   title_language: string[];
-  content: string | Record<string, string>;
+  content: string;
+  excerpt: string | null;
   date: string;
   language: string[];
   status?: "draft" | "published";
   image_url?: string | null;
   created_at?: string;
   updated_at?: string;
-  excerpt?: string; // Add excerpt field used in the UI
-  translations?: string[]; // Add translations field used in MarkdownEditor
+  translations?: string[]; // Field used in MarkdownEditor
 }
 
-// Helper type for blog content
-export type BlogContent = string | Record<string, string>;
+// Removed BlogContent type as content is now always a string
