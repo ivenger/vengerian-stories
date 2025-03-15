@@ -15,7 +15,13 @@ export const fetchPublishedPosts = async (): Promise<BlogEntry[]> => {
     throw error;
   }
   
-  return data || [];
+  // Parse content field if it's JSON
+  const parsedData = data?.map(post => ({
+    ...post,
+    content: typeof post.content === 'object' ? post.content : post.content
+  })) || [];
+  
+  return parsedData;
 };
 
 // Fetch all blog posts (for admin)
@@ -30,7 +36,13 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
     throw error;
   }
   
-  return data || [];
+  // Parse content field if it's JSON
+  const parsedData = data?.map(post => ({
+    ...post,
+    content: typeof post.content === 'object' ? post.content : post.content
+  })) || [];
+  
+  return parsedData;
 };
 
 // Fetch a single blog post by ID
@@ -46,15 +58,24 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
     throw error;
   }
   
-  return data;
+  if (!data) return null;
+  
+  // Parse content field if it's JSON
+  return {
+    ...data,
+    content: typeof data.content === 'object' ? data.content : data.content
+  };
 };
 
 // Save a blog post (create or update)
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
+  // Make a copy to avoid modifying the original
+  const postToSave = { ...post };
+  
   // If post has an ID, update it; otherwise, insert a new one
   const { data, error } = await supabase
     .from('entries')
-    .upsert(post)
+    .upsert(postToSave)
     .select()
     .maybeSingle();
   
@@ -63,7 +84,11 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
     throw error;
   }
   
-  return data!;
+  // Parse content field if it's JSON
+  return {
+    ...data!,
+    content: typeof data!.content === 'object' ? data!.content : data!.content
+  };
 };
 
 // Delete a blog post

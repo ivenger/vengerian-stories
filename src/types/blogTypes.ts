@@ -11,6 +11,8 @@ export interface BlogEntry {
   image_url?: string | null;
   created_at?: string;
   updated_at?: string;
+  excerpt?: string; // Add excerpt field used in the UI
+  translations?: string[]; // Add translations field used in MarkdownEditor
 }
 
 // Helper type for blog content
