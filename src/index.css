@@ -1,5 +1,5 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Marck+Script&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -79,5 +79,11 @@
 }
 
 .font-cursive {
-  font-family: 'Dancing Script', cursive;
+  font-family: 'Dancing Script', 'Marck Script', cursive;
 }
+
+/* Add specific class for Cyrillic scripts */
+.font-cursive-cyrillic {
+  font-family: 'Marck Script', 'Dancing Script', cursive;
+}
+

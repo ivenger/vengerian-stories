@@ -110,27 +110,46 @@ export const uploadImage = async (file: File): Promise<string> => {
   
   console.log('Uploading image to path:', filePath);
   
-  const { error: uploadError } = await supabase
-    .storage
-    .from('blog_images')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
-  
-  if (uploadError) {
-    console.error('Error uploading image:', uploadError);
-    throw uploadError;
+  // Enable more detailed logging
+  try {
+    // Check if the bucket exists
+    const { error: bucketError } = await supabase
+      .storage
+      .getBucket('blog_images');
+    
+    if (bucketError) {
+      console.error('Error checking bucket existence:', bucketError);
+      throw new Error('Storage bucket "blog_images" does not exist or is not accessible. Please create it in Supabase.');
+    }
+
+    // Try to upload the file
+    const { error: uploadError, data: uploadData } = await supabase
+      .storage
+      .from('blog_images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error('Error uploading image:', uploadError);
+      throw uploadError;
+    }
+    
+    console.log('Upload succeeded:', uploadData);
+    
+    const { data } = supabase
+      .storage
+      .from('blog_images')
+      .getPublicUrl(filePath);
+    
+    console.log('Image uploaded successfully, public URL:', data.publicUrl);
+    
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Detailed error in uploadImage:', error);
+    throw error;
   }
-  
-  const { data } = supabase
-    .storage
-    .from('blog_images')
-    .getPublicUrl(filePath);
-  
-  console.log('Image uploaded successfully, public URL:', data.publicUrl);
-  
-  return data.publicUrl;
 };
 
 // Fetch all available tags
@@ -145,10 +164,19 @@ export const fetchAllTags = async (): Promise<string[]> => {
       throw error;
     }
     
+    // Check if data exists
+    if (!data || !Array.isArray(data)) {
+      console.log('No data returned from tags query');
+      return [];
+    }
+    
     // Extract unique tags from all posts, safely handling potential nulls
     const allTags = data
-      .filter(post => post.tags && Array.isArray(post.tags))
-      .flatMap(post => post.tags || [])
+      // Filter out entries without tags
+      .filter(entry => entry && entry.tags && Array.isArray(entry.tags))
+      // Flatten the array of tag arrays
+      .flatMap(entry => entry.tags || [])
+      // Remove empty/null values
       .filter(Boolean);
     
     // Remove duplicates
