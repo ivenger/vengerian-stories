@@ -4,11 +4,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import MarkdownEditor from "../components/MarkdownEditor";
+import TagManagement from "../components/TagManagement";
 import { useToast } from "../hooks/use-toast";
 import { BlogEntry } from "../types/blogTypes";
 import { format } from "date-fns";
-import { Globe, FileText, Trash2, XCircle } from "lucide-react";
+import { Globe, FileText, Trash2, XCircle, Tag } from "lucide-react";
 import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Function to parse query parameters
 const useQuery = () => {
@@ -21,6 +23,7 @@ const Admin = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("posts");
   const query = useQuery();
   const editId = query.get("editId");
   const navigate = useNavigate();
@@ -234,87 +237,113 @@ const Admin = () => {
         <h1 className="text-3xl font-bold mb-8">Blog Admin</h1>
         
         {!isEditing ? (
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-semibold">All Posts</h2>
-              <button
-                onClick={createNewPost}
-                className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
-              >
-                Create New Post
-              </button>
-            </div>
+          <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="mb-6">
+              <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="tags">Tags</TabsTrigger>
+            </TabsList>
             
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-              </div>
-            ) : posts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-600">No posts found. Create your first post using the button above.</p>
-              </div>
-            ) : (
-              <div className="grid gap-4">
-                {posts.map((post) => (
-                  <div 
-                    key={post.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+            <TabsContent value="posts">
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl font-semibold">All Posts</h2>
+                  <button
+                    onClick={createNewPost}
+                    className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
                   >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-medium text-lg">{post.title}</h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status || 'draft')}`}>
-                            {getStatusIcon(post.status || 'draft')}
-                            {post.status || 'draft'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-500 mt-1">
-                          {post.date} • {post.language.join(', ')}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {post.status === "draft" ? (
-                          <button
-                            onClick={() => publishPost(post)}
-                            className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
-                            title="Publish post"
-                          >
-                            <Globe size={14} />
-                            Publish
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => unpublishPost(post)}
-                            className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
-                            title="Unpublish post"
-                          >
-                            <XCircle size={14} />
-                            Unpublish
-                          </button>
-                        )}
-                        <button
-                          onClick={() => editPost(post)}
-                          className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeletePost(post.id)}
-                          className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
-                          title="Delete post"
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                    <p className="mt-2 text-gray-700">{post.excerpt}</p>
+                    Create New Post
+                  </button>
+                </div>
+                
+                {loading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
                   </div>
-                ))}
+                ) : posts.length === 0 ? (
+                  <div className="text-center py-12">
+                    <p className="text-gray-600">No posts found. Create your first post using the button above.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {posts.map((post) => (
+                      <div 
+                        key={post.id}
+                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-medium text-lg">{post.title}</h3>
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(post.status || 'draft')}`}>
+                                {getStatusIcon(post.status || 'draft')}
+                                {post.status || 'draft'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500 mt-1">
+                              {post.date} • {post.language.join(', ')}
+                            </p>
+                            {post.tags && post.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {post.tags.map((tag, index) => (
+                                  <span 
+                                    key={index}
+                                    className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full flex items-center"
+                                  >
+                                    <Tag size={10} className="mr-1" />
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {post.status === "draft" ? (
+                              <button
+                                onClick={() => publishPost(post)}
+                                className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
+                                title="Publish post"
+                              >
+                                <Globe size={14} />
+                                Publish
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => unpublishPost(post)}
+                                className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
+                                title="Unpublish post"
+                              >
+                                <XCircle size={14} />
+                                Unpublish
+                              </button>
+                            )}
+                            <button
+                              onClick={() => editPost(post)}
+                              className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeletePost(post.id)}
+                              className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+                              title="Delete post"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-gray-700">{post.excerpt}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </TabsContent>
+            
+            <TabsContent value="tags">
+              <TagManagement />
+            </TabsContent>
+          </Tabs>
         ) : (
           <MarkdownEditor 
             post={selectedPost!} 

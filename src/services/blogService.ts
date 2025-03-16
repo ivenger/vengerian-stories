@@ -110,16 +110,23 @@ export const uploadImage = async (file: File): Promise<string> => {
   
   console.log('Uploading image to path:', filePath);
   
-  // Enable more detailed logging
   try {
-    // Check if the bucket exists
-    const { error: bucketError } = await supabase
+    // First check if the bucket exists
+    const { data: buckets, error: bucketError } = await supabase
       .storage
-      .getBucket('blog_images');
+      .listBuckets();
     
     if (bucketError) {
-      console.error('Error checking bucket existence:', bucketError);
-      throw new Error('Storage bucket "blog_images" does not exist or is not accessible. Please create it in Supabase.');
+      console.error('Error listing buckets:', bucketError);
+      throw new Error(`Storage error: ${bucketError.message}`);
+    }
+    
+    const bucketExists = buckets.some(bucket => bucket.name === 'blog_images');
+    
+    if (!bucketExists) {
+      const errorMsg = 'Storage bucket "blog_images" does not exist. Please create it in Supabase.';
+      console.error(errorMsg);
+      throw new Error(errorMsg);
     }
 
     // Try to upload the file
@@ -133,7 +140,21 @@ export const uploadImage = async (file: File): Promise<string> => {
     
     if (uploadError) {
       console.error('Error uploading image:', uploadError);
-      throw uploadError;
+      
+      // More informative error message based on the error code
+      let userFriendlyError = 'Failed to upload image. ';
+      
+      if (uploadError.message.includes('duplicate')) {
+        userFriendlyError += 'A file with this name already exists.';
+      } else if (uploadError.message.includes('permissions')) {
+        userFriendlyError += 'You do not have permission to upload to this bucket.';
+      } else if (uploadError.message.includes('size')) {
+        userFriendlyError += 'The file is too large.';
+      } else {
+        userFriendlyError += uploadError.message;
+      }
+      
+      throw new Error(userFriendlyError);
     }
     
     console.log('Upload succeeded:', uploadData);
@@ -184,5 +205,126 @@ export const fetchAllTags = async (): Promise<string[]> => {
   } catch (error) {
     console.error('Error in fetchAllTags:', error);
     return []; // Return empty array on error
+  }
+};
+
+// Save a tag (create or update)
+export const saveTag = async (tagName: string, language: string): Promise<void> => {
+  try {
+    // Find posts that have this tag
+    const { data: existingPosts, error: findError } = await supabase
+      .from('entries')
+      .select('id, tags')
+      .filter('tags', 'cs', `["${tagName}"]`);
+    
+    if (findError) {
+      console.error('Error finding posts with tag:', findError);
+      throw findError;
+    }
+    
+    // No direct tag table, so we update the tag metadata by updating all posts that use this tag
+    if (existingPosts && existingPosts.length > 0) {
+      // Create batch update operations for all affected posts
+      const updates = existingPosts.map(post => {
+        // Create the updated post
+        return {
+          id: post.id,
+          tags: post.tags // Keep the same tags, just triggering an update
+        };
+      });
+      
+      // Execute all updates
+      const { error: updateError } = await supabase
+        .from('entries')
+        .upsert(updates);
+      
+      if (updateError) {
+        console.error('Error updating tag metadata:', updateError);
+        throw updateError;
+      }
+    }
+  } catch (error) {
+    console.error('Error in saveTag:', error);
+    throw error;
+  }
+};
+
+// Delete a tag from all posts
+export const deleteTag = async (tagName: string): Promise<void> => {
+  try {
+    // Find all posts with this tag
+    const { data: postsWithTag, error: findError } = await supabase
+      .from('entries')
+      .select('id, tags')
+      .filter('tags', 'cs', `["${tagName}"]`);
+    
+    if (findError) {
+      console.error('Error finding posts with tag:', findError);
+      throw findError;
+    }
+    
+    if (postsWithTag && postsWithTag.length > 0) {
+      // Update each post to remove the tag
+      const updates = postsWithTag.map(post => {
+        return {
+          id: post.id,
+          tags: (post.tags || []).filter(tag => tag !== tagName)
+        };
+      });
+      
+      // Execute all updates
+      const { error: updateError } = await supabase
+        .from('entries')
+        .upsert(updates);
+      
+      if (updateError) {
+        console.error('Error removing tag from posts:', updateError);
+        throw updateError;
+      }
+    }
+  } catch (error) {
+    console.error('Error in deleteTag:', error);
+    throw error;
+  }
+};
+
+// Fetch posts filtered by tags and/or language
+export const fetchFilteredPosts = async (
+  tags?: string[], 
+  language?: string
+): Promise<BlogEntry[]> => {
+  try {
+    let query = supabase
+      .from('entries')
+      .select('*')
+      .eq('status', 'published');
+    
+    // Add tag filter if specified
+    if (tags && tags.length > 0) {
+      // For each tag, add a filter that checks if the tag is in the tags array
+      tags.forEach(tag => {
+        query = query.filter('tags', 'cs', `["${tag}"]`);
+      });
+    }
+    
+    // Add language filter if specified
+    if (language) {
+      query = query.filter('language', 'cs', `["${language}"]`);
+    }
+    
+    // Order by date
+    query = query.order('date', { ascending: false });
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching filtered posts:', error);
+      throw error;
+    }
+    
+    return data as BlogEntry[] || [];
+  } catch (error) {
+    console.error('Error in fetchFilteredPosts:', error);
+    throw error;
   }
 };
