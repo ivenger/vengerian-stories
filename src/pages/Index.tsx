@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import BlogCard from "../components/BlogCard";
 import Footer from "../components/Footer";
@@ -17,8 +16,8 @@ const Index = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
-  // Available languages for filtering
-  const languages = ["English", "Spanish", "French", "German", "Russian", "Hebrew", "Chinese", "Japanese"];
+  // Available languages for filtering - reduced to only English, Hebrew, Russian
+  const languages = ["English", "Hebrew", "Russian"];
 
   useEffect(() => {
     // Load all available tags

@@ -13,8 +13,8 @@ const TagManagement: React.FC = () => {
   const [editingTag, setEditingTag] = useState('');
   const { toast } = useToast();
 
-  // Available languages
-  const languages = ["English", "Spanish", "French", "German", "Russian", "Hebrew", "Chinese", "Japanese"];
+  // Available languages - reduced to only English, Hebrew, Russian
+  const languages = ["English", "Hebrew", "Russian"];
 
   useEffect(() => {
     loadTags();

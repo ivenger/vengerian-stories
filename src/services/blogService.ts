@@ -214,7 +214,7 @@ export const saveTag = async (tagName: string, language: string): Promise<void> 
     // Find posts that have this tag
     const { data: existingPosts, error: findError } = await supabase
       .from('entries')
-      .select('id, tags')
+      .select('id, tags, content, date, language, title, title_language')
       .filter('tags', 'cs', `["${tagName}"]`);
     
     if (findError) {
@@ -224,14 +224,8 @@ export const saveTag = async (tagName: string, language: string): Promise<void> 
     
     // No direct tag table, so we update the tag metadata by updating all posts that use this tag
     if (existingPosts && existingPosts.length > 0) {
-      // Create batch update operations for all affected posts
-      const updates = existingPosts.map(post => {
-        // Create the updated post
-        return {
-          id: post.id,
-          tags: post.tags // Keep the same tags, just triggering an update
-        };
-      });
+      // Create batch update operations for all affected posts with all required fields
+      const updates = existingPosts.map(post => post);
       
       // Execute all updates
       const { error: updateError } = await supabase
@@ -255,7 +249,7 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     // Find all posts with this tag
     const { data: postsWithTag, error: findError } = await supabase
       .from('entries')
-      .select('id, tags')
+      .select('id, tags, content, date, language, title, title_language')
       .filter('tags', 'cs', `["${tagName}"]`);
     
     if (findError) {
@@ -264,10 +258,10 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     }
     
     if (postsWithTag && postsWithTag.length > 0) {
-      // Update each post to remove the tag
+      // Update each post to remove the tag, maintaining all required fields
       const updates = postsWithTag.map(post => {
         return {
-          id: post.id,
+          ...post,
           tags: (post.tags || []).filter(tag => tag !== tagName)
         };
       });
