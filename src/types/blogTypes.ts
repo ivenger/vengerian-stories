@@ -13,4 +13,5 @@ export interface BlogEntry {
   created_at?: string;
   updated_at?: string;
   translations?: string[]; // Field used in MarkdownEditor
+  tags?: string[]; // Added tags field
 }

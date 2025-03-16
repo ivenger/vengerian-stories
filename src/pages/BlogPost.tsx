@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import { fetchPostById } from "../services/blogService";
 import { BlogEntry } from "../types/blogTypes";
 import { useToast } from "@/components/ui/use-toast";
+import { Tag } from "lucide-react";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -92,13 +93,24 @@ const BlogPost = () => {
             </div>
           )}
           
-          <h1 className="text-4xl font-cursive font-semibold mb-4">{post.title}</h1>
+          <h1 className="text-4xl font-cursive mb-4">{post.title}</h1>
           
-          <div className="flex items-center text-sm text-gray-500 mb-8">
+          <div className="flex items-center text-sm text-gray-500 mb-4">
             <span>{post.date}</span>
             <span className="mx-2">•</span>
             <span>{post.language.join(", ")}</span>
           </div>
+
+          {post.tags && post.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-8">
+              {post.tags.map(tag => (
+                <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
+                  <Tag size={12} className="mr-1" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
           
           <div 
             className="prose max-w-none"

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BlogEntry } from "../types/blogTypes";
-import { Pencil, Globe, FileText } from "lucide-react";
+import { Pencil, Globe, FileText, Tag } from "lucide-react";
 
 interface BlogCardProps {
   post: BlogEntry;
@@ -25,7 +25,7 @@ const BlogCard = ({
     <article className="mb-12 relative bg-white rounded-lg shadow-sm p-6 hover:shadow-md transition-shadow">
       <div className="flex items-center gap-2">
         <Link to={`/blog/${post.id}`} className="flex-grow">
-          <h2 className="text-2xl font-cursive font-semibold mb-2 hover:text-gray-700 transition-colors">
+          <h2 className="text-2xl font-cursive mb-2 hover:text-gray-700 transition-colors">
             {post.title}
           </h2>
         </Link>
@@ -50,6 +50,17 @@ const BlogCard = ({
       <p className="text-gray-700">
         {post.excerpt || (post.content ? post.content.substring(0, 150).replace(/<[^>]*>?/gm, '') + '...' : 'Read more...')}
       </p>
+      
+      {post.tags && post.tags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {post.tags.map(tag => (
+            <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
+              <Tag size={12} className="mr-1" />
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
       
       <div className="flex justify-between items-center mt-4">
         <Link 
