@@ -41,7 +41,7 @@ serve(async (req) => {
   }
 
   try {
-    // Fetch all users - we could add an admin check here if needed
+    // Fetch all users using the admin API
     const { data, error } = await supabaseAdmin.auth.admin.listUsers();
 
     if (error) {

@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type User = {
   id: string;
-  email: string;
+  email?: string; // Make email optional to match Supabase's User type
   created_at: string;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
@@ -29,14 +29,23 @@ const UserManagement = () => {
       try {
         setLoading(true);
         
-        // Fetch users from Supabase - using edge functions
-        // Since we can't directly query auth.users from the frontend
-        const { data: { users }, error } = await supabase.auth.admin.listUsers();
+        // Fetch the session to get the access token
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          throw new Error("Not authenticated");
+        }
+        
+        // Use Edge Function to fetch users
+        const { data, error } = await supabase.functions.invoke('admin-list-users', {
+          headers: {
+            Authorization: `Bearer ${sessionData.session.access_token}`,
+          },
+        });
         
         if (error) throw error;
         
-        setUsers(users || []);
-      } catch (error) {
+        setUsers(data?.users || []);
+      } catch (error: any) {
         console.error("Error fetching users:", error);
         toast({
           title: "Error",
@@ -82,7 +91,7 @@ const UserManagement = () => {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
+                  <TableCell className="font-medium">{user.email || "No email"}</TableCell>
                   <TableCell>{formatDate(user.created_at)}</TableCell>
                   <TableCell>{user.last_sign_in_at ? formatDate(user.last_sign_in_at) : "Never"}</TableCell>
                   <TableCell>
