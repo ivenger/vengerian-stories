@@ -4,7 +4,6 @@ import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
 import { BlogEntry } from '../types/blogTypes';
 import Navigation from '../components/Navigation';
-import Footer from '../components/Footer';
 import { Calendar, Tag } from 'lucide-react';
 
 // Function to detect if text has Cyrillic characters
@@ -115,11 +114,11 @@ const BlogPost = () => {
             />
             
             {post.image_url && (
-              <div className="mt-8">
+              <div className="mt-8 flex justify-center">
                 <img 
                   src={post.image_url} 
                   alt={post.title} 
-                  className="w-full max-h-96 object-cover rounded-lg"
+                  className="max-w-full max-h-[500px] object-contain rounded-lg"
                 />
               </div>
             )}
@@ -134,8 +133,6 @@ const BlogPost = () => {
           </div>
         )}
       </main>
-      
-      <Footer />
     </div>
   );
 };

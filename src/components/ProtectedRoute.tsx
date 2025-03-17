@@ -5,13 +5,16 @@ import { useAuth } from "./AuthProvider";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   redirectTo?: string;
+  adminOnly?: boolean;
 }
 
 const ProtectedRoute = ({ 
   children, 
-  redirectTo = "/auth" 
+  redirectTo = "/auth",
+  adminOnly = false
 }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
+  const adminEmail = "ilya.venger@gmail.com";
 
   // If authentication is still loading, show a loading indicator
   if (loading) {
@@ -27,7 +30,12 @@ const ProtectedRoute = ({
     return <Navigate to={redirectTo} />;
   }
 
-  // If user is authenticated, render the protected content
+  // If adminOnly flag is true, check if the current user is the admin
+  if (adminOnly && user.email !== adminEmail) {
+    return <Navigate to="/" />;
+  }
+
+  // If user is authenticated and passes admin check if required, render the protected content
   return <>{children}</>;
 };
 

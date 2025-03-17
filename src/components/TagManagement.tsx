@@ -3,18 +3,26 @@ import React, { useState, useEffect } from 'react';
 import { fetchAllTags, saveTag, deleteTag } from '../services/blogService';
 import { useToast } from '../hooks/use-toast';
 import { Tag, Plus, Trash2, Save, X } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+
+type TagData = {
+  name: string;
+  translations: {
+    en: string;
+    he: string;
+    ru: string;
+  };
+};
 
 const TagManagement: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
+  const [tagData, setTagData] = useState<TagData[]>([]);
   const [newTagName, setNewTagName] = useState('');
-  const [newTagLanguage, setNewTagLanguage] = useState('English');
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTag, setEditingTag] = useState('');
+  const [editingTagData, setEditingTagData] = useState<TagData | null>(null);
   const { toast } = useToast();
-
-  // Available languages - reduced to only English, Hebrew, Russian
-  const languages = ["English", "Hebrew", "Russian"];
 
   useEffect(() => {
     loadTags();
@@ -25,6 +33,18 @@ const TagManagement: React.FC = () => {
       setLoading(true);
       const allTags = await fetchAllTags();
       setTags(allTags);
+      
+      // Initialize tag data structure
+      const initialTagData = allTags.map(tag => ({
+        name: tag,
+        translations: {
+          en: tag, // Default to tag name
+          he: "",
+          ru: ""
+        }
+      }));
+      
+      setTagData(initialTagData);
     } catch (error) {
       console.error('Error loading tags:', error);
       toast({
@@ -57,8 +77,18 @@ const TagManagement: React.FC = () => {
     }
 
     try {
-      await saveTag(newTagName.trim(), newTagLanguage);
+      await saveTag(newTagName.trim(), 'English');
       setTags([...tags, newTagName.trim()]);
+      
+      setTagData([...tagData, {
+        name: newTagName.trim(),
+        translations: {
+          en: newTagName.trim(),
+          he: "",
+          ru: ""
+        }
+      }]);
+      
       setNewTagName('');
       
       toast({
@@ -80,6 +110,8 @@ const TagManagement: React.FC = () => {
       try {
         await deleteTag(tagName);
         setTags(tags.filter(t => t !== tagName));
+        setTagData(tagData.filter(t => t.name !== tagName));
+        
         toast({
           title: 'Success',
           description: `Tag "${tagName}" deleted successfully`
@@ -95,46 +127,45 @@ const TagManagement: React.FC = () => {
     }
   };
 
-  const startEditing = (tagName: string) => {
-    setEditingTag(tagName);
-    setNewTagName(tagName);
+  const startEditing = (tag: TagData) => {
+    setEditingTag(tag.name);
+    setEditingTagData({...tag});
     setIsEditing(true);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setEditingTag('');
-    setNewTagName('');
+    setEditingTagData(null);
+  };
+
+  const handleTranslationChange = (language: keyof TagData['translations'], value: string) => {
+    if (editingTagData) {
+      setEditingTagData({
+        ...editingTagData,
+        translations: {
+          ...editingTagData.translations,
+          [language]: value
+        }
+      });
+    }
   };
 
   const saveEditing = async () => {
-    if (!newTagName.trim()) {
-      toast({
-        title: 'Error',
-        description: 'Tag name cannot be empty',
-        variant: 'destructive'
-      });
-      return;
-    }
-
-    if (tags.includes(newTagName.trim()) && newTagName.trim() !== editingTag) {
-      toast({
-        title: 'Error',
-        description: 'Tag already exists',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+    if (!editingTagData) return;
+    
     try {
-      // Delete old tag and create new one
+      // Update tag in database
       await deleteTag(editingTag);
-      await saveTag(newTagName.trim(), newTagLanguage);
+      await saveTag(editingTagData.name, 'English');
       
-      setTags(tags.map(t => t === editingTag ? newTagName.trim() : t));
+      // Update local state
+      setTagData(tagData.map(t => t.name === editingTag ? editingTagData : t));
+      setTags(tags.map(t => t === editingTag ? editingTagData.name : t));
+      
       setIsEditing(false);
       setEditingTag('');
-      setNewTagName('');
+      setEditingTagData(null);
       
       toast({
         title: 'Success',
@@ -174,41 +205,13 @@ const TagManagement: React.FC = () => {
             placeholder="Enter tag name"
             className="px-3 py-2 border border-gray-300 rounded-md flex-grow"
           />
-          <select
-            value={newTagLanguage}
-            onChange={(e) => setNewTagLanguage(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md"
+          <button
+            onClick={handleAddTag}
+            className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700 flex items-center"
           >
-            {languages.map(lang => (
-              <option key={lang} value={lang}>{lang}</option>
-            ))}
-          </select>
-          {isEditing ? (
-            <>
-              <button
-                onClick={saveEditing}
-                className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700 flex items-center"
-              >
-                <Save size={16} className="mr-1" />
-                Update
-              </button>
-              <button
-                onClick={cancelEditing}
-                className="px-3 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 flex items-center"
-              >
-                <X size={16} className="mr-1" />
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              onClick={handleAddTag}
-              className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700 flex items-center"
-            >
-              <Plus size={16} className="mr-1" />
-              Add Tag
-            </button>
-          )}
+            <Plus size={16} className="mr-1" />
+            Add Tag
+          </button>
         </div>
       </div>
 
@@ -217,32 +220,106 @@ const TagManagement: React.FC = () => {
           No tags available. Add your first tag using the form above.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-          {tags.map(tag => (
-            <div 
-              key={tag}
-              className="flex items-center justify-between p-2 border border-gray-200 rounded-md"
-            >
-              <span className="flex items-center">
-                <Tag size={14} className="mr-1 text-gray-500" />
-                {tag}
-              </span>
-              <div className="flex items-center">
-                <button
-                  onClick={() => startEditing(tag)}
-                  className="p-1 text-blue-600 hover:text-blue-800"
-                >
-                  Edit
-                </button>
-                <button
-                  onClick={() => handleDeleteTag(tag)}
-                  className="p-1 text-red-600 hover:text-red-800 ml-2"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Tag Name</TableHead>
+                <TableHead>English</TableHead>
+                <TableHead>Hebrew</TableHead>
+                <TableHead>Russian</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isEditing && editingTagData ? (
+                <TableRow>
+                  <TableCell>
+                    <input
+                      type="text"
+                      value={editingTagData.name}
+                      onChange={(e) => setEditingTagData({...editingTagData, name: e.target.value})}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="text"
+                      value={editingTagData.translations.en}
+                      onChange={(e) => handleTranslationChange('en', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="text"
+                      value={editingTagData.translations.he}
+                      onChange={(e) => handleTranslationChange('he', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <input
+                      type="text"
+                      value={editingTagData.translations.ru}
+                      onChange={(e) => handleTranslationChange('ru', e.target.value)}
+                      className="w-full px-2 py-1 border border-gray-300 rounded"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={saveEditing}
+                        className="p-1 bg-gray-900 text-white rounded hover:bg-gray-700"
+                        title="Save"
+                      >
+                        <Save size={16} />
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="p-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                        title="Cancel"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tagData.map((tag) => (
+                  <TableRow key={tag.name}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center">
+                        <Tag size={14} className="mr-1 text-gray-500" />
+                        {tag.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>{tag.translations.en}</TableCell>
+                    <TableCell>{tag.translations.he}</TableCell>
+                    <TableCell>{tag.translations.ru}</TableCell>
+                    <TableCell>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => startEditing(tag)}
+                          className="p-1 text-blue-600 hover:text-blue-800"
+                          title="Edit"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteTag(tag.name)}
+                          className="p-1 text-red-600 hover:text-red-800"
+                          title="Delete"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
       )}
     </div>

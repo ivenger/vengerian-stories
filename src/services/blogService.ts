@@ -250,12 +250,10 @@ export const fetchFilteredPosts = async (
       .select('*')
       .eq('status', 'published');
     
-    // Add tag filter if specified
+    // Add tag filter if specified - using OR logic between tags
     if (tags && tags.length > 0) {
-      // Use contains operator instead of cs for array checks
-      tags.forEach(tag => {
-        query = query.contains('tags', [tag]);
-      });
+      // Use the "in" operator for OR logic between tags
+      query = query.overlaps('tags', tags);
     }
     
     // Add language filter if specified

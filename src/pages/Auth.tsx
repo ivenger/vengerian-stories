@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +5,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import Footer from "../components/Footer";
 import Navigation from "../components/Navigation";
 
 const Auth = () => {
@@ -223,8 +221,6 @@ const Auth = () => {
           </form>
         </DialogContent>
       </Dialog>
-
-      <Footer />
     </div>
   );
 };

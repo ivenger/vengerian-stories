@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
-import Footer from "../components/Footer";
 import MarkdownEditor from "../components/MarkdownEditor";
 import TagManagement from "../components/TagManagement";
 import UserManagement from "../components/UserManagement";
@@ -13,7 +11,6 @@ import { Globe, FileText, Trash2, XCircle, Tag, Users } from "lucide-react";
 import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Function to parse query parameters
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
 };
@@ -29,7 +26,6 @@ const Admin = () => {
   const editId = query.get("editId");
   const navigate = useNavigate();
 
-  // Load all posts on initial render
   useEffect(() => {
     const loadPosts = async () => {
       try {
@@ -51,7 +47,6 @@ const Admin = () => {
     loadPosts();
   }, [toast]);
 
-  // Check if we need to edit a specific post (from URL parameter)
   useEffect(() => {
     if (editId && posts.length > 0) {
       const postToEdit = posts.find(p => p.id === editId);
@@ -69,7 +64,6 @@ const Admin = () => {
     }
   }, [editId, posts, toast, navigate]);
 
-  // Create a new post with default values
   const createNewPost = () => {
     const newPost: BlogEntry = {
       id: crypto.randomUUID(),
@@ -79,7 +73,7 @@ const Admin = () => {
       date: format(new Date(), "MMMM d, yyyy"),
       language: ["English"],
       title_language: ["en"],
-      status: "draft", // New posts start as drafts
+      status: "draft",
       translations: []
     };
     
@@ -87,28 +81,22 @@ const Admin = () => {
     setIsEditing(true);
   };
 
-  // Edit an existing post
   const editPost = (post: BlogEntry) => {
     setSelectedPost({...post});
     setIsEditing(true);
   };
 
-  // Save the post (either new or edited)
   const savePost = async (post: BlogEntry) => {
     try {
-      // Save to Supabase
       const savedPost = await saveBlogPost(post);
       
-      // Update local state
       setPosts(prevPosts => {
         const index = prevPosts.findIndex(p => p.id === savedPost.id);
         if (index >= 0) {
-          // Update existing post
           const updatedPosts = [...prevPosts];
           updatedPosts[index] = savedPost;
           return updatedPosts;
         } else {
-          // Add new post
           return [...prevPosts, savedPost];
         }
       });
@@ -121,7 +109,6 @@ const Admin = () => {
         description: "Post saved successfully.",
       });
       
-      // Clear the editId parameter if it exists
       if (editId) {
         navigate("/admin");
       }
@@ -135,18 +122,15 @@ const Admin = () => {
     }
   };
 
-  // Cancel editing
   const cancelEditing = () => {
     setIsEditing(false);
     setSelectedPost(null);
     
-    // Clear the editId parameter if it exists
     if (editId) {
       navigate("/admin");
     }
   };
 
-  // Change post status to published
   const publishPost = async (post: BlogEntry) => {
     try {
       const updatedPost = { ...post, status: "published" as const };
@@ -170,7 +154,6 @@ const Admin = () => {
     }
   };
 
-  // Change post status to draft
   const unpublishPost = async (post: BlogEntry) => {
     try {
       const updatedPost = { ...post, status: "draft" as const };
@@ -194,7 +177,6 @@ const Admin = () => {
     }
   };
 
-  // Delete a post
   const handleDeletePost = async (postId: string) => {
     if (window.confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
       try {
@@ -216,14 +198,12 @@ const Admin = () => {
     }
   };
 
-  // Get status tag color
   const getStatusColor = (status: string) => {
     return status === "published" 
       ? "bg-green-100 text-green-800" 
       : "bg-amber-100 text-amber-800";
   };
 
-  // Get status icon
   const getStatusIcon = (status: string) => {
     return status === "published" 
       ? <Globe size={16} className="text-green-700" /> 
@@ -235,8 +215,6 @@ const Admin = () => {
       <Navigation />
       
       <main className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-8">Blog Admin</h1>
-        
         {!isEditing ? (
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
@@ -358,8 +336,6 @@ const Admin = () => {
           />
         )}
       </main>
-      
-      <Footer />
     </div>
   );
 };

@@ -1,7 +1,5 @@
-
 import { useEffect, useState } from "react";
 import BlogCard from "../components/BlogCard";
-import Footer from "../components/Footer";
 import Navigation from "../components/Navigation";
 import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
 import { BlogEntry } from "../types/blogTypes";
@@ -17,11 +15,9 @@ const Index = () => {
   const [showFilters, setShowFilters] = useState(false);
   const { toast } = useToast();
 
-  // Available languages for filtering - reduced to only English, Hebrew, Russian
   const languages = ["English", "Hebrew", "Russian"];
 
   useEffect(() => {
-    // Load all available tags
     const loadTags = async () => {
       try {
         const tags = await fetchAllTags();
@@ -85,7 +81,6 @@ const Index = () => {
         </div>
 
         <div className="flex flex-col md:flex-row gap-6">
-          {/* Filters section - moved to the left side */}
           <div className="md:w-1/4">
             <div className="mb-4 flex items-center justify-between">
               <button
@@ -110,7 +105,6 @@ const Index = () => {
             {showFilters && (
               <div className="p-4 bg-white rounded-lg shadow-sm">
                 <div className="flex flex-col gap-4">
-                  {/* Language filter */}
                   <div>
                     <h3 className="text-sm font-medium mb-2">Filter by Language</h3>
                     <div className="flex flex-wrap gap-2">
@@ -130,7 +124,6 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Tags filter */}
                   <div>
                     <h3 className="text-sm font-medium mb-2">Filter by Tags</h3>
                     <div className="flex flex-wrap gap-2">
@@ -151,7 +144,6 @@ const Index = () => {
                     </div>
                   </div>
 
-                  {/* Active filters display */}
                   {(selectedTags.length > 0 || selectedLanguage) && (
                     <div className="mt-2">
                       <h3 className="text-sm font-medium">Active Filters:</h3>
@@ -190,7 +182,6 @@ const Index = () => {
             )}
           </div>
 
-          {/* Main content area */}
           <div className="md:w-3/4">
             {loading ? (
               <div className="flex justify-center items-center h-64">
@@ -222,7 +213,6 @@ const Index = () => {
           </div>
         </div>
       </main>
-      <Footer />
     </div>
   );
 };
