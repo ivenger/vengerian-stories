@@ -86,16 +86,6 @@ const BlogPost = () => {
               ← Back to all posts
             </Link>
             
-            {post.image_url && (
-              <div className="mb-6">
-                <img 
-                  src={post.image_url} 
-                  alt={post.title} 
-                  className="w-full max-h-96 object-cover rounded-lg"
-                />
-              </div>
-            )}
-            
             <h1 className={`${titleFontClass} text-4xl mb-4`}>
               {post.title}
             </h1>
@@ -123,6 +113,16 @@ const BlogPost = () => {
               className="prose max-w-none"
               dangerouslySetInnerHTML={{ __html: getFormattedContent(post.content) }}
             />
+            
+            {post.image_url && (
+              <div className="mt-8">
+                <img 
+                  src={post.image_url} 
+                  alt={post.title} 
+                  className="w-full max-h-96 object-cover rounded-lg"
+                />
+              </div>
+            )}
           </article>
         ) : (
           <div className="text-center py-12">

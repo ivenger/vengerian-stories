@@ -5,10 +5,11 @@ import Navigation from "../components/Navigation";
 import Footer from "../components/Footer";
 import MarkdownEditor from "../components/MarkdownEditor";
 import TagManagement from "../components/TagManagement";
+import UserManagement from "../components/UserManagement";
 import { useToast } from "../hooks/use-toast";
 import { BlogEntry } from "../types/blogTypes";
 import { format } from "date-fns";
-import { Globe, FileText, Trash2, XCircle, Tag } from "lucide-react";
+import { Globe, FileText, Trash2, XCircle, Tag, Users } from "lucide-react";
 import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -241,6 +242,7 @@ const Admin = () => {
             <TabsList className="mb-6">
               <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="tags">Tags</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
             </TabsList>
             
             <TabsContent value="posts">
@@ -342,6 +344,10 @@ const Admin = () => {
             
             <TabsContent value="tags">
               <TagManagement />
+            </TabsContent>
+            
+            <TabsContent value="users">
+              <UserManagement />
             </TabsContent>
           </Tabs>
         ) : (

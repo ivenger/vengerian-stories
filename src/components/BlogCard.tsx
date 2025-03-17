@@ -22,16 +22,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <Link to={`/blog/${id}`} className="block group">
       <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm transition-all hover:shadow-md">
-        {image_url && (
-          <div className="aspect-video w-full overflow-hidden">
-            <img 
-              src={image_url} 
-              alt={title} 
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-          </div>
-        )}
-        
         <div className="p-4">
           <h2 className={`${titleFontClass} text-xl text-gray-900 mb-2`}>
             {title}
@@ -55,11 +45,23 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             </div>
           )}
           
-          {excerpt && (
-            <p className="text-gray-600 text-sm line-clamp-3">
-              {excerpt}
-            </p>
-          )}
+          <div className="flex items-start gap-3">
+            {excerpt && (
+              <p className="text-gray-600 text-sm flex-grow line-clamp-3">
+                {excerpt}
+              </p>
+            )}
+            
+            {image_url && (
+              <div className="flex-shrink-0 w-20 h-20 overflow-hidden rounded">
+                <img 
+                  src={image_url} 
+                  alt={title} 
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </Link>
