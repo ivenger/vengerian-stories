@@ -1,11 +1,17 @@
 
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Menu, X, LogIn, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "./AuthProvider";
 
 const Navigation = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const { user } = useAuth();
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -13,6 +19,23 @@ const Navigation = () => {
 
   const toggleMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      toast({
+        title: "Success",
+        description: "You have been signed out",
+      });
+      navigate("/");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sign out",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -42,15 +65,37 @@ const Navigation = () => {
             About
             {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
-          <Link 
-            to="/admin" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/admin') ? 'font-medium' : ''
-            }`}
-          >
-            Admin
-            {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-          </Link>
+          {user && (
+            <Link 
+              to="/admin" 
+              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+                isActive('/admin') ? 'font-medium' : ''
+              }`}
+            >
+              Admin
+              {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+            </Link>
+          )}
+          {user ? (
+            <button
+              onClick={handleSignOut}
+              className="text-gray-700 hover:text-black transition-colors flex items-center gap-1"
+            >
+              <LogOut size={16} />
+              Sign Out
+            </button>
+          ) : (
+            <Link
+              to="/auth"
+              className={`text-gray-700 hover:text-black transition-colors relative pb-1 flex items-center gap-1 ${
+                isActive('/auth') ? 'font-medium' : ''
+              }`}
+            >
+              <LogIn size={16} />
+              Sign In
+              {isActive('/auth') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+            </Link>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -87,16 +132,42 @@ const Navigation = () => {
               About
               {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
             </Link>
-            <Link 
-              to="/admin" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/admin') ? 'font-medium' : ''
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              Admin
-              {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
+            {user && (
+              <Link 
+                to="/admin" 
+                className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
+                  isActive('/admin') ? 'font-medium' : ''
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Admin
+                {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+              </Link>
+            )}
+            {user ? (
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMobileMenuOpen(false);
+                }}
+                className="text-gray-700 hover:text-black transition-colors flex items-center gap-1"
+              >
+                <LogOut size={16} />
+                Sign Out
+              </button>
+            ) : (
+              <Link
+                to="/auth"
+                className={`text-gray-700 hover:text-black transition-colors relative pb-1 flex items-center gap-1 ${
+                  isActive('/auth') ? 'font-medium' : ''
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <LogIn size={16} />
+                Sign In
+                {isActive('/auth') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+              </Link>
+            )}
           </div>
         </div>
       )}
