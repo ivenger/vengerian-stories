@@ -252,15 +252,15 @@ export const fetchFilteredPosts = async (
     
     // Add tag filter if specified
     if (tags && tags.length > 0) {
-      // For each tag, add a filter that checks if the tag is in the tags array
+      // Use contains operator instead of cs for array checks
       tags.forEach(tag => {
-        query = query.filter('tags', 'cs', `["${tag}"]`);
+        query = query.contains('tags', [tag]);
       });
     }
     
     // Add language filter if specified
     if (language) {
-      query = query.filter('language', 'cs', `["${language}"]`);
+      query = query.contains('language', [language]);
     }
     
     // Order by date

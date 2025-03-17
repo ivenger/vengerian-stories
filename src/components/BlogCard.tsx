@@ -23,13 +23,27 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     <Link to={`/blog/${id}`} className="block group">
       <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm transition-all hover:shadow-md">
         <div className="p-4">
-          <h2 className={`${titleFontClass} text-xl text-gray-900 mb-2`}>
-            {title}
-          </h2>
-          
-          <div className="flex items-center text-sm text-gray-500 mb-2">
-            <Calendar size={14} className="mr-1" />
-            <span>{date}</span>
+          <div className="flex items-start gap-3 mb-2">
+            <div className="flex-grow">
+              <h2 className={`${titleFontClass} text-xl text-gray-900 mb-1`}>
+                {title}
+              </h2>
+              
+              <div className="flex items-center text-sm text-gray-500 mb-2">
+                <Calendar size={14} className="mr-1" />
+                <span>{date}</span>
+              </div>
+            </div>
+            
+            {image_url && (
+              <div className="flex-shrink-0 w-20 h-20 overflow-hidden rounded">
+                <img 
+                  src={image_url} 
+                  alt={title} 
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
           </div>
           
           {tags && tags.length > 0 && (
@@ -45,23 +59,11 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             </div>
           )}
           
-          <div className="flex items-start gap-3">
-            {excerpt && (
-              <p className="text-gray-600 text-sm flex-grow line-clamp-3">
-                {excerpt}
-              </p>
-            )}
-            
-            {image_url && (
-              <div className="flex-shrink-0 w-20 h-20 overflow-hidden rounded">
-                <img 
-                  src={image_url} 
-                  alt={title} 
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            )}
-          </div>
+          {excerpt && (
+            <p className="text-gray-600 text-sm line-clamp-3">
+              {excerpt}
+            </p>
+          )}
         </div>
       </div>
     </Link>
