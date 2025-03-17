@@ -10,11 +10,11 @@ import {
   X, 
   Link as LinkIcon,
   ArrowLeft,
-  Upload,
-  Tag
+  Tag,
+  Image
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { uploadImage, fetchAllPosts, fetchAllTags } from "../services/blogService";
+import { fetchAllPosts, fetchAllTags, fetchBucketImages } from "../services/blogService";
 import { useToast } from "../hooks/use-toast";
 import { 
   Select,
@@ -41,22 +41,25 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [imageUrl, setImageUrl] = useState<string | null>(post.image_url || null);
-  const [uploading, setUploading] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>(post.tags || []);
   const [tagInput, setTagInput] = useState("");
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [availablePosts, setAvailablePosts] = useState<BlogEntry[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [availableImages, setAvailableImages] = useState<string[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
 
-  // Available languages for selection
-  const languages = ["English", "Spanish", "French", "German", "Russian", "Hebrew", "Chinese", "Japanese"];
+  // Available languages for selection - reduced to only English, Hebrew, Russian
+  const languages = ["English", "Hebrew", "Russian"];
 
-  // Load available posts and tags
+  // Load available posts, tags, and images
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoadingPosts(true);
+        setIsLoadingImages(true);
+        
         // Load all posts for translation selection
         const posts = await fetchAllPosts();
         // Filter out the current post
@@ -65,15 +68,20 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
         // Load all tags
         const tags = await fetchAllTags();
         setAvailableTags(tags);
+        
+        // Load all images from the bucket
+        const images = await fetchBucketImages();
+        setAvailableImages(images);
       } catch (error) {
         console.error("Error loading data:", error);
         toast({
           title: "Error",
-          description: "Failed to load posts and tags",
+          description: "Failed to load data. Please try again later.",
           variant: "destructive"
         });
       } finally {
         setIsLoadingPosts(false);
+        setIsLoadingImages(false);
       }
     };
 
@@ -112,30 +120,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     } catch (error) {
       // If parsing fails, just use the input as is
       setDate(inputDate);
-    }
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      try {
-        setUploading(true);
-        const imageUrl = await uploadImage(file);
-        setImageUrl(imageUrl);
-        toast({
-          title: "Success",
-          description: "Image uploaded successfully",
-        });
-      } catch (error) {
-        console.error("Error uploading image:", error);
-        toast({
-          title: "Error",
-          description: "Failed to upload image. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setUploading(false);
-      }
     }
   };
 
@@ -187,6 +171,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     }
   };
 
+  const handleSelectImage = (url: string) => {
+    setImageUrl(url);
+  };
+
   // Filter the posts based on search term
   const filteredPosts = availablePosts.filter(p => 
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -207,6 +195,12 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     } catch (error) {
       return "";
     }
+  };
+
+  // Extract filename from image URL for display
+  const getImageFileName = (url: string) => {
+    const parts = url.split('/');
+    return parts[parts.length - 1];
   };
 
   return (
@@ -291,30 +285,47 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
-                <Upload size={16} className="mr-1" />
+                <Image size={16} className="mr-1" />
                 Featured Image
               </div>
             </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-              {uploading && <span className="text-sm text-gray-500">Uploading...</span>}
-              {imageUrl && (
-                <div className="relative w-16 h-16 border border-gray-200 rounded overflow-hidden">
-                  <img src={imageUrl} alt="Featured" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => setImageUrl(null)}
-                    className="absolute top-0 right-0 p-0.5 bg-white bg-opacity-75 rounded-bl text-red-600 hover:text-red-700"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
+            
+            {isLoadingImages ? (
+              <div className="py-2 text-sm text-gray-500">Loading images...</div>
+            ) : (
+              <div>
+                <Select onValueChange={handleSelectImage}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an image from storage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {availableImages.map((url) => (
+                        <SelectItem key={url} value={url}>
+                          {getImageFileName(url)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                
+                {/* Image preview */}
+                {imageUrl && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden">
+                      <img src={imageUrl} alt="Featured" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setImageUrl(null)}
+                        className="absolute top-0 right-0 p-1 bg-white bg-opacity-75 rounded-bl text-red-600 hover:text-red-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <span className="text-sm text-gray-500 break-all">{getImageFileName(imageUrl)}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">

@@ -1,5 +1,4 @@
-
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
 // Fetch all published blog posts
@@ -105,70 +104,28 @@ export const deletePost = async (id: string): Promise<void> => {
 
 // Upload an image for a blog post
 export const uploadImage = async (file: File): Promise<string> => {
-  // Generate a unique filename to prevent collisions
-  const filePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-  
-  console.log('Uploading image to path:', filePath);
-  
   try {
-    // First check if the bucket exists
-    const { data: buckets, error: bucketError } = await supabase
-      .storage
-      .listBuckets();
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
     
-    if (bucketError) {
-      console.error('Error listing buckets:', bucketError);
-      throw new Error(`Storage error: ${bucketError.message}`);
-    }
-    
-    const bucketExists = buckets.some(bucket => bucket.name === 'blog_images');
-    
-    if (!bucketExists) {
-      const errorMsg = 'Storage bucket "blog_images" does not exist. Please create it in Supabase.';
-      console.error(errorMsg);
-      throw new Error(errorMsg);
-    }
-
-    // Try to upload the file
-    const { error: uploadError, data: uploadData } = await supabase
-      .storage
+    // Upload file to the 'blog_images' bucket
+    const { data, error } = await supabase.storage
       .from('blog_images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+      .upload(fileName, file);
     
-    if (uploadError) {
-      console.error('Error uploading image:', uploadError);
-      
-      // More informative error message based on the error code
-      let userFriendlyError = 'Failed to upload image. ';
-      
-      if (uploadError.message.includes('duplicate')) {
-        userFriendlyError += 'A file with this name already exists.';
-      } else if (uploadError.message.includes('permissions')) {
-        userFriendlyError += 'You do not have permission to upload to this bucket.';
-      } else if (uploadError.message.includes('size')) {
-        userFriendlyError += 'The file is too large.';
-      } else {
-        userFriendlyError += uploadError.message;
-      }
-      
-      throw new Error(userFriendlyError);
+    if (error) {
+      console.error("Error uploading image:", error);
+      throw new Error(`Failed to upload image: ${error.message}`);
     }
     
-    console.log('Upload succeeded:', uploadData);
-    
-    const { data } = supabase
-      .storage
+    // Get public URL for the uploaded file
+    const { data: urlData } = supabase.storage
       .from('blog_images')
-      .getPublicUrl(filePath);
+      .getPublicUrl(data.path);
     
-    console.log('Image uploaded successfully, public URL:', data.publicUrl);
-    
-    return data.publicUrl;
+    return urlData.publicUrl;
   } catch (error) {
-    console.error('Detailed error in uploadImage:', error);
+    console.error("Error in uploadImage:", error);
     throw error;
   }
 };
@@ -319,6 +276,35 @@ export const fetchFilteredPosts = async (
     return data as BlogEntry[] || [];
   } catch (error) {
     console.error('Error in fetchFilteredPosts:', error);
+    throw error;
+  }
+};
+
+// Fetch all images from the blog_images bucket
+export const fetchBucketImages = async (): Promise<string[]> => {
+  try {
+    // List all files in the blog_images bucket
+    const { data, error } = await supabase.storage
+      .from('blog_images')
+      .list();
+    
+    if (error) {
+      console.error("Error listing images:", error);
+      throw new Error(`Failed to list images: ${error.message}`);
+    }
+    
+    // Map each file to its public URL
+    const imageUrls = data.map(file => {
+      const { data: urlData } = supabase.storage
+        .from('blog_images')
+        .getPublicUrl(file.name);
+      
+      return urlData.publicUrl;
+    });
+    
+    return imageUrls;
+  } catch (error) {
+    console.error("Error in fetchBucketImages:", error);
     throw error;
   }
 };

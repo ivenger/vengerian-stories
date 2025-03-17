@@ -23,6 +23,7 @@ export type Database = {
           title: string
           title_language: string[]
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -37,6 +38,7 @@ export type Database = {
           title: string
           title_language: string[]
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -51,6 +53,7 @@ export type Database = {
           title?: string
           title_language?: string[]
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
