@@ -20,19 +20,19 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-caraterre';
   
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center w-full">
       <Link to={`/blog/${id}`} className="block w-full group">
-        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-lg transition-all hover:shadow-xl">
+        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-xl hover:shadow-2xl transition-all">
           <div className="flex flex-col md:flex-row">
             {image_url && (
               <div className="md:w-1/3 h-full">
-                <div className="relative">
+                <div className="relative h-full">
                   <img 
                     src={image_url} 
                     alt={title} 
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-0 right-0 bg-black bg-opacity-30 text-white text-xs p-1">
+                  <div className="absolute bottom-0 left-0 bg-black bg-opacity-30 text-white text-xs p-1">
                     Illustration by Levi Pritzker
                   </div>
                 </div>
@@ -40,7 +40,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             )}
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
-              <h2 className={`${titleFontClass} text-2xl text-gray-900 mb-3`}>
+              <h2 className={`${titleFontClass} text-3xl text-gray-900 mb-3`}>
                 {title}
               </h2>
               
@@ -50,7 +50,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                 </p>
               )}
               
-              <div className="mt-auto">
+              <div className="mt-auto w-full">
                 {tags && tags.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-2">
                     {tags.map((tag, index) => (

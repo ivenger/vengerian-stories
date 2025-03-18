@@ -41,7 +41,7 @@ const Navigation = () => {
   return (
     <nav className="py-6 mb-8 border-b border-gray-200">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-cursive font-medium tracking-tight">
+        <Link to="/" className="text-2xl font-caraterre tracking-tight">
           Vengerian Stories
         </Link>
 

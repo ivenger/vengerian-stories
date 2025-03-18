@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import BlogCard from "../components/BlogCard";
 import Navigation from "../components/Navigation";
@@ -80,7 +81,7 @@ const Index = () => {
           </p>
         </div>
 
-        <div className="flex flex-col md:flex-row gap-6">
+        <div className="flex flex-col md:flex-row gap-6 justify-center">
           <div className="md:w-1/4">
             <div className="mb-4 flex items-center justify-between">
               <button
@@ -182,7 +183,7 @@ const Index = () => {
             )}
           </div>
 
-          <div className="md:w-3/4">
+          <div className="md:w-3/4 max-w-3xl mx-auto">
             {loading ? (
               <div className="flex justify-center items-center h-64">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>

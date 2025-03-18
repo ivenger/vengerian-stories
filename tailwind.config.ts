@@ -23,6 +23,7 @@ const config = {
         cursive: ['Dancing Script', 'Great Vibes', 'cursive'],
         'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
         'caraterre': ['Caraterre', 'sans-serif'],
+        'carattere': ['Carattere', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",

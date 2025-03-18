@@ -1,6 +1,7 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Marck+Script&family=Great+Vibes&display=swap');
 @import url('https://fonts.cdnfonts.com/css/caraterre');
+@import url('https://fonts.googleapis.com/css2?family=Carattere&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -90,5 +91,10 @@
 
 /* Add Caraterre font class */
 .font-caraterre {
-  font-family: 'Caraterre', sans-serif;
+  font-family: 'Caraterre', 'Carattere', sans-serif;
+}
+
+/* Add Carattere cursive font class */
+.font-carattere {
+  font-family: 'Carattere', cursive;
 }
