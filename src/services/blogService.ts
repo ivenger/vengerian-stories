@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -161,6 +162,39 @@ export const fetchAllTags = async (): Promise<string[]> => {
     return [...new Set(allTags)];
   } catch (error) {
     console.error('Error in fetchAllTags:', error);
+    return []; // Return empty array on error
+  }
+};
+
+// Fetch tags filtered by language
+export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('tags, language')
+      .contains('language', [language]);
+    
+    if (error) {
+      console.error('Error fetching tags by language:', error);
+      throw error;
+    }
+    
+    // Check if data exists
+    if (!data || !Array.isArray(data)) {
+      console.log('No data returned from language-specific tags query');
+      return [];
+    }
+    
+    // Extract unique tags from filtered posts
+    const languageTags = data
+      .filter(entry => entry && entry.tags && Array.isArray(entry.tags))
+      .flatMap(entry => entry.tags || [])
+      .filter(Boolean);
+    
+    // Remove duplicates
+    return [...new Set(languageTags)];
+  } catch (error) {
+    console.error('Error in fetchTagsByLanguage:', error);
     return []; // Return empty array on error
   }
 };

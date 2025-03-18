@@ -49,8 +49,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [searchTerm, setSearchTerm] = useState("");
   const [availableImages, setAvailableImages] = useState<string[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [filteredTags, setFilteredTags] = useState<string[]>([]);
 
-  // Available languages for selection - reduced to only English, Hebrew, Russian
+  // Available languages for selection
   const languages = ["English", "Hebrew", "Russian"];
 
   // Load available posts, tags, and images
@@ -87,6 +88,14 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
 
     loadData();
   }, [post.id, toast]);
+
+  // Update filtered tags whenever language changes
+  useEffect(() => {
+    // For now, we don't have language-specific tags in the database
+    // So we're showing all tags regardless of language
+    // In a more advanced implementation, you could filter tags by language
+    setFilteredTags(availableTags);
+  }, [language, availableTags]);
 
   // Format the content with basic HTML when in preview mode
   const getFormattedContent = () => {
@@ -157,6 +166,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       // Add to available tags if it's new
       if (!availableTags.includes(tagInput)) {
         setAvailableTags([...availableTags, tagInput]);
+        setFilteredTags([...filteredTags, tagInput]);
       }
     }
   };
@@ -392,7 +402,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               </div>
               
               {/* Tags dropdown */}
-              {availableTags.length > 0 && (
+              {filteredTags.length > 0 && (
                 <div className="mt-2">
                   <Select onValueChange={handleSelectTag}>
                     <SelectTrigger className="w-full">
@@ -400,7 +410,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {availableTags.map((tag) => (
+                        {filteredTags.map((tag) => (
                           <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                         ))}
                       </SelectGroup>

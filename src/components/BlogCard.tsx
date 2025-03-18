@@ -22,19 +22,17 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <div className="flex justify-center w-full">
       <Link to={`/blog/${id}`} className="block w-full group">
-        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-xl hover:shadow-2xl transition-all">
-          <div className="flex flex-col md:flex-row">
+        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-2xl hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.3)] transition-all">
+          <div className="flex flex-col md:flex-row h-full">
             {image_url && (
-              <div className="md:w-1/3 h-full">
-                <div className="relative h-full">
-                  <img 
-                    src={image_url} 
-                    alt={title} 
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute bottom-0 left-0 bg-black bg-opacity-30 text-white text-xs p-1">
-                    Illustration by Levi Pritzker
-                  </div>
+              <div className="md:w-1/3 relative">
+                <img 
+                  src={image_url} 
+                  alt={title} 
+                  className="w-full h-full object-cover"
+                />
+                <div className="w-full text-xs p-1 bg-black bg-opacity-30 text-white absolute bottom-0 left-0">
+                  Illustration by Levi Pritzker
                 </div>
               </div>
             )}
