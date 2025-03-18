@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { fetchAllTags, saveTag, deleteTag } from '../services/blogService';
 import { useToast } from '../hooks/use-toast';
@@ -17,7 +16,14 @@ type TagData = {
 const TagManagement: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [tagData, setTagData] = useState<TagData[]>([]);
-  const [newTagName, setNewTagName] = useState('');
+  const [newTagData, setNewTagData] = useState<TagData>({
+    name: '',
+    translations: {
+      en: '',
+      he: '',
+      ru: ''
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTag, setEditingTag] = useState('');
@@ -58,7 +64,7 @@ const TagManagement: React.FC = () => {
   };
 
   const handleAddTag = async () => {
-    if (!newTagName.trim()) {
+    if (!newTagData.name.trim()) {
       toast({
         title: 'Error',
         description: 'Tag name cannot be empty',
@@ -67,7 +73,7 @@ const TagManagement: React.FC = () => {
       return;
     }
 
-    if (tags.includes(newTagName.trim())) {
+    if (tags.includes(newTagData.name.trim())) {
       toast({
         title: 'Error',
         description: 'Tag already exists',
@@ -77,23 +83,34 @@ const TagManagement: React.FC = () => {
     }
 
     try {
-      await saveTag(newTagName.trim(), 'English');
-      setTags([...tags, newTagName.trim()]);
+      // Use English translation for tag name if it exists, otherwise use the main name
+      const tagName = newTagData.translations.en.trim() || newTagData.name.trim();
+      
+      await saveTag(newTagData.name.trim(), 'English');
+      setTags([...tags, newTagData.name.trim()]);
       
       setTagData([...tagData, {
-        name: newTagName.trim(),
+        name: newTagData.name.trim(),
         translations: {
-          en: newTagName.trim(),
-          he: "",
-          ru: ""
+          en: newTagData.translations.en.trim() || newTagData.name.trim(),
+          he: newTagData.translations.he.trim(),
+          ru: newTagData.translations.ru.trim()
         }
       }]);
       
-      setNewTagName('');
+      // Reset the new tag form
+      setNewTagData({
+        name: '',
+        translations: {
+          en: '',
+          he: '',
+          ru: ''
+        }
+      });
       
       toast({
         title: 'Success',
-        description: `Tag "${newTagName}" added successfully`
+        description: `Tag "${newTagData.name}" added successfully`
       });
     } catch (error) {
       console.error('Error adding tag:', error);
@@ -197,21 +214,82 @@ const TagManagement: React.FC = () => {
       </h2>
 
       <div className="mb-6">
-        <div className="flex gap-2 mb-2">
-          <input
-            type="text"
-            value={newTagName}
-            onChange={(e) => setNewTagName(e.target.value)}
-            placeholder="Enter tag name"
-            className="px-3 py-2 border border-gray-300 rounded-md flex-grow"
-          />
-          <button
-            onClick={handleAddTag}
-            className="px-3 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700 flex items-center"
-          >
-            <Plus size={16} className="mr-1" />
-            Add Tag
-          </button>
+        <div className="grid grid-cols-1 gap-4 mb-4 border p-4 rounded-md">
+          <h3 className="text-lg font-medium mb-2">Add New Tag</h3>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tag Name</label>
+              <input
+                type="text"
+                value={newTagData.name}
+                onChange={(e) => setNewTagData({...newTagData, name: e.target.value})}
+                placeholder="Primary tag name"
+                className="px-3 py-2 border border-gray-300 rounded-md w-full"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">English</label>
+              <input
+                type="text"
+                value={newTagData.translations.en}
+                onChange={(e) => setNewTagData({
+                  ...newTagData, 
+                  translations: {
+                    ...newTagData.translations,
+                    en: e.target.value
+                  }
+                })}
+                placeholder="English translation"
+                className="px-3 py-2 border border-gray-300 rounded-md w-full"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Hebrew</label>
+              <input
+                type="text"
+                value={newTagData.translations.he}
+                onChange={(e) => setNewTagData({
+                  ...newTagData, 
+                  translations: {
+                    ...newTagData.translations,
+                    he: e.target.value
+                  }
+                })}
+                placeholder="Hebrew translation"
+                className="px-3 py-2 border border-gray-300 rounded-md w-full"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Russian</label>
+              <input
+                type="text"
+                value={newTagData.translations.ru}
+                onChange={(e) => setNewTagData({
+                  ...newTagData, 
+                  translations: {
+                    ...newTagData.translations,
+                    ru: e.target.value
+                  }
+                })}
+                placeholder="Russian translation"
+                className="px-3 py-2 border border-gray-300 rounded-md w-full"
+              />
+            </div>
+          </div>
+          
+          <div className="mt-2">
+            <button
+              onClick={handleAddTag}
+              className="px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-700 flex items-center"
+            >
+              <Plus size={16} className="mr-1" />
+              Add Tag
+            </button>
+          </div>
         </div>
       </div>
 

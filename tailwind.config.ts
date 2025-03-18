@@ -22,6 +22,7 @@ const config = {
       fontFamily: {
         cursive: ['Dancing Script', 'Great Vibes', 'cursive'],
         'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
+        'caraterre': ['Caraterre', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
