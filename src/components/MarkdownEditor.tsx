@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -14,7 +13,7 @@ import {
   Image
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { fetchAllPosts, fetchAllTags, fetchBucketImages } from "../services/blogService";
+import { fetchAllPosts, fetchAllTags, fetchBucketImages, fetchTagsByLanguage } from "../services/blogService";
 import { useToast } from "../hooks/use-toast";
 import { 
   Select,
@@ -51,26 +50,20 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [filteredTags, setFilteredTags] = useState<string[]>([]);
 
-  // Available languages for selection
   const languages = ["English", "Hebrew", "Russian"];
 
-  // Load available posts, tags, and images
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoadingPosts(true);
         setIsLoadingImages(true);
         
-        // Load all posts for translation selection
         const posts = await fetchAllPosts();
-        // Filter out the current post
         setAvailablePosts(posts.filter(p => p.id !== post.id));
         
-        // Load all tags
         const tags = await fetchAllTags();
         setAvailableTags(tags);
         
-        // Load all images from the bucket
         const images = await fetchBucketImages();
         setAvailableImages(images);
       } catch (error) {
@@ -89,45 +82,27 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     loadData();
   }, [post.id, toast]);
 
-  // Update filtered tags whenever language changes
   useEffect(() => {
-    // For now, we don't have language-specific tags in the database
-    // So we're showing all tags regardless of language
-    // In a more advanced implementation, you could filter tags by language
-    setFilteredTags(availableTags);
-  }, [language, availableTags]);
-
-  // Format the content with basic HTML when in preview mode
-  const getFormattedContent = () => {
-    // This is a very basic markdown-to-html conversion
-    // In a real app, you'd use a proper markdown parser
-    let formatted = content
-      .replace(/# (.*)/g, '<h1>$1</h1>')
-      .replace(/## (.*)/g, '<h2>$1</h2>')
-      .replace(/### (.*)/g, '<h3>$1</h3>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br />');
-
-    // Convert URL-like text to actual links
-    formatted = formatted.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>'
-    );
-
-    return formatted;
-  };
+    const getTagsForLanguage = async () => {
+      try {
+        const tags = await fetchTagsByLanguage(language);
+        setFilteredTags(tags);
+      } catch (error) {
+        console.error("Error fetching tags for language:", error);
+        setFilteredTags([]);
+      }
+    };
+    
+    getTagsForLanguage();
+  }, [language]);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputDate = e.target.value;
     try {
-      // Parse the input date (DD/MM/YYYY) to a Date object
       const parsedDate = parse(inputDate, "dd/MM/yyyy", new Date());
-      // Format it to the blog post format (Month D, YYYY)
       const formattedDate = format(parsedDate, "MMMM d, yyyy");
       setDate(formattedDate);
     } catch (error) {
-      // If parsing fails, just use the input as is
       setDate(inputDate);
     }
   };
@@ -163,7 +138,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       setTags([...tags, tagInput]);
       setTagInput("");
       
-      // Add to available tags if it's new
       if (!availableTags.includes(tagInput)) {
         setAvailableTags([...availableTags, tagInput]);
         setFilteredTags([...filteredTags, tagInput]);
@@ -185,29 +159,22 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     setImageUrl(url);
   };
 
-  // Filter the posts based on search term
   const filteredPosts = availablePosts.filter(p => 
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get the current date in DD/MM/YYYY format for the date input field
   const getInputDateFormat = () => {
     try {
-      // Try to parse the current date string to a Date object
-      // This assumes the date is in "Month D, YYYY" format
       const dateObj = new Date(date);
       if (isNaN(dateObj.getTime())) {
-        // If the date is invalid, return an empty string
         return "";
       }
-      // Format to DD/MM/YYYY
       return format(dateObj, "dd/MM/yyyy");
     } catch (error) {
       return "";
     }
   };
 
-  // Extract filename from image URL for display
   const getImageFileName = (url: string) => {
     const parts = url.split('/');
     return parts[parts.length - 1];
@@ -267,7 +234,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       
       {activeTab === "edit" ? (
         <div className="p-4">
-          {/* Title Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
@@ -279,7 +245,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             />
           </div>
           
-          {/* Excerpt Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
             <textarea
@@ -291,7 +256,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             />
           </div>
 
-          {/* Featured Image */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
@@ -319,7 +283,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   </SelectContent>
                 </Select>
                 
-                {/* Image preview */}
                 {imageUrl && (
                   <div className="mt-2 flex items-center gap-2">
                     <div className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden">
@@ -339,7 +302,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {/* Date Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -356,7 +318,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               />
             </div>
             
-            {/* Language Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -377,7 +338,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               </select>
             </div>
             
-            {/* Tags Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -401,7 +361,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                 </button>
               </div>
               
-              {/* Tags dropdown */}
               {filteredTags.length > 0 && (
                 <div className="mt-2">
                   <Select onValueChange={handleSelectTag}>
@@ -440,7 +399,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             </div>
           </div>
           
-          {/* Translations Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
@@ -448,7 +406,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                 Related Translations
               </div>
             </label>
-            {/* Search field for posts */}
             <div className="mb-2">
               <input
                 type="text"
@@ -459,7 +416,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               />
             </div>
             
-            {/* Post selection dropdown */}
             {isLoadingPosts ? (
               <div className="text-sm text-gray-500">Loading posts...</div>
             ) : (
@@ -509,7 +465,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             )}
           </div>
           
-          {/* Content Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">

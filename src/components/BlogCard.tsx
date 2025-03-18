@@ -22,7 +22,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <div className="flex justify-center w-full">
       <Link to={`/blog/${id}`} className="block w-full group">
-        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-2xl hover:shadow-[0_20px_25px_-5px_rgba(0,0,0,0.3)] transition-all">
+        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-[4px_8px_16px_4px_rgba(0,0,0,0.2)] hover:shadow-[8px_16px_24px_6px_rgba(0,0,0,0.3)] transition-all">
           <div className="flex flex-col md:flex-row h-full">
             {image_url && (
               <div className="md:w-1/3 relative">
@@ -31,14 +31,11 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                   alt={title} 
                   className="w-full h-full object-cover"
                 />
-                <div className="w-full text-xs p-1 bg-black bg-opacity-30 text-white absolute bottom-0 left-0">
-                  Illustration by Levi Pritzker
-                </div>
               </div>
             )}
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
-              <h2 className={`${titleFontClass} text-3xl text-gray-900 mb-3`}>
+              <h2 className={`${titleFontClass} text-4xl text-gray-900 mb-3`}>
                 {title}
               </h2>
               
@@ -69,6 +66,12 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
               </div>
             </div>
           </div>
+          
+          {image_url && (
+            <div className="w-full text-xs p-1 bg-gray-200 text-gray-700">
+              Illustration by Levi Pritzker
+            </div>
+          )}
         </div>
       </Link>
     </div>

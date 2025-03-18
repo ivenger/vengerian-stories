@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -135,8 +134,8 @@ export const uploadImage = async (file: File): Promise<string> => {
 export const fetchAllTags = async (): Promise<string[]> => {
   try {
     const { data, error } = await supabase
-      .from('entries')
-      .select('tags');
+      .from('tags')
+      .select('name');
     
     if (error) {
       console.error('Error fetching tags:', error);
@@ -149,17 +148,8 @@ export const fetchAllTags = async (): Promise<string[]> => {
       return [];
     }
     
-    // Extract unique tags from all posts, safely handling potential nulls
-    const allTags = data
-      // Filter out entries without tags
-      .filter(entry => entry && entry.tags && Array.isArray(entry.tags))
-      // Flatten the array of tag arrays
-      .flatMap(entry => entry.tags || [])
-      // Remove empty/null values
-      .filter(Boolean);
-    
-    // Remove duplicates
-    return [...new Set(allTags)];
+    // Extract tag names
+    return data.map(tag => tag.name).filter(Boolean);
   } catch (error) {
     console.error('Error in fetchAllTags:', error);
     return []; // Return empty array on error
@@ -169,30 +159,9 @@ export const fetchAllTags = async (): Promise<string[]> => {
 // Fetch tags filtered by language
 export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
   try {
-    const { data, error } = await supabase
-      .from('entries')
-      .select('tags, language')
-      .contains('language', [language]);
-    
-    if (error) {
-      console.error('Error fetching tags by language:', error);
-      throw error;
-    }
-    
-    // Check if data exists
-    if (!data || !Array.isArray(data)) {
-      console.log('No data returned from language-specific tags query');
-      return [];
-    }
-    
-    // Extract unique tags from filtered posts
-    const languageTags = data
-      .filter(entry => entry && entry.tags && Array.isArray(entry.tags))
-      .flatMap(entry => entry.tags || [])
-      .filter(Boolean);
-    
-    // Remove duplicates
-    return [...new Set(languageTags)];
+    // For now, we don't filter by language since all tags are in the tags table
+    // In the future, you could add a language column to the tags table
+    return await fetchAllTags();
   } catch (error) {
     console.error('Error in fetchTagsByLanguage:', error);
     return []; // Return empty array on error
@@ -202,31 +171,23 @@ export const fetchTagsByLanguage = async (language: string): Promise<string[]> =
 // Save a tag (create or update)
 export const saveTag = async (tagName: string, language: string): Promise<void> => {
   try {
-    // Find posts that have this tag - using proper array handling
-    const { data: existingPosts, error: findError } = await supabase
-      .from('entries')
-      .select('id, tags, content, date, language, title, title_language')
-      .contains('tags', [tagName]);
-    
-    if (findError) {
-      console.error('Error finding posts with tag:', findError);
-      throw findError;
+    if (!tagName.trim()) {
+      console.log('Attempted to save empty tag name');
+      return;
     }
     
-    // No direct tag table, so we update the tag metadata by updating all posts that use this tag
-    if (existingPosts && existingPosts.length > 0) {
-      // Create batch update operations for all affected posts with all required fields
-      const updates = existingPosts.map(post => post);
-      
-      // Execute all updates
-      const { error: updateError } = await supabase
-        .from('entries')
-        .upsert(updates);
-      
-      if (updateError) {
-        console.error('Error updating tag metadata:', updateError);
-        throw updateError;
-      }
+    // Upsert the tag to the tags table
+    const { error } = await supabase
+      .from('tags')
+      .upsert({
+        name: tagName.trim(),
+        // Add translations if provided 
+        // (could be expanded in future to include language-specific translations)
+      }, { onConflict: 'name' });
+    
+    if (error) {
+      console.error('Error saving tag:', error);
+      throw error;
     }
   } catch (error) {
     console.error('Error in saveTag:', error);
@@ -234,13 +195,13 @@ export const saveTag = async (tagName: string, language: string): Promise<void> 
   }
 };
 
-// Delete a tag from all posts
+// Delete a tag
 export const deleteTag = async (tagName: string): Promise<void> => {
   try {
-    // Find all posts with this tag - using proper array handling
+    // First, remove the tag from all posts that use it
     const { data: postsWithTag, error: findError } = await supabase
       .from('entries')
-      .select('id, tags, content, date, language, title, title_language')
+      .select('id, tags')
       .contains('tags', [tagName]);
     
     if (findError) {
@@ -249,10 +210,10 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     }
     
     if (postsWithTag && postsWithTag.length > 0) {
-      // Update each post to remove the tag, maintaining all required fields
+      // Update each post to remove the tag
       const updates = postsWithTag.map(post => {
         return {
-          ...post,
+          id: post.id,
           tags: (post.tags || []).filter(tag => tag !== tagName)
         };
       });
@@ -266,6 +227,17 @@ export const deleteTag = async (tagName: string): Promise<void> => {
         console.error('Error removing tag from posts:', updateError);
         throw updateError;
       }
+    }
+    
+    // Then, delete the tag from the tags table
+    const { error: deleteError } = await supabase
+      .from('tags')
+      .delete()
+      .eq('name', tagName);
+    
+    if (deleteError) {
+      console.error('Error deleting tag:', deleteError);
+      throw deleteError;
     }
   } catch (error) {
     console.error('Error in deleteTag:', error);

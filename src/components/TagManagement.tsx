@@ -3,6 +3,7 @@ import { fetchAllTags, saveTag, deleteTag } from '../services/blogService';
 import { useToast } from '../hooks/use-toast';
 import { Tag, Plus, Trash2, Save, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { supabase } from '../integrations/supabase/client';
 
 type TagData = {
   name: string;
@@ -12,6 +13,16 @@ type TagData = {
     ru: string;
   };
 };
+
+interface TagRecord {
+  id: string;
+  name: string;
+  en: string | null;
+  he: string | null;
+  ru: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const TagManagement: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
@@ -37,16 +48,26 @@ const TagManagement: React.FC = () => {
   const loadTags = async () => {
     try {
       setLoading(true);
-      const allTags = await fetchAllTags();
+      
+      // Fetch tag records from the tags table
+      const { data: tagRecords, error } = await supabase
+        .from('tags')
+        .select('*');
+      
+      if (error) {
+        throw error;
+      }
+      
+      const allTags = (tagRecords as TagRecord[]).map(record => record.name);
       setTags(allTags);
       
-      // Initialize tag data structure
-      const initialTagData = allTags.map(tag => ({
-        name: tag,
+      // Initialize tag data structure from tag records
+      const initialTagData = (tagRecords as TagRecord[]).map(record => ({
+        name: record.name,
         translations: {
-          en: tag, // Default to tag name
-          he: "",
-          ru: ""
+          en: record.en || record.name,
+          he: record.he || "",
+          ru: record.ru || ""
         }
       }));
       
@@ -83,12 +104,22 @@ const TagManagement: React.FC = () => {
     }
 
     try {
-      // Use English translation for tag name if it exists, otherwise use the main name
-      const tagName = newTagData.translations.en.trim() || newTagData.name.trim();
+      // Insert into the tags table
+      const { error } = await supabase
+        .from('tags')
+        .insert({
+          name: newTagData.name.trim(),
+          en: newTagData.translations.en.trim() || newTagData.name.trim(),
+          he: newTagData.translations.he.trim() || null,
+          ru: newTagData.translations.ru.trim() || null
+        });
       
-      await saveTag(newTagData.name.trim(), 'English');
+      if (error) {
+        throw error;
+      }
+      
+      // Update local state
       setTags([...tags, newTagData.name.trim()]);
-      
       setTagData([...tagData, {
         name: newTagData.name.trim(),
         translations: {
@@ -125,7 +156,20 @@ const TagManagement: React.FC = () => {
   const handleDeleteTag = async (tagName: string) => {
     if (window.confirm(`Are you sure you want to delete tag "${tagName}"? This will remove it from all posts.`)) {
       try {
+        // Delete from tags table
+        const { error } = await supabase
+          .from('tags')
+          .delete()
+          .eq('name', tagName);
+        
+        if (error) {
+          throw error;
+        }
+        
+        // Also update any posts that have this tag
         await deleteTag(tagName);
+        
+        // Update local state
         setTags(tags.filter(t => t !== tagName));
         setTagData(tagData.filter(t => t.name !== tagName));
         
@@ -173,8 +217,55 @@ const TagManagement: React.FC = () => {
     
     try {
       // Update tag in database
-      await deleteTag(editingTag);
-      await saveTag(editingTagData.name, 'English');
+      const { error } = await supabase
+        .from('tags')
+        .update({
+          name: editingTagData.name,
+          en: editingTagData.translations.en || null,
+          he: editingTagData.translations.he || null,
+          ru: editingTagData.translations.ru || null
+        })
+        .eq('name', editingTag);
+      
+      if (error) {
+        throw error;
+      }
+      
+      // If the name has changed, also update any posts that use this tag
+      if (editingTag !== editingTagData.name) {
+        // Find posts with the old tag name
+        const { data: postsWithTag, error: findError } = await supabase
+          .from('entries')
+          .select('id, tags')
+          .contains('tags', [editingTag]);
+        
+        if (findError) {
+          throw findError;
+        }
+        
+        if (postsWithTag && postsWithTag.length > 0) {
+          // Update each post to replace the old tag with the new one
+          const updates = postsWithTag.map(post => {
+            const updatedTags = (post.tags || []).map(tag => 
+              tag === editingTag ? editingTagData.name : tag
+            );
+            
+            return {
+              id: post.id,
+              tags: updatedTags
+            };
+          });
+          
+          // Execute all updates
+          const { error: updateError } = await supabase
+            .from('entries')
+            .upsert(updates);
+          
+          if (updateError) {
+            throw updateError;
+          }
+        }
+      }
       
       // Update local state
       setTagData(tagData.map(t => t.name === editingTag ? editingTagData : t));
