@@ -22,48 +22,48 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <Link to={`/blog/${id}`} className="block group">
       <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm transition-all hover:shadow-md">
-        <div className="p-4">
-          <div className="flex items-start gap-3 mb-2">
-            <div className="flex-grow">
-              <h2 className={`${titleFontClass} text-xl text-gray-900 mb-1`}>
-                {title}
-              </h2>
+        <div className="flex flex-col md:flex-row">
+          {image_url && (
+            <div className="md:w-1/3 h-full">
+              <img 
+                src={image_url} 
+                alt={title} 
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+          
+          <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'}`}>
+            <h2 className={`${titleFontClass} text-2xl text-gray-900 mb-2`}>
+              {title}
+            </h2>
+            
+            {excerpt && (
+              <p className="text-gray-600 text-base mb-3">
+                {excerpt}
+              </p>
+            )}
+            
+            <div className="mt-auto">
+              {tags && tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {tags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
               
-              <div className="flex items-center text-sm text-gray-500 mb-2">
+              <div className="flex items-center text-sm text-gray-500">
                 <Calendar size={14} className="mr-1" />
                 <span>{date}</span>
               </div>
             </div>
-            
-            {image_url && (
-              <div className="flex-shrink-0 w-20 h-20 overflow-hidden rounded">
-                <img 
-                  src={image_url} 
-                  alt={title} 
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            )}
           </div>
-          
-          {tags && tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-2">
-              {tags.map((tag, index) => (
-                <span 
-                  key={index} 
-                  className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-          
-          {excerpt && (
-            <p className="text-gray-600 text-sm line-clamp-3">
-              {excerpt}
-            </p>
-          )}
         </div>
       </div>
     </Link>

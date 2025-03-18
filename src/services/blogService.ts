@@ -168,11 +168,11 @@ export const fetchAllTags = async (): Promise<string[]> => {
 // Save a tag (create or update)
 export const saveTag = async (tagName: string, language: string): Promise<void> => {
   try {
-    // Find posts that have this tag
+    // Find posts that have this tag - using proper array handling
     const { data: existingPosts, error: findError } = await supabase
       .from('entries')
       .select('id, tags, content, date, language, title, title_language')
-      .filter('tags', 'cs', `["${tagName}"]`);
+      .contains('tags', [tagName]);
     
     if (findError) {
       console.error('Error finding posts with tag:', findError);
@@ -203,11 +203,11 @@ export const saveTag = async (tagName: string, language: string): Promise<void> 
 // Delete a tag from all posts
 export const deleteTag = async (tagName: string): Promise<void> => {
   try {
-    // Find all posts with this tag
+    // Find all posts with this tag - using proper array handling
     const { data: postsWithTag, error: findError } = await supabase
       .from('entries')
       .select('id, tags, content, date, language, title, title_language')
-      .filter('tags', 'cs', `["${tagName}"]`);
+      .contains('tags', [tagName]);
     
     if (findError) {
       console.error('Error finding posts with tag:', findError);
@@ -239,7 +239,7 @@ export const deleteTag = async (tagName: string): Promise<void> => {
   }
 };
 
-// Fetch posts filtered by tags and/or language
+// Fetch posts filtered by tags and/or language - modified to use "OR" logic within filters
 export const fetchFilteredPosts = async (
   tags?: string[], 
   language?: string
@@ -252,7 +252,7 @@ export const fetchFilteredPosts = async (
     
     // Add tag filter if specified - using OR logic between tags
     if (tags && tags.length > 0) {
-      // Use the "in" operator for OR logic between tags
+      // Use the "overlaps" operator for OR logic between tags
       query = query.overlaps('tags', tags);
     }
     

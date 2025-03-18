@@ -76,7 +76,7 @@ const Index = () => {
             Vengerian Stories
           </h1>
           <p className="text-gray-600 max-w-lg mx-auto">
-            Welcome to our collection of wonderful stories. Explore the magic of storytelling.
+            Короткое, длиннее и странное
           </p>
         </div>
 

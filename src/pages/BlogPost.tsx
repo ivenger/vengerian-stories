@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
@@ -85,43 +84,47 @@ const BlogPost = () => {
               ← Back to all posts
             </Link>
             
-            <h1 className={`${titleFontClass} text-4xl mb-4`}>
-              {post.title}
-            </h1>
-            
-            <div className="flex items-center text-gray-500 mb-6">
-              <Calendar size={16} className="mr-1" />
-              <span>{post.date}</span>
+            <div className="flex items-start gap-6">
+              {post.image_url && (
+                <div className="flex-none">
+                  <img 
+                    src={post.image_url} 
+                    alt={post.title} 
+                    className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
+                  />
+                </div>
+              )}
+              
+              <div className="flex-grow">
+                <h1 className={`${titleFontClass} text-4xl mb-4`}>
+                  {post.title}
+                </h1>
+                
+                <div className="flex items-center text-gray-500 mb-6">
+                  <Calendar size={16} className="mr-1" />
+                  <span>{post.date}</span>
+                </div>
+                
+                {post.tags && post.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {post.tags.map((tag, index) => (
+                      <span 
+                        key={index}
+                        className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                      >
+                        <Tag size={14} className="mr-1" />
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {post.tags.map((tag, index) => (
-                  <span 
-                    key={index}
-                    className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                  >
-                    <Tag size={14} className="mr-1" />
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            
             <div 
-              className="prose max-w-none"
+              className="prose max-w-none mt-8"
               dangerouslySetInnerHTML={{ __html: getFormattedContent(post.content) }}
             />
-            
-            {post.image_url && (
-              <div className="mt-8 flex justify-center">
-                <img 
-                  src={post.image_url} 
-                  alt={post.title} 
-                  className="max-w-full max-h-[500px] object-contain rounded-lg"
-                />
-              </div>
-            )}
           </article>
         ) : (
           <div className="text-center py-12">

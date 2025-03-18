@@ -20,8 +20,8 @@ const config = {
     },
     extend: {
       fontFamily: {
-        cursive: ['Dancing Script', 'Marck Script', 'cursive'],
-        'cursive-cyrillic': ['Marck Script', 'Dancing Script', 'cursive'],
+        cursive: ['Dancing Script', 'Great Vibes', 'cursive'],
+        'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
