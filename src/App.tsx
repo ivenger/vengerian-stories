@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Index from "./pages/Index";
@@ -7,6 +8,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./components/AuthProvider";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster"
 
 function App() {
