@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BlogEntry } from '@/types/blogTypes';
@@ -12,6 +11,23 @@ const hasCyrillic = (text: string): boolean => {
 // Function to detect if text has Hebrew characters
 const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
+};
+
+// Function to format date properly for RTL languages
+const formatDateForRTL = (date: string): string => {
+  // If the date contains numbers and is in a format like "Month DD, YYYY"
+  if (/\d/.test(date)) {
+    // Split into parts (assuming format like "Month DD, YYYY")
+    const parts = date.split(/,\s*/);
+    if (parts.length > 1) {
+      // Keep the month and day part
+      let monthDay = parts[0];
+      // Reverse the year part (if it's 4 digits)
+      let year = parts[1].trim();
+      return `${monthDay}, ${year}`;
+    }
+  }
+  return date;
 };
 
 interface BlogCardProps {
@@ -28,6 +44,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const isRtlTitle = hasHebrew(title);
   const isRtlExcerpt = excerpt ? hasHebrew(excerpt) : false;
   
+  // Format date for RTL display if needed
+  const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
+  
   return (
     <div className="flex justify-center w-full">
       <Link to={`/blog/${id}`} className="block w-full group">
@@ -40,7 +59,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                   alt={title} 
                   className="w-full h-full object-cover"
                 />
-                <div className="w-full text-xs p-1 text-gray-700 bg-transparent">
+                <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
                   Illustration by Levi Pritzker
                 </div>
               </div>
@@ -50,7 +69,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
               <h2 
                 className={`${titleFontClass} text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                 dir={isRtlTitle ? 'rtl' : 'ltr'}
-                style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
               >
                 {title}
               </h2>
@@ -59,7 +77,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                 <p 
                   className={`text-gray-600 text-lg mb-4 flex-grow ${isRtlExcerpt ? 'text-right' : 'text-left'}`}
                   dir={isRtlExcerpt ? 'rtl' : 'ltr'}
-                  style={isRtlExcerpt ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
                 >
                   {excerpt}
                 </p>
@@ -81,8 +98,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                 
                 <div className={`flex items-center text-sm text-gray-500 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
                   <Calendar size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                  <span dir={isRtlTitle ? 'rtl' : 'ltr'} style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}>
-                    {date}
+                  <span dir={isRtlTitle ? 'rtl' : 'ltr'}>
+                    {displayDate}
                   </span>
                 </div>
               </div>

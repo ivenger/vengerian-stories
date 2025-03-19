@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tag, Calendar } from 'lucide-react';
 
@@ -54,6 +53,23 @@ const hasCyrillic = (text: string): boolean => {
   return /[А-Яа-яЁё]/.test(text);
 };
 
+// Function to format date properly for RTL languages
+const formatDateForRTL = (date: string): string => {
+  // If the date contains numbers and is in a format like "Month DD, YYYY"
+  if (/\d/.test(date)) {
+    // Split into parts (assuming format like "Month DD, YYYY")
+    const parts = date.split(/,\s*/);
+    if (parts.length > 1) {
+      // Keep the month and day part
+      let monthDay = parts[0];
+      // Keep the year part
+      let year = parts[1].trim();
+      return `${monthDay}, ${year}`;
+    }
+  }
+  return date;
+};
+
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ 
   title, 
   date, 
@@ -65,17 +81,25 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   const isRtlTitle = hasHebrew(title);
   const isRtlContent = hasHebrew(content);
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
+  
+  // Format date for RTL display if needed
+  const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
 
   return (
     <article className="max-w-3xl mx-auto">
       <div className="flex items-start gap-6">
         {imageUrl && (
           <div className="flex-none">
-            <img 
-              src={imageUrl} 
-              alt={title} 
-              className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
-            />
+            <div className="relative">
+              <img 
+                src={imageUrl} 
+                alt={title} 
+                className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
+              />
+              <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
+                Illustration by Levi Pritzker
+              </div>
+            </div>
           </div>
         )}
         
@@ -83,7 +107,6 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
           <h1 
             className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
             dir={isRtlTitle ? 'rtl' : 'ltr'}
-            style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
           >
             {title}
           </h1>
@@ -92,9 +115,8 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             <Calendar size={16} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
             <span 
               dir={isRtlTitle ? 'rtl' : 'ltr'} 
-              style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
             >
-              {date}
+              {displayDate}
             </span>
             {language && <span className="ml-2">• {language}</span>}
           </div>
@@ -118,7 +140,6 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       <div 
         className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
         dir={isRtlContent ? 'rtl' : 'ltr'}
-        style={isRtlContent ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
         dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }}
       />
     </article>

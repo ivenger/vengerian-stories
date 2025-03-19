@@ -79,7 +79,7 @@ const Index = () => {
             <Dialog>
               <DialogTrigger asChild>
                 <button className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm">
-                  <Filter size={14} />
+                  <Filter size={14} className="text-gray-400" />
                   <span className="hidden sm:inline">Filter</span>
                 </button>
               </DialogTrigger>
@@ -108,7 +108,7 @@ const Index = () => {
                             onClick={() => setSelectedLanguage(lang === selectedLanguage ? "" : lang)} 
                             className={`px-3 py-1 text-sm rounded-full ${
                               lang === selectedLanguage 
-                                ? "bg-gray-600 text-white" 
+                                ? "bg-gray-400 text-white" 
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
@@ -127,7 +127,7 @@ const Index = () => {
                             onClick={() => toggleTag(tag)} 
                             className={`px-3 py-1 text-sm rounded-full flex items-center ${
                               selectedTags.includes(tag) 
-                                ? "bg-gray-600 text-white" 
+                                ? "bg-gray-400 text-white" 
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
@@ -143,7 +143,7 @@ const Index = () => {
                         <h3 className="text-sm font-medium">Active Filters:</h3>
                         <div className="flex flex-wrap gap-2 mt-2">
                           {selectedLanguage && selectedLanguage !== "Russian" && (
-                            <span className="px-3 py-1 bg-gray-600 text-white text-sm rounded-full flex items-center">
+                            <span className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
                               {selectedLanguage}
                               <button 
                                 onClick={() => setSelectedLanguage("Russian")} 
@@ -156,7 +156,7 @@ const Index = () => {
                           {selectedTags.map(tag => (
                             <span 
                               key={tag} 
-                              className="px-3 py-1 bg-gray-600 text-white text-sm rounded-full flex items-center"
+                              className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center"
                             >
                               <Tag size={12} className="mr-1" />
                               {tag}
@@ -182,7 +182,7 @@ const Index = () => {
               <div className="flex items-center">
                 <span className="text-sm text-gray-500 mr-2">Filters:</span>
                 {selectedLanguage && selectedLanguage !== "Russian" && (
-                  <span className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center mr-1">
+                  <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
                     {selectedLanguage}
                     <button 
                       onClick={() => setSelectedLanguage("Russian")} 
@@ -195,7 +195,7 @@ const Index = () => {
                 {selectedTags.map(tag => (
                   <span 
                     key={tag} 
-                    className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center mr-1"
+                    className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
                   >
                     {tag}
                     <button 

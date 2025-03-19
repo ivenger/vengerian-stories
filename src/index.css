@@ -127,7 +127,7 @@
   unicode-bidi: bidi-override;
 }
 
-/* Specific RTL styling for numbers */
+/* Specific RTL styling for numbers in RTL context */
 [dir="rtl"] {
   font-feature-settings: "tnum" on;
 }
