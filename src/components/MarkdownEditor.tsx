@@ -33,8 +33,7 @@ interface MarkdownEditorProps {
 
 // Function to convert markdown to HTML
 const getFormattedContent = (markdown: string): string => {
-  // This is a very simple markdown parsing implementation
-  // In a real app, you might use a library like marked or markdown-it
+  // This is a simple markdown parsing implementation
   let html = markdown;
   
   // Convert headers
@@ -65,13 +64,23 @@ const getFormattedContent = (markdown: string): string => {
   return html;
 };
 
+// Function to detect if text has Hebrew characters
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
+
+// Function to detect if text has Cyrillic characters
+const hasCyrillic = (text: string): boolean => {
+  return /[А-Яа-яЁё]/.test(text);
+};
+
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
   const [content, setContent] = useState<string>(post.content || "");
-  const [date, setDate] = useState(post.date);
-  const [language, setLanguage] = useState(post.language[0] || "English");
+  const [date, setDate] = useState(post.date || "");
+  const [language, setLanguage] = useState(post.language?.[0] || "English");
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [imageUrl, setImageUrl] = useState<string | null>(post.image_url || null);
@@ -133,13 +142,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputDate = e.target.value;
-    try {
-      const parsedDate = parse(inputDate, "dd/MM/yyyy", new Date());
-      const formattedDate = format(parsedDate, "MMMM d, yyyy");
-      setDate(formattedDate);
-    } catch (error) {
-      setDate(inputDate);
-    }
+    setDate(inputDate);
   };
 
   const handleSave = () => {
@@ -148,7 +151,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       title,
       excerpt: excerpt || null,
       content,
-      date,
+      date: date || format(new Date(), "MMMM d, yyyy"),
       language: [language],
       title_language: post.title_language || ["en"],
       translations: translations.length > 0 ? translations : undefined,
@@ -198,22 +201,15 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getInputDateFormat = () => {
-    try {
-      const dateObj = new Date(date);
-      if (isNaN(dateObj.getTime())) {
-        return "";
-      }
-      return format(dateObj, "dd/MM/yyyy");
-    } catch (error) {
-      return "";
-    }
-  };
-
   const getImageFileName = (url: string) => {
     const parts = url.split('/');
     return parts[parts.length - 1];
   };
+
+  // Determine if the content needs RTL
+  const isRtlTitle = hasHebrew(title);
+  const isRtlContent = hasHebrew(content);
+  const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
@@ -341,15 +337,15 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
                   <Calendar size={16} className="mr-1" />
-                  Date (DD/MM/YYYY)
+                  Date
                 </div>
               </label>
               <input
                 type="text"
-                value={getInputDateFormat()}
+                value={date}
                 onChange={handleDateChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-                placeholder="DD/MM/YYYY"
+                placeholder="Enter date"
               />
             </div>
             
@@ -462,7 +458,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   <SelectGroup>
                     {filteredPosts.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.title} ({p.language.join(', ')})
+                        {p.title} ({p.language?.join(', ')})
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -477,7 +473,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   {translations.map((id) => {
                     const relatedPost = availablePosts.find(p => p.id === id);
                     const displayName = relatedPost 
-                      ? `${relatedPost.title} (${relatedPost.language.join(', ')})` 
+                      ? `${relatedPost.title} (${relatedPost.language?.join(', ')})` 
                       : id;
                     
                     return (
@@ -517,29 +513,59 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
           </div>
         </div>
       ) : (
-        <div className="p-4">
-          {imageUrl && (
-            <div className="mb-4">
-              <img src={imageUrl} alt={title} className="w-full max-h-64 object-cover rounded-lg" />
-            </div>
-          )}
-          <h1 className="text-3xl font-cursive mb-2">{title}</h1>
-          <div className="text-sm text-gray-500 mb-4">
-            {date} • {language}
-          </div>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
-                  <Tag size={12} className="mr-1" />
-                  {tag}
+        <div className="p-4 max-w-3xl mx-auto">
+          <article>
+            {imageUrl && (
+              <div className="flex-none mb-4">
+                <img 
+                  src={imageUrl} 
+                  alt={title} 
+                  className="max-w-full max-h-[300px] object-contain rounded-lg"
+                />
+              </div>
+            )}
+            
+            <div className="flex-grow">
+              <h1 
+                className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                dir={isRtlTitle ? 'rtl' : 'ltr'}
+                style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+              >
+                {title}
+              </h1>
+              
+              <div className={`flex items-center text-gray-500 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+                <Calendar size={16} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+                <span 
+                  dir={isRtlTitle ? 'rtl' : 'ltr'} 
+                  style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+                >
+                  {date || format(new Date(), "MMMM d, yyyy")}
                 </span>
-              ))}
+              </div>
+              
+              {tags.length > 0 && (
+                <div className={`flex flex-wrap gap-2 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+                  {tags.map((tag, index) => (
+                    <span 
+                      key={index}
+                      className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                    >
+                      <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          
-          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }} />
+            
+            <div 
+              className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
+              dir={isRtlContent ? 'rtl' : 'ltr'}
+              style={isRtlContent ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+              dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }}
+            />
+          </article>
         </div>
       )}
     </div>

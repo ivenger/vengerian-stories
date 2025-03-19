@@ -78,6 +78,12 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Ensure all dialogs and popovers have white backgrounds */
+  [role="dialog"], .popover-content {
+    background-color: white !important;
+    z-index: 50;
+  }
 }
 
 .font-cursive {
@@ -100,6 +106,15 @@
 }
 
 /* RTL text support */
+[dir="rtl"] {
+  text-align: right;
+}
+
+[dir="ltr"] {
+  text-align: left;
+}
+
+/* Legacy RTL class for backward compatibility */
 .rtl {
   direction: rtl;
   text-align: right;
@@ -110,4 +125,31 @@
   direction: ltr;
   text-align: left;
   unicode-bidi: bidi-override;
+}
+
+/* Specific RTL styling for numbers */
+[dir="rtl"] {
+  font-feature-settings: "tnum" on;
+}
+
+/* Enhanced styling for the filter modal */
+.dialog-content {
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+}
+
+.dialog-content .dialog-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #666;
+}
+
+/* Tag and language pill styles */
+.filter-pill {
+  transition: all 0.2s ease;
+}
+
+.filter-pill:hover {
+  transform: translateY(-1px);
 }

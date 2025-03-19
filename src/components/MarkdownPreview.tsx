@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Tag } from 'lucide-react';
+import { Tag, Calendar } from 'lucide-react';
 
 interface MarkdownPreviewProps {
   title: string;
@@ -28,7 +28,7 @@ const getFormattedContent = (markdown: string): string => {
   html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
   
   // Convert links
-  html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>');
   
   // Convert images
   html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img src="$2" alt="$1" class="w-full max-h-96 object-contain my-4" />');
@@ -44,6 +44,16 @@ const getFormattedContent = (markdown: string): string => {
   return html;
 };
 
+// Function to detect if text has Hebrew characters
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
+
+// Function to detect if text has Cyrillic characters
+const hasCyrillic = (text: string): boolean => {
+  return /[А-Яа-яЁё]/.test(text);
+};
+
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ 
   title, 
   date, 
@@ -52,31 +62,66 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   tags,
   imageUrl 
 }) => {
+  const isRtlTitle = hasHebrew(title);
+  const isRtlContent = hasHebrew(content);
+  const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
+
   return (
-    <div className="p-4">
-      {imageUrl && (
-        <div className="mb-4">
-          <img src={imageUrl} alt={title} className="w-full max-h-64 object-cover rounded-lg" />
+    <article className="max-w-3xl mx-auto">
+      <div className="flex items-start gap-6">
+        {imageUrl && (
+          <div className="flex-none">
+            <img 
+              src={imageUrl} 
+              alt={title} 
+              className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
+            />
+          </div>
+        )}
+        
+        <div className="flex-grow">
+          <h1 
+            className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+            dir={isRtlTitle ? 'rtl' : 'ltr'}
+            style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+          >
+            {title}
+          </h1>
+          
+          <div className={`flex items-center text-gray-500 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+            <Calendar size={16} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+            <span 
+              dir={isRtlTitle ? 'rtl' : 'ltr'} 
+              style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+            >
+              {date}
+            </span>
+            {language && <span className="ml-2">• {language}</span>}
+          </div>
+          
+          {tags && tags.length > 0 && (
+            <div className={`flex flex-wrap gap-2 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+              {tags.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                >
+                  <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
-      )}
-      <h1 className="text-3xl font-cursive mb-2">{title}</h1>
-      <div className="text-sm text-gray-500 mb-4">
-        {date} • {language}
       </div>
       
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          {tags.map(tag => (
-            <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
-              <Tag size={12} className="mr-1" />
-              {tag}
-            </span>
-          ))}
-        </div>
-      )}
-      
-      <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }} />
-    </div>
+      <div 
+        className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
+        dir={isRtlContent ? 'rtl' : 'ltr'}
+        style={isRtlContent ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+        dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }}
+      />
+    </article>
   );
 };
 

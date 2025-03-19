@@ -5,8 +5,7 @@ import Navigation from "../components/Navigation";
 import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
 import { BlogEntry } from "../types/blogTypes";
 import { useToast } from "@/components/ui/use-toast";
-import { Tag, X, Filter, Settings } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tag, X, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 
 const Index = () => {
@@ -14,7 +13,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("Russian");
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
@@ -62,7 +61,7 @@ const Index = () => {
 
   const clearFilters = () => {
     setSelectedTags([]);
-    setSelectedLanguage("");
+    setSelectedLanguage("Russian");
   };
 
   return <div className="min-h-screen bg-gray-50">
@@ -79,8 +78,8 @@ const Index = () => {
             
             <Dialog>
               <DialogTrigger asChild>
-                <button className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm">
-                  <Settings size={14} />
+                <button className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm">
+                  <Filter size={14} />
                   <span className="hidden sm:inline">Filter</span>
                 </button>
               </DialogTrigger>
@@ -88,10 +87,10 @@ const Index = () => {
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold">Filter Stories</h3>
-                    {(selectedTags.length > 0 || selectedLanguage) && (
+                    {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
                       <button 
                         onClick={clearFilters} 
-                        className="text-sm text-red-600 hover:text-red-800 flex items-center"
+                        className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
                       >
                         <X size={14} className="mr-1" />
                         Clear All
@@ -109,7 +108,7 @@ const Index = () => {
                             onClick={() => setSelectedLanguage(lang === selectedLanguage ? "" : lang)} 
                             className={`px-3 py-1 text-sm rounded-full ${
                               lang === selectedLanguage 
-                                ? "bg-gray-800 text-white" 
+                                ? "bg-gray-600 text-white" 
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
@@ -128,7 +127,7 @@ const Index = () => {
                             onClick={() => toggleTag(tag)} 
                             className={`px-3 py-1 text-sm rounded-full flex items-center ${
                               selectedTags.includes(tag) 
-                                ? "bg-gray-800 text-white" 
+                                ? "bg-gray-600 text-white" 
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             }`}
                           >
@@ -139,15 +138,15 @@ const Index = () => {
                       </div>
                     </div>
 
-                    {(selectedTags.length > 0 || selectedLanguage) && (
+                    {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
                       <div className="mt-2">
                         <h3 className="text-sm font-medium">Active Filters:</h3>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedLanguage && (
-                            <span className="px-3 py-1 bg-gray-800 text-white text-sm rounded-full flex items-center">
+                          {selectedLanguage && selectedLanguage !== "Russian" && (
+                            <span className="px-3 py-1 bg-gray-600 text-white text-sm rounded-full flex items-center">
                               {selectedLanguage}
                               <button 
-                                onClick={() => setSelectedLanguage("")} 
+                                onClick={() => setSelectedLanguage("Russian")} 
                                 className="ml-1 text-white hover:text-gray-200"
                               >
                                 <X size={14} />
@@ -157,7 +156,7 @@ const Index = () => {
                           {selectedTags.map(tag => (
                             <span 
                               key={tag} 
-                              className="px-3 py-1 bg-gray-800 text-white text-sm rounded-full flex items-center"
+                              className="px-3 py-1 bg-gray-600 text-white text-sm rounded-full flex items-center"
                             >
                               <Tag size={12} className="mr-1" />
                               {tag}
@@ -178,15 +177,15 @@ const Index = () => {
             </Dialog>
           </div>
           
-          {(selectedTags.length > 0 || selectedLanguage) && (
+          {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
             <div className="flex flex-wrap gap-2 justify-center mt-2">
               <div className="flex items-center">
                 <span className="text-sm text-gray-500 mr-2">Filters:</span>
-                {selectedLanguage && (
-                  <span className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded-full flex items-center mr-1">
+                {selectedLanguage && selectedLanguage !== "Russian" && (
+                  <span className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center mr-1">
                     {selectedLanguage}
                     <button 
-                      onClick={() => setSelectedLanguage("")} 
+                      onClick={() => setSelectedLanguage("Russian")} 
                       className="ml-1 text-white hover:text-gray-200"
                     >
                       <X size={12} />
@@ -196,7 +195,7 @@ const Index = () => {
                 {selectedTags.map(tag => (
                   <span 
                     key={tag} 
-                    className="px-2 py-0.5 bg-gray-800 text-white text-xs rounded-full flex items-center mr-1"
+                    className="px-2 py-0.5 bg-gray-500 text-white text-xs rounded-full flex items-center mr-1"
                   >
                     {tag}
                     <button 
@@ -207,12 +206,6 @@ const Index = () => {
                     </button>
                   </span>
                 ))}
-                <button 
-                  onClick={clearFilters} 
-                  className="text-xs text-red-600 hover:text-red-800 ml-1"
-                >
-                  Clear
-                </button>
               </div>
             </div>
           )}
@@ -226,12 +219,12 @@ const Index = () => {
           ) : posts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">
-                {selectedTags.length > 0 || selectedLanguage 
+                {selectedTags.length > 0 || selectedLanguage !== "Russian" 
                   ? "No stories found with the selected filters. Try different filters or clear them." 
                   : "No stories found. Check back later for new content."
                 }
               </p>
-              {(selectedTags.length > 0 || selectedLanguage) && (
+              {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
                 <button 
                   onClick={clearFilters} 
                   className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"

@@ -1,7 +1,7 @@
 
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
-import { fetchAllTags } from "./tagService";
+import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
 
 // Fetch all published blog posts
 export const fetchPublishedPosts = async (): Promise<BlogEntry[]> => {
@@ -144,7 +144,7 @@ export const fetchFilteredPosts = async (
 };
 
 // Re-export fetchAllTags from tagService to maintain backward compatibility
-export { fetchAllTags } from "./tagService";
+export const fetchAllTags = fetchAllTagsOriginal;
 
 // Fetch tags by language
 export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
@@ -223,5 +223,5 @@ export const deleteTag = async (tagName: string): Promise<void> => {
   }
 };
 
-// Now let's also add the fetchBucketImages function from imageService
+// Export the image service functions
 export { uploadImage, fetchBucketImages } from "../services/imageService";

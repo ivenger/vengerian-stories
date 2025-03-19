@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
@@ -8,6 +9,11 @@ import { Calendar, Tag } from 'lucide-react';
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
   return /[А-Яа-яЁё]/.test(text);
+};
+
+// Function to detect if text has Hebrew characters
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
 };
 
 const BlogPost = () => {
@@ -55,6 +61,9 @@ const BlogPost = () => {
     return formatted;
   };
 
+  // Determine if the content needs RTL
+  const isRtlContent = post && hasHebrew(post.content);
+
   // Determine the appropriate font class based on the content
   const titleFontClass = post && hasCyrillic(post.title) ? 'font-cursive-cyrillic' : 'font-cursive';
 
@@ -96,23 +105,32 @@ const BlogPost = () => {
               )}
               
               <div className="flex-grow">
-                <h1 className={`${titleFontClass} text-4xl mb-4`}>
+                <h1 
+                  className={`${titleFontClass} text-4xl mb-4 ${hasHebrew(post.title) ? 'text-right' : 'text-left'}`}
+                  dir={hasHebrew(post.title) ? 'rtl' : 'ltr'}
+                  style={hasHebrew(post.title) ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+                >
                   {post.title}
                 </h1>
                 
-                <div className="flex items-center text-gray-500 mb-6">
-                  <Calendar size={16} className="mr-1" />
-                  <span>{post.date}</span>
+                <div className={`flex items-center text-gray-500 mb-6 ${hasHebrew(post.title) ? 'justify-end' : 'justify-start'}`}>
+                  <Calendar size={16} className={hasHebrew(post.title) ? 'ml-1' : 'mr-1'} />
+                  <span 
+                    dir={hasHebrew(post.title) ? 'rtl' : 'ltr'} 
+                    style={hasHebrew(post.title) ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+                  >
+                    {post.date}
+                  </span>
                 </div>
                 
                 {post.tags && post.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-6">
+                  <div className={`flex flex-wrap gap-2 mb-6 ${hasHebrew(post.title) ? 'justify-end' : 'justify-start'}`}>
                     {post.tags.map((tag, index) => (
                       <span 
                         key={index}
                         className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
                       >
-                        <Tag size={14} className="mr-1" />
+                        <Tag size={14} className={hasHebrew(post.title) ? 'ml-1' : 'mr-1'} />
                         {tag}
                       </span>
                     ))}
@@ -122,7 +140,9 @@ const BlogPost = () => {
             </div>
             
             <div 
-              className="prose max-w-none mt-8"
+              className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
+              dir={isRtlContent ? 'rtl' : 'ltr'}
+              style={isRtlContent ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
               dangerouslySetInnerHTML={{ __html: getFormattedContent(post.content) }}
             />
           </article>
