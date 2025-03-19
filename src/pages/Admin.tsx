@@ -126,8 +126,27 @@ const Admin: React.FC = () => {
   };
 
   const loadTags = async () => {
-    const allTags = await fetchAllTags();
-    setTags(allTags);
+    try {
+      const tagNames = await fetchAllTags();
+      
+      // Transform the string array into Tag objects
+      const tagObjects: Tag[] = tagNames.map(name => ({
+        id: name, // Using name as id since we don't have actual ids
+        name: name,
+        en: null,
+        he: null,
+        ru: null
+      }));
+      
+      setTags(tagObjects);
+    } catch (error) {
+      console.error("Error loading tags:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load tags. Please try again later.",
+        variant: "destructive"
+      });
+    }
   };
 
   const loadAvailableLanguages = async () => {
