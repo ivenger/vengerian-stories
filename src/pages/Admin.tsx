@@ -9,7 +9,7 @@ import AboutEditor from "../components/AboutEditor";
 import { useToast } from "../hooks/use-toast";
 import { BlogEntry } from "../types/blogTypes";
 import { format } from "date-fns";
-import { Globe, FileText, Trash2, XCircle, Tag, Users, FileText2 } from "lucide-react";
+import { Globe, FileText, Trash2, XCircle, Tag, Users } from "lucide-react";
 import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
