@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -33,32 +32,24 @@ interface MarkdownEditorProps {
 
 // Function to convert markdown to HTML
 const getFormattedContent = (markdown: string): string => {
-  // This is a simple markdown parsing implementation
   let html = markdown;
   
-  // Convert headers
   html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
   html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
   
-  // Convert bold
   html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
   
-  // Convert italic
   html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
   
-  // Convert links
   html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
   
-  // Convert images
   html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img src="$2" alt="$1" class="w-full max-h-96 object-contain my-4" />');
   
-  // Convert paragraphs
   html = html.replace(/^\s*(\n)?(.+)/gim, function(m) {
     return /\<(\/)?(h1|h2|h3|ul|ol|li|blockquote|pre|img)/.test(m) ? m : '<p>' + m + '</p>';
   });
   
-  // Convert line breaks
   html = html.replace(/\n/gim, '<br>');
   
   return html;
@@ -72,6 +63,17 @@ const hasHebrew = (text: string): boolean => {
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
   return /[А-Яа-яЁё]/.test(text);
+};
+
+// Function to detect language based on text content
+const detectLanguage = (text: string): string => {
+  if (hasHebrew(text)) {
+    return "Hebrew";
+  } else if (hasCyrillic(text)) {
+    return "Russian";
+  } else {
+    return "English";
+  }
 };
 
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
@@ -140,9 +142,30 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     getTagsForLanguage();
   }, [language]);
 
+  useEffect(() => {
+    if (content && content.trim().length > 20) {
+      const detectedLanguage = detectLanguage(content);
+      if (detectedLanguage !== language) {
+        setLanguage(detectedLanguage);
+      }
+    }
+  }, [content]);
+
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputDate = e.target.value;
     setDate(inputDate);
+  };
+
+  const formatDateDisplay = (dateString: string): string => {
+    try {
+      const parsedDate = new Date(dateString);
+      if (!isNaN(parsedDate.getTime())) {
+        return format(parsedDate, "dd/MM/yyyy");
+      }
+      return dateString;
+    } catch (error) {
+      return dateString;
+    }
   };
 
   const handleSave = () => {
@@ -151,7 +174,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       title,
       excerpt: excerpt || null,
       content,
-      date: date || format(new Date(), "MMMM d, yyyy"),
+      date: date || format(new Date(), "dd/MM/yyyy"),
       language: [language],
       title_language: post.title_language || ["en"],
       translations: translations.length > 0 ? translations : undefined,
@@ -206,7 +229,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     return parts[parts.length - 1];
   };
 
-  // Determine if the content needs RTL
   const isRtlTitle = hasHebrew(title);
   const isRtlContent = hasHebrew(content);
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
@@ -337,15 +359,15 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
                   <Calendar size={16} className="mr-1" />
-                  Date
+                  Date (DD/MM/YYYY)
                 </div>
               </label>
               <input
                 type="text"
-                value={date}
+                value={formatDateDisplay(date)}
                 onChange={handleDateChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-                placeholder="Enter date"
+                placeholder="DD/MM/YYYY"
               />
             </div>
             
@@ -353,7 +375,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
                   <Languages size={16} className="mr-1" />
-                  Language
+                  Language (Auto-detected)
                 </div>
               </label>
               <select

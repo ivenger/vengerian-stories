@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -6,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navigation from "../components/Navigation";
+import { useAuth } from "@/components/AuthProvider";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -16,6 +18,14 @@ const Auth = () => {
   const [resetEmail, setResetEmail] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { session } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (session) {
+      navigate("/admin");
+    }
+  }, [session, navigate]);
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,25 +46,40 @@ const Auth = () => {
           description: "Logged in successfully!",
         });
         
-        navigate("/");
+        navigate("/admin");
       } else {
-        // Sign up
+        // Sign up - with email confirmation disabled for testing
         const { error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/auth`,
+          }
         });
 
         if (error) throw error;
         
         toast({
           title: "Success",
-          description: "Registration successful! Check your email for confirmation.",
+          description: "Registration successful! You can now sign in.",
         });
+        
+        // Switch to login mode after successful registration
+        setIsLogin(true);
       }
     } catch (error: any) {
+      let errorMessage = error.message;
+      
+      // Provide more user-friendly error messages
+      if (error.message.includes("User already registered")) {
+        errorMessage = "This email is already registered. Please try logging in instead.";
+      } else if (error.message.includes("Invalid login credentials")) {
+        errorMessage = "Invalid email or password. Please try again.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "An error occurred during authentication",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {

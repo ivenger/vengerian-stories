@@ -11,6 +11,7 @@ const hasHebrew = (text: string): boolean => {
 
 const About = () => {
   const [content, setContent] = useState("");
+  const [authorImage, setAuthorImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
@@ -18,8 +19,13 @@ const About = () => {
     const loadContent = async () => {
       try {
         setLoading(true);
-        const aboutContent = await fetchAboutContent("Russian");
-        setContent(aboutContent);
+        const aboutData = await fetchAboutContent("Russian");
+        if (typeof aboutData === 'string') {
+          setContent(aboutData);
+        } else {
+          setContent(aboutData.content || "");
+          setAuthorImage(aboutData.image_url || null);
+        }
       } catch (error) {
         console.error("Failed to load about content:", error);
         toast({
@@ -51,13 +57,25 @@ const About = () => {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
             </div>
           ) : (
-            <div 
-              className={`prose prose-lg max-w-none ${isRtlContent ? 'text-right' : 'text-left'}`}
-              dir={isRtlContent ? 'rtl' : 'ltr'}
-            >
-              {content.split('\n').map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
+            <div className="space-y-6">
+              {authorImage && (
+                <div className="mb-6 flex justify-center">
+                  <img 
+                    src={authorImage} 
+                    alt="Author" 
+                    className="rounded-full w-40 h-40 object-cover border-4 border-gray-200 shadow-lg"
+                  />
+                </div>
+              )}
+              
+              <div 
+                className={`prose prose-lg max-w-none ${isRtlContent ? 'text-right' : 'text-left'}`}
+                dir={isRtlContent ? 'rtl' : 'ltr'}
+              >
+                {content.split('\n').map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
             </div>
           )}
         </div>

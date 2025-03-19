@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -215,11 +216,11 @@ export const deleteTag = async (tagName: string): Promise<void> => {
 };
 
 // New functions for the About content
-export const fetchAboutContent = async (language: string = "Russian"): Promise<string> => {
+export const fetchAboutContent = async (language: string = "Russian"): Promise<string | { content: string; image_url: string | null }> => {
   try {
     const { data, error } = await supabase
       .from('about_content')
-      .select('content')
+      .select('content, image_url')
       .eq('language', language)
       .single();
     
@@ -228,15 +229,19 @@ export const fetchAboutContent = async (language: string = "Russian"): Promise<s
       throw error;
     }
     
-    return data?.content || "";
+    return data || { content: "", image_url: null };
   } catch (error) {
     console.error('Error in fetchAboutContent:', error);
     throw error;
   }
 };
 
-export const saveAboutContent = async (content: string, language: string): Promise<void> => {
+export const saveAboutContent = async (content: string | { content: string; image_url: string | null }, language: string): Promise<void> => {
   try {
+    const contentData = typeof content === 'string' 
+      ? { content, image_url: null } 
+      : content;
+    
     const { data: existingData } = await supabase
       .from('about_content')
       .select('id')
@@ -247,7 +252,7 @@ export const saveAboutContent = async (content: string, language: string): Promi
       // Update existing record
       const { error } = await supabase
         .from('about_content')
-        .update({ content })
+        .update(contentData)
         .eq('id', existingData.id);
       
       if (error) throw error;
@@ -255,7 +260,7 @@ export const saveAboutContent = async (content: string, language: string): Promi
       // Insert new record
       const { error } = await supabase
         .from('about_content')
-        .insert({ content, language });
+        .insert({ ...contentData, language });
       
       if (error) throw error;
     }
