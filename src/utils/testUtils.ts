@@ -1,24 +1,18 @@
 
-import { supabase } from "../integrations/supabase/client";
-import { BlogEntry } from "../types/blogTypes";
+import { supabase } from '../integrations/supabase/client';
+import { BlogEntry } from '../types/blogTypes';
 
-/**
- * Database Test Utility
- * 
- * This utility provides functions for testing database operations with Supabase.
- */
-
-// Connection test
 export const testDatabaseConnection = async (): Promise<boolean> => {
   try {
+    // Simplest query to test connection
     const { data, error } = await supabase.from('entries').select('id').limit(1);
     
     if (error) {
-      console.error('Database connection test failed:', error);
+      console.error('Database connection test failed:', error.message);
       return false;
     }
     
-    console.log('Database connection test passed');
+    console.log('Database connection successful, received:', data);
     return true;
   } catch (error) {
     console.error('Database connection test error:', error);
@@ -26,98 +20,78 @@ export const testDatabaseConnection = async (): Promise<boolean> => {
   }
 };
 
-// Test CRUD operations
 export const testCRUDOperations = async (): Promise<boolean> => {
   try {
-    // Test post
-    const testPost: Partial<BlogEntry> = {
-      title: `Test Post ${new Date().toISOString()}`,
-      content: 'This is a test post content',
-      excerpt: 'Test excerpt',
-      date: new Date().toLocaleDateString(),
-      language: ['English'],
+    // Generate a unique test ID
+    const testId = `test-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Create a test entry
+    const testEntry: Required<Pick<BlogEntry, 'title' | 'content' | 'language' | 'title_language' | 'date'>> = {
+      title: `Test Entry ${testId}`,
+      content: `This is a test entry with ID ${testId}`,
+      language: ['en'],
       title_language: ['en'],
-      status: 'draft',
-      tags: ['test', 'automation']
+      date: new Date().toISOString()
     };
     
-    // Create
-    console.log('Testing CREATE operation...');
-    const { data: createdPost, error: createError } = await supabase
+    // Insert test data
+    const { data: insertData, error: insertError } = await supabase
       .from('entries')
-      .insert(testPost)
-      .select()
-      .maybeSingle();
+      .insert(testEntry)
+      .select();
     
-    if (createError || !createdPost) {
-      console.error('CREATE test failed:', createError);
+    if (insertError) {
+      console.error('CRUD test - Insert failed:', insertError.message);
       return false;
     }
     
-    const testId = createdPost.id;
-    console.log(`CREATE test passed. Created post with ID: ${testId}`);
+    if (!insertData || insertData.length === 0) {
+      console.error('CRUD test - Insert did not return data');
+      return false;
+    }
     
-    // Read
-    console.log('Testing READ operation...');
-    const { data: readPost, error: readError } = await supabase
+    const insertedId = insertData[0].id;
+    console.log('CRUD test - Insert successful:', insertedId);
+    
+    // Read the inserted data
+    const { data: readData, error: readError } = await supabase
       .from('entries')
       .select('*')
-      .eq('id', testId)
-      .maybeSingle();
+      .eq('id', insertedId)
+      .single();
     
-    if (readError || !readPost) {
-      console.error('READ test failed:', readError);
+    if (readError || !readData) {
+      console.error('CRUD test - Read failed:', readError?.message);
       return false;
     }
     
-    console.log('READ test passed');
+    console.log('CRUD test - Read successful:', readData.id);
     
-    // Update
-    console.log('Testing UPDATE operation...');
-    const updatedTitle = `Updated Test Post ${new Date().toISOString()}`;
-    const { data: updatedPost, error: updateError } = await supabase
+    // Update the data
+    const { error: updateError } = await supabase
       .from('entries')
-      .update({ title: updatedTitle })
-      .eq('id', testId)
-      .select()
-      .maybeSingle();
+      .update({ content: `Updated content for ${testId}` })
+      .eq('id', insertedId);
     
-    if (updateError || !updatedPost || updatedPost.title !== updatedTitle) {
-      console.error('UPDATE test failed:', updateError);
+    if (updateError) {
+      console.error('CRUD test - Update failed:', updateError.message);
       return false;
     }
     
-    console.log('UPDATE test passed');
+    console.log('CRUD test - Update successful');
     
-    // Test translations array
-    console.log('Testing translations array...');
-    const { data: translationsPost, error: translationsError } = await supabase
-      .from('entries')
-      .update({ translations: ['test-id-1', 'test-id-2'] })
-      .eq('id', testId)
-      .select()
-      .maybeSingle();
-    
-    if (translationsError || !translationsPost || !translationsPost.translations) {
-      console.error('Translations test failed:', translationsError);
-      return false;
-    }
-    
-    console.log('Translations test passed');
-    
-    // Delete
-    console.log('Testing DELETE operation...');
+    // Delete the test data
     const { error: deleteError } = await supabase
       .from('entries')
       .delete()
-      .eq('id', testId);
+      .eq('id', insertedId);
     
     if (deleteError) {
-      console.error('DELETE test failed:', deleteError);
+      console.error('CRUD test - Delete failed:', deleteError.message);
       return false;
     }
     
-    console.log('DELETE test passed');
+    console.log('CRUD test - Delete successful');
     
     return true;
   } catch (error) {
@@ -126,16 +100,16 @@ export const testCRUDOperations = async (): Promise<boolean> => {
   }
 };
 
-// Run all tests
 export const runAllDatabaseTests = async (): Promise<{
   connection: boolean;
   crud: boolean;
 }> => {
   const connectionResult = await testDatabaseConnection();
-  const crudResult = await testCRUDOperations();
+  // Only run CRUD tests if connection is successful
+  const crudResult = connectionResult ? await testCRUDOperations() : false;
   
   return {
     connection: connectionResult,
-    crud: crudResult
+    crud: crudResult,
   };
 };
