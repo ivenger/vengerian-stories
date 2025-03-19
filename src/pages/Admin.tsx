@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   fetchAllPosts,
@@ -10,23 +9,53 @@ import {
 import { BlogEntry } from '@/types/blogTypes';
 import { useNavigate } from 'react-router-dom';
 import { 
+  Button 
+} from "@/components/ui/button";
+import { 
+  Input 
+} from "@/components/ui/input";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { 
+  Plus, 
+  Edit, 
+  Trash, 
+  ExternalLink,
   Tag
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { fetchBucketImages } from "@/services/imageService";
+import MarkdownEditor from '@/components/MarkdownEditor';
+import { uploadImage, fetchBucketImages } from "@/services/imageService";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X } from "lucide-react";
 import DatabaseTestRunner from '@/components/DatabaseTestRunner';
-import PostList from '@/components/admin/PostList';
-import PostEditor from '@/components/admin/PostEditor';
-import FilterBar from '@/components/admin/FilterBar';
-import AdminStats from '@/components/admin/AdminStats';
-import DeleteConfirmDialog from '@/components/admin/DeleteConfirmDialog';
-import TagManager from '@/components/admin/TagManager';
-import ImageUploader from '@/components/admin/ImageUploader';
 
 interface Tag {
   id: string;
@@ -56,9 +85,17 @@ const Admin: React.FC = () => {
   >([]);
   const [showTagManagement, setShowTagManagement] = useState(false);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [tagTranslations, setTagTranslations] = useState({
+    en: '',
+    he: '',
+    ru: '',
+  });
   const [tagToDelete, setTagToDelete] = useState<Tag | null>(null);
   const [availableLanguages, setAvailableLanguages] = useState<string[]>([]);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [availableImages, setAvailableImages] = useState<string[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
@@ -126,27 +163,8 @@ const Admin: React.FC = () => {
   };
 
   const loadTags = async () => {
-    try {
-      const tagNames = await fetchAllTags();
-      
-      // Transform the string array into Tag objects
-      const tagObjects: Tag[] = tagNames.map(name => ({
-        id: name, // Using name as id since we don't have actual ids
-        name: name,
-        en: null,
-        he: null,
-        ru: null
-      }));
-      
-      setTags(tagObjects);
-    } catch (error) {
-      console.error("Error loading tags:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load tags. Please try again later.",
-        variant: "destructive"
-      });
-    }
+    const allTags = await fetchAllTags();
+    setTags(allTags);
   };
 
   const loadAvailableLanguages = async () => {
@@ -189,280 +207,728 @@ const Admin: React.FC = () => {
 
   const handleSavePost = async (updatedPost: BlogEntry) => {
     try {
-      // Just call each function once to update the data
       await fetchAllTags();
       await fetchTagsByLanguage(updatedPost.language[0]);
       await fetchAllPosts();
       await fetchPublishedPosts();
-      
-      // Refresh the UI data
-      await loadPosts();
-      await loadStats();
-      await loadLanguages();
-      await loadRecentActivity();
-      await loadTags();
-      
-      // Close the edit dialog
-      setEditingPost(null);
-      
-      toast({
-        title: "Success",
-        description: "Post has been updated successfully.",
-        variant: "default"
-      });
-    } catch (error) {
-      console.error("Error saving post:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save post. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeletePost = (post: BlogEntry) => {
-    setPostToDelete(post);
-  };
-
-  const confirmDeletePost = async () => {
-    if (postToDelete) {
-      try {
-        await deletePost(postToDelete.id);
-        loadPosts();
-        loadStats();
-        loadRecentActivity();
-        toast({
-          title: "Success",
-          description: "Post deleted successfully.",
-        });
-      } catch (error) {
-        console.error("Error deleting post:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete post. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setPostToDelete(null);
-      }
-    }
-  };
-
-  const cancelDeletePost = () => {
-    setPostToDelete(null);
-  };
-
-  const filteredPosts = posts.filter((post) => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const titleMatch = post.title.toLowerCase().includes(searchTermLower);
-    const contentMatch = post.content.toLowerCase().includes(searchTermLower);
-    const statusMatch = statusFilter === 'all' || post.status === statusFilter;
-    const languageMatch =
-      languageFilter === 'all' || (post.language && post.language.includes(languageFilter));
-
-    return (titleMatch || contentMatch) && statusMatch && languageMatch;
-  });
-
-  const handleTagManagement = () => {
-    setShowTagManagement(true);
-  };
-
-  const handleCloseTagManagement = () => {
-    setShowTagManagement(false);
-  };
-
-  const handleCreateTag = async (tagName: string, translations: { en: string, he: string, ru: string }) => {
-    try {
-      // Placeholder for createTag API call - would be implemented in an actual app
-      // await createTag({ name: tagName, ...translations });
-      loadTags();
-      toast({
-        title: "Success",
-        description: "Tag created successfully.",
-      });
-    } catch (error) {
-      console.error("Error creating tag:", error);
-      toast({
-        title: "Error",
-        description: "Failed to create tag. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleDeleteTag = (tag: Tag) => {
-    setTagToDelete(tag);
-  };
-
-  const confirmDeleteTag = async () => {
-    if (tagToDelete) {
-      try {
-        // Placeholder for deleteTag API call - would be implemented in an actual app
-        // await deleteTag(tagToDelete.id);
-        loadTags();
-        toast({
-          title: "Success",
-          description: "Tag deleted successfully.",
-        });
-      } catch (error) {
-        console.error("Error deleting tag:", error);
-        toast({
-          title: "Error",
-          description: "Failed to delete tag. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setTagToDelete(null);
-      }
-    }
-  };
-
-  const cancelDeleteTag = () => {
-    setTagToDelete(null);
-  };
-
-  const handleImageUpload = () => {
-    setShowImageUpload(true);
-  };
-
-  const handleCloseImageUpload = () => {
-    setShowImageUpload(false);
-  };
-
-  const handleImageClick = (imageUrl: string) => {
-    setSelectedImageUrl(imageUrl);
-  };
-
-  const handleFeaturedChange = (checked: boolean) => {
-    setIsFeatured(checked);
-  };
-
-  return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Admin Dashboard</h1>
-
-      <AdminStats 
-        stats={stats} 
-        languages={languages} 
-        recentActivity={recentActivity} 
-      />
-
-      <FilterBar
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        statusFilter={statusFilter}
-        onStatusFilterChange={setStatusFilter}
-        languageFilter={languageFilter}
-        onLanguageFilterChange={setLanguageFilter}
-        availableLanguages={availableLanguages}
-        onCreatePost={handleCreatePost}
-      />
-
-      <PostList 
-        posts={filteredPosts} 
-        onEditPost={handleEditPost} 
-        onDeletePost={handleDeletePost} 
-      />
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">
-          Tags
-          <Button variant="ghost" size="sm" onClick={handleTagManagement}>
-            <Tag className="h-4 w-4 mr-2" />
-            Manage Tags
-          </Button>
-        </h2>
-      </div>
-
-      <Dialog open={showTagManagement} onOpenChange={handleCloseTagManagement}>
-        <DialogContent className="sm:max-w-[50%]">
-          <TagManager 
-            tags={tags}
-            onCreateTag={handleCreateTag}
-            onDeleteTag={handleDeleteTag}
-            onClose={handleCloseTagManagement}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={tagToDelete !== null} onOpenChange={(open) => !open && cancelDeleteTag()}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DeleteConfirmDialog
-            title="Delete Tag"
-            description="Are you sure you want to delete this tag? This action cannot be undone."
-            onConfirm={confirmDeleteTag}
-            onCancel={cancelDeleteTag}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">
-          Images
-          <Button variant="ghost" size="sm" onClick={handleImageUpload}>
-            <Tag className="h-4 w-4 mr-2" />
-            Upload Image
-          </Button>
-        </h2>
-        <div className="grid grid-cols-3 gap-4">
-          {isLoadingImages ? (
-            <div>Loading images...</div>
-          ) : (
-            availableImages.map((imageUrl) => (
-              <img
-                key={imageUrl}
-                src={imageUrl}
-                alt="Available Image"
-                className="cursor-pointer rounded shadow-md"
-                onClick={() => handleImageClick(imageUrl)}
-              />
-            ))
-          )}
-        </div>
-      </div>
-
-      <Dialog open={showImageUpload} onOpenChange={handleCloseImageUpload}>
-        <DialogContent className="sm:max-w-[425px]">
-          <ImageUploader
-            isOpen={showImageUpload}
-            onClose={handleCloseImageUpload}
-            availableImages={availableImages}
-            onImageSelect={handleImageClick}
-            isLoadingImages={isLoadingImages}
-            refreshImages={loadImages}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={postToDelete !== null} onOpenChange={(open) => !open && cancelDeletePost()}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DeleteConfirmDialog
-            title="Delete Post"
-            description="Are you sure you want to delete this post? This action cannot be undone."
-            onConfirm={confirmDeletePost}
-            onCancel={cancelDeletePost}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={editingPost !== null} onOpenChange={(open) => !open && setEditingPost(null)}>
-        <DialogContent className="sm:max-w-[50%]">
-          {editingPost && (
-            <PostEditor
-              post={editingPost}
-              onSave={handleSavePost}
-              onCancel={() => setEditingPost(null)}
-              isFeatured={isFeatured}
-              onFeaturedChange={handleFeaturedChange}
-              selectedImageUrl={selectedImageUrl}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <DatabaseTestRunner />
-    </div>
-  );
-};
-
-export default Admin;
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags();
+      await fetchTagsByLanguage(updatedPost.language[0]);
+      await fetchAllPosts();
+      await fetchPublishedPosts();
+      await fetchAllTags
