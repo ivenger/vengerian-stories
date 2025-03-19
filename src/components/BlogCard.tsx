@@ -1,7 +1,9 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BlogEntry } from '@/types/blogTypes';
 import { Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
@@ -43,8 +45,58 @@ interface BlogCardProps {
   post: BlogEntry;
 }
 
+interface TagTranslation {
+  name: string;
+  en: string | null;
+  he: string | null;
+  ru: string | null;
+}
+
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const { id, title, date, excerpt, image_url, tags } = post;
+  const [translatedTags, setTranslatedTags] = useState<{[key: string]: string}>({});
+  
+  // Fetch tag translations when component mounts
+  useEffect(() => {
+    const fetchTagTranslations = async () => {
+      if (!tags || tags.length === 0) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('tags')
+          .select('name, en, he, ru')
+          .in('name', tags);
+        
+        if (error) {
+          console.error('Error fetching tag translations:', error);
+          return;
+        }
+        
+        // Create a mapping of tag name to translation
+        const translations: {[key: string]: string} = {};
+        const langCode = getLanguageCode(post);
+        
+        (data as TagTranslation[]).forEach(tag => {
+          // Use the appropriate translation based on language code
+          if (langCode === 'he' && tag.he) {
+            translations[tag.name] = tag.he;
+          } else if (langCode === 'ru' && tag.ru) {
+            translations[tag.name] = tag.ru;
+          } else if (langCode === 'en' && tag.en) {
+            translations[tag.name] = tag.en;
+          } else {
+            translations[tag.name] = tag.name; // Fallback to original name
+          }
+        });
+        
+        setTranslatedTags(translations);
+      } catch (err) {
+        console.error('Error in fetchTagTranslations:', err);
+      }
+    };
+    
+    fetchTagTranslations();
+  }, [post, tags]);
   
   // Determine the appropriate font class based on the content
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-caraterre';
@@ -58,6 +110,11 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   
   // Get language code for selecting appropriate tag translations
   const languageCode = getLanguageCode(post);
+  
+  // Get the translated tag or fallback to original tag name
+  const getTranslatedTag = (tagName: string): string => {
+    return translatedTags[tagName] || tagName;
+  };
   
   return (
     <div className="flex justify-center w-full">
@@ -103,7 +160,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                         className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
                         dir={isRtlTitle ? 'rtl' : 'ltr'}
                       >
-                        {tag}
+                        {getTranslatedTag(tag)}
                       </span>
                     ))}
                   </div>

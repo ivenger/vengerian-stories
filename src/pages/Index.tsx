@@ -5,37 +5,38 @@ import Navigation from "../components/Navigation";
 import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
 import { BlogEntry } from "../types/blogTypes";
 import { useToast } from "@/components/ui/use-toast";
-import { Tag, X, Filter } from "lucide-react";
+import { Tag, X, Filter, Languages } from "lucide-react";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const Index = () => {
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("Russian");
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["Russian"]);
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
   // Load saved filters from localStorage on initial render
   useEffect(() => {
     const savedTags = localStorage.getItem('selectedTags');
-    const savedLanguage = localStorage.getItem('selectedLanguage');
+    const savedLanguages = localStorage.getItem('selectedLanguages');
     
     if (savedTags) {
       setSelectedTags(JSON.parse(savedTags));
     }
     
-    if (savedLanguage) {
-      setSelectedLanguage(savedLanguage);
+    if (savedLanguages) {
+      setSelectedLanguages(JSON.parse(savedLanguages));
     }
   }, []);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
-    localStorage.setItem('selectedLanguage', selectedLanguage);
-  }, [selectedTags, selectedLanguage]);
+    localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
+  }, [selectedTags, selectedLanguages]);
 
   useEffect(() => {
     const loadTags = async () => {
@@ -54,8 +55,8 @@ const Index = () => {
       try {
         setLoading(true);
         const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
-        const langToFilter = selectedLanguage || undefined;
-        const filteredPosts = await fetchFilteredPosts(tagsToFilter, langToFilter);
+        const languagesToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
+        const filteredPosts = await fetchFilteredPosts(tagsToFilter, languagesToFilter);
         setPosts(filteredPosts);
       } catch (error) {
         console.error("Failed to load posts:", error);
@@ -69,7 +70,7 @@ const Index = () => {
       }
     };
     loadPosts();
-  }, [selectedTags, selectedLanguage, toast]);
+  }, [selectedTags, selectedLanguages, toast]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -79,13 +80,24 @@ const Index = () => {
     }
   };
 
+  const toggleLanguage = (language: string) => {
+    if (selectedLanguages.includes(language)) {
+      if (selectedLanguages.length > 1) { // Prevent deselecting all languages
+        setSelectedLanguages(selectedLanguages.filter(l => l !== language));
+      }
+    } else {
+      setSelectedLanguages([...selectedLanguages, language]);
+    }
+  };
+
   const clearFilters = () => {
     setSelectedTags([]);
-    setSelectedLanguage("Russian");
+    setSelectedLanguages(["Russian"]);
   };
 
   // Check if any filters are active
-  const hasActiveFilters = selectedTags.length > 0 || selectedLanguage !== "";
+  const hasActiveFilters = selectedTags.length > 0 || 
+    (selectedLanguages.length !== 1 || selectedLanguages[0] !== "Russian");
 
   return <div className="min-h-screen bg-gray-50">
       <Navigation />
@@ -110,7 +122,7 @@ const Index = () => {
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold">Filter Stories</h3>
-                    {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
+                    {hasActiveFilters && (
                       <button 
                         onClick={clearFilters} 
                         className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
@@ -124,19 +136,21 @@ const Index = () => {
                   <div className="flex flex-col gap-4">
                     <div>
                       <h3 className="text-sm font-medium mb-2">Filter by Language</h3>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-col space-y-2">
                         {languages.map(lang => (
-                          <button 
-                            key={lang} 
-                            onClick={() => setSelectedLanguage(lang === selectedLanguage ? "" : lang)} 
-                            className={`px-3 py-1 text-sm rounded-full ${
-                              lang === selectedLanguage 
-                                ? "bg-gray-400 text-white" 
-                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                            }`}
-                          >
-                            {lang}
-                          </button>
+                          <div key={lang} className="flex items-center space-x-2">
+                            <Checkbox 
+                              id={`lang-${lang}`}
+                              checked={selectedLanguages.includes(lang)}
+                              onCheckedChange={() => toggleLanguage(lang)}
+                            />
+                            <label
+                              htmlFor={`lang-${lang}`}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                              {lang}
+                            </label>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -161,21 +175,25 @@ const Index = () => {
                       </div>
                     </div>
 
-                    {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
+                    {hasActiveFilters && (
                       <div className="mt-2">
                         <h3 className="text-sm font-medium">Active Filters:</h3>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedLanguage && (
-                            <span className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
-                              {selectedLanguage}
+                          {selectedLanguages.map(lang => (
+                            <span 
+                              key={lang}
+                              className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center"
+                            >
+                              {lang}
                               <button 
-                                onClick={() => setSelectedLanguage("")} 
+                                onClick={() => toggleLanguage(lang)} 
                                 className="ml-1 text-white hover:text-gray-200"
+                                disabled={selectedLanguages.length === 1}
                               >
                                 <X size={14} />
                               </button>
                             </span>
-                          )}
+                          ))}
                           {selectedTags.map(tag => (
                             <span 
                               key={tag} 
@@ -203,19 +221,23 @@ const Index = () => {
           {/* Only show filters section if there are active filters */}
           {hasActiveFilters && (
             <div className="flex flex-wrap gap-2 justify-center mt-2">
-              <div className="flex items-center">
+              <div className="flex items-center flex-wrap">
                 <span className="text-sm text-gray-500 mr-2">Filters:</span>
-                {selectedLanguage && (
-                  <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
-                    {selectedLanguage}
+                {selectedLanguages.map(lang => (
+                  <span 
+                    key={lang}
+                    className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
+                  >
+                    {lang}
                     <button 
-                      onClick={() => setSelectedLanguage("")} 
+                      onClick={() => toggleLanguage(lang)} 
                       className="ml-1 text-white hover:text-gray-200"
+                      disabled={selectedLanguages.length === 1}
                     >
                       <X size={12} />
                     </button>
                   </span>
-                )}
+                ))}
                 {selectedTags.map(tag => (
                   <span 
                     key={tag} 
@@ -243,12 +265,12 @@ const Index = () => {
           ) : posts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-600">
-                {selectedTags.length > 0 || selectedLanguage !== "Russian" 
+                {hasActiveFilters
                   ? "No stories found with the selected filters. Try different filters or clear them." 
                   : "No stories found. Check back later for new content."
                 }
               </p>
-              {(selectedTags.length > 0 || selectedLanguage !== "") && (
+              {hasActiveFilters && (
                 <button 
                   onClick={clearFilters} 
                   className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"

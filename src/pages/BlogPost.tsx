@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
 import { BlogEntry } from '../types/blogTypes';
 import Navigation from '../components/Navigation';
 import { Calendar, Tag } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
@@ -32,11 +34,28 @@ const formatDateForRTL = (date: string): string => {
   return date;
 };
 
+// Get language code from post language array
+const getLanguageCode = (post: BlogEntry): string => {
+  if (!post.language || post.language.length === 0) return 'en';
+  
+  if (post.language.includes('Hebrew')) return 'he';
+  if (post.language.includes('Russian')) return 'ru';
+  return 'en'; // Default to English
+};
+
+interface TagTranslation {
+  name: string;
+  en: string | null;
+  he: string | null;
+  ru: string | null;
+}
+
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [translatedTags, setTranslatedTags] = useState<{[key: string]: string}>({});
 
   useEffect(() => {
     const loadPost = async () => {
@@ -57,6 +76,48 @@ const BlogPost = () => {
     loadPost();
   }, [id]);
 
+  // Fetch tag translations when post loads
+  useEffect(() => {
+    const fetchTagTranslations = async () => {
+      if (!post || !post.tags || post.tags.length === 0) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('tags')
+          .select('name, en, he, ru')
+          .in('name', post.tags);
+        
+        if (error) {
+          console.error('Error fetching tag translations:', error);
+          return;
+        }
+        
+        // Create a mapping of tag name to translation
+        const translations: {[key: string]: string} = {};
+        const langCode = getLanguageCode(post);
+        
+        (data as TagTranslation[]).forEach(tag => {
+          // Use the appropriate translation based on language code
+          if (langCode === 'he' && tag.he) {
+            translations[tag.name] = tag.he;
+          } else if (langCode === 'ru' && tag.ru) {
+            translations[tag.name] = tag.ru;
+          } else if (langCode === 'en' && tag.en) {
+            translations[tag.name] = tag.en;
+          } else {
+            translations[tag.name] = tag.name; // Fallback to original name
+          }
+        });
+        
+        setTranslatedTags(translations);
+      } catch (err) {
+        console.error('Error in fetchTagTranslations:', err);
+      }
+    };
+    
+    fetchTagTranslations();
+  }, [post]);
+
   // Format the content with basic HTML when in preview mode
   const getFormattedContent = (content: string) => {
     // This is a very basic markdown-to-html conversion
@@ -75,6 +136,11 @@ const BlogPost = () => {
     );
 
     return formatted;
+  };
+
+  // Get the translated tag or fallback to original tag name
+  const getTranslatedTag = (tagName: string): string => {
+    return translatedTags[tagName] || tagName;
   };
 
   // Determine if the content needs RTL
@@ -154,7 +220,7 @@ const BlogPost = () => {
                         className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
                       >
                         <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                        {tag}
+                        {getTranslatedTag(tag)}
                       </span>
                     ))}
                   </div>
