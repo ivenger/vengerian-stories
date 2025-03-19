@@ -9,6 +9,11 @@ const hasCyrillic = (text: string): boolean => {
   return /[А-Яа-яЁё]/.test(text);
 };
 
+// Function to detect if text has Hebrew characters
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
+
 interface BlogCardProps {
   post: BlogEntry;
 }
@@ -18,6 +23,10 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   
   // Determine the appropriate font class based on the content
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-caraterre';
+  
+  // Determine text direction based on language
+  const isRtlTitle = hasHebrew(title);
+  const isRtlExcerpt = excerpt ? hasHebrew(excerpt) : false;
   
   return (
     <div className="flex justify-center w-full">
@@ -35,12 +44,18 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             )}
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
-              <h2 className={`${titleFontClass} text-4xl text-gray-900 mb-3`}>
+              <h2 
+                className={`${titleFontClass} text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right rtl' : 'text-left ltr'}`}
+                dir={isRtlTitle ? 'rtl' : 'ltr'}
+              >
                 {title}
               </h2>
               
               {excerpt && (
-                <p className="text-gray-600 text-lg mb-4 flex-grow">
+                <p 
+                  className={`text-gray-600 text-lg mb-4 flex-grow ${isRtlExcerpt ? 'text-right rtl' : 'text-left ltr'}`}
+                  dir={isRtlExcerpt ? 'rtl' : 'ltr'}
+                >
                   {excerpt}
                 </p>
               )}
@@ -68,7 +83,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
           </div>
           
           {image_url && (
-            <div className="w-full text-xs p-1 bg-gray-200 text-gray-700">
+            <div className="w-auto text-xs p-1 bg-gray-200 text-gray-700 md:w-1/3">
               Illustration by Levi Pritzker
             </div>
           )}

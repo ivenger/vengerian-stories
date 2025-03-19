@@ -98,3 +98,16 @@
 .font-carattere {
   font-family: 'Carattere', cursive;
 }
+
+/* RTL text support */
+.rtl {
+  direction: rtl;
+  text-align: right;
+  unicode-bidi: bidi-override;
+}
+
+.ltr {
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: bidi-override;
+}
