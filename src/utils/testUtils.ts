@@ -29,10 +29,10 @@ export const testDatabaseConnection = async (): Promise<boolean> => {
 // Test CRUD operations
 export const testCRUDOperations = async (): Promise<boolean> => {
   try {
-    // Test post
-    const testPost: Partial<BlogEntry> = {
+    // Test post with all required fields to fix the type error
+    const testPost = {
       title: `Test Post ${new Date().toISOString()}`,
-      content: 'This is a test post content',
+      content: 'This is a test post content', // Now required
       excerpt: 'Test excerpt',
       date: new Date().toLocaleDateString(),
       language: ['English'],

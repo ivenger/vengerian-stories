@@ -35,7 +35,9 @@ import {
   Edit, 
   Trash, 
   ExternalLink,
-  Tag
+  Tag,
+  Loader,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import MarkdownEditor from '@/components/MarkdownEditor';
@@ -54,7 +56,6 @@ import { useForm } from "react-hook-form";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X } from "lucide-react";
 import DatabaseTestRunner from '@/components/DatabaseTestRunner';
 
 interface Tag {
@@ -164,7 +165,6 @@ const Admin: React.FC = () => {
 
   const loadTags = async () => {
     const allTags = await fetchAllTags();
-    // Transform string[] to Tag[] to fix type mismatch
     const formattedTags: Tag[] = allTags.map(tag => ({
       id: tag,
       name: tag,
@@ -215,13 +215,11 @@ const Admin: React.FC = () => {
 
   const handleSavePost = async (updatedPost: BlogEntry) => {
     try {
-      // Fix: Remove the excessive API calls and keep just what's needed
       await fetchAllTags();
       await fetchTagsByLanguage(updatedPost.language[0]);
       await fetchAllPosts();
       await fetchPublishedPosts();
       
-      // Update the post, refresh data, and close the editor
       setEditingPost(null);
       
       toast({
@@ -230,7 +228,6 @@ const Admin: React.FC = () => {
         variant: "default"
       });
       
-      // Refresh data
       loadPosts();
       loadStats();
       loadRecentActivity();
@@ -242,9 +239,8 @@ const Admin: React.FC = () => {
         variant: "destructive"
       });
     }
-  }; // Added missing closing brace and semicolon
+  };
 
-  // Add remaining functions and render code
   const handleDeletePost = (post: BlogEntry) => {
     setPostToDelete(post);
   };
@@ -317,18 +313,16 @@ const Admin: React.FC = () => {
 
   const handleCreateTag = async () => {
     try {
-      // Create a new tag object with translations
-      const newTagObject = {
+      const newTagObject: Tag = {
+        id: newTag,
         name: newTag,
         en: tagTranslations.en || null,
         he: tagTranslations.he || null,
         ru: tagTranslations.ru || null,
       };
 
-      // Optimistically update the state
       setTags([...tags, newTagObject]);
 
-      // Clear the input fields
       setNewTag('');
       setTagTranslations({ en: '', he: '', ru: '' });
 
@@ -354,7 +348,6 @@ const Admin: React.FC = () => {
   const confirmDeleteTag = async () => {
     if (tagToDelete) {
       try {
-        // Optimistically update the state
         setTags(tags.filter((tag) => tag.id !== tagToDelete.id));
 
         setTagToDelete(null);
@@ -430,8 +423,8 @@ const Admin: React.FC = () => {
     setSelectedImageUrl(imageUrl);
   };
 
-  const handleFeaturedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setIsFeatured(e.target.checked);
+  const handleFeaturedChange = (checked: boolean) => {
+    setIsFeatured(checked);
   };
 
   const imageUploadFormSchema = z.object({
@@ -447,7 +440,6 @@ const Admin: React.FC = () => {
 
   const onSubmit = async (data: z.infer<typeof imageUploadFormSchema>) => {
     try {
-      // Add the image URL to availableImages
       setAvailableImages([...availableImages, data.imageUrl]);
       toast({
         title: "Success",
@@ -769,7 +761,7 @@ const Admin: React.FC = () => {
             <Button type="submit" onClick={handleImageUpload} disabled={uploading}>
               {uploading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader className="mr-2 h-4 w-4 animate-spin" />
                   Uploading...
                 </>
               ) : (
@@ -783,7 +775,7 @@ const Admin: React.FC = () => {
       <div className="grid grid-cols-3 gap-4">
         {isLoadingImages ? (
           <div className="col-span-3 flex justify-center">
-            <Loader2 className="animate-spin h-6 w-6" />
+            <Loader className="animate-spin h-6 w-6" />
           </div>
         ) : (
           availableImages.map((imageUrl, index) => (
@@ -809,6 +801,6 @@ const Admin: React.FC = () => {
       <DatabaseTestRunner />
     </div>
   );
-}; // Added missing closing brace for the Admin component
+};
 
 export default Admin;
