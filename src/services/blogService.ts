@@ -98,7 +98,7 @@ export const deletePost = async (id: string): Promise<void> => {
   }
 };
 
-// Fetch posts filtered by tags and/or language - uses OR logic within filters
+// Fetch posts filtered by tags and/or language - uses OR logic for languages
 export const fetchFilteredPosts = async (
   tags?: string[], 
   language?: string
@@ -116,7 +116,7 @@ export const fetchFilteredPosts = async (
     }
     
     if (language) {
-      query = query.contains('language', [language]);
+      query = query.filter('language', 'cs', `{${language}}`);
     }
     
     query = query.order('date', { ascending: false });
@@ -210,6 +210,57 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     }
   } catch (error) {
     console.error('Error deleting tag:', error);
+    throw error;
+  }
+};
+
+// New functions for the About content
+export const fetchAboutContent = async (language: string = "Russian"): Promise<string> => {
+  try {
+    const { data, error } = await supabase
+      .from('about_content')
+      .select('content')
+      .eq('language', language)
+      .single();
+    
+    if (error) {
+      console.error(`Error fetching about content for ${language}:`, error);
+      throw error;
+    }
+    
+    return data?.content || "";
+  } catch (error) {
+    console.error('Error in fetchAboutContent:', error);
+    throw error;
+  }
+};
+
+export const saveAboutContent = async (content: string, language: string): Promise<void> => {
+  try {
+    const { data: existingData } = await supabase
+      .from('about_content')
+      .select('id')
+      .eq('language', language)
+      .maybeSingle();
+    
+    if (existingData?.id) {
+      // Update existing record
+      const { error } = await supabase
+        .from('about_content')
+        .update({ content })
+        .eq('id', existingData.id);
+      
+      if (error) throw error;
+    } else {
+      // Insert new record
+      const { error } = await supabase
+        .from('about_content')
+        .insert({ content, language });
+      
+      if (error) throw error;
+    }
+  } catch (error) {
+    console.error(`Error saving about content for ${language}:`, error);
     throw error;
   }
 };

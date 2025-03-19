@@ -1,13 +1,15 @@
+
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import MarkdownEditor from "../components/MarkdownEditor";
 import TagManagement from "../components/TagManagement";
 import UserManagement from "../components/UserManagement";
+import AboutEditor from "../components/AboutEditor";
 import { useToast } from "../hooks/use-toast";
 import { BlogEntry } from "../types/blogTypes";
 import { format } from "date-fns";
-import { Globe, FileText, Trash2, XCircle, Tag, Users } from "lucide-react";
+import { Globe, FileText, Trash2, XCircle, Tag, Users, FileText2 } from "lucide-react";
 import { fetchAllPosts, savePost as saveBlogPost, deletePost } from "../services/blogService";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -219,6 +221,7 @@ const Admin = () => {
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="posts">Posts</TabsTrigger>
+              <TabsTrigger value="about">About</TabsTrigger>
               <TabsTrigger value="tags">Tags</TabsTrigger>
               <TabsTrigger value="users">Users</TabsTrigger>
             </TabsList>
@@ -318,6 +321,10 @@ const Admin = () => {
                   </div>
                 )}
               </div>
+            </TabsContent>
+            
+            <TabsContent value="about">
+              <AboutEditor />
             </TabsContent>
             
             <TabsContent value="tags">
