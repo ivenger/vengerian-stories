@@ -84,6 +84,9 @@ const Index = () => {
     setSelectedLanguage("Russian");
   };
 
+  // Check if any filters are active
+  const hasActiveFilters = selectedTags.length > 0 || selectedLanguage !== "";
+
   return <div className="min-h-screen bg-gray-50">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
@@ -197,36 +200,39 @@ const Index = () => {
             </Dialog>
           </div>
           
-          <div className="flex flex-wrap gap-2 justify-center mt-2">
-            <div className="flex items-center">
-              <span className="text-sm text-gray-500 mr-2">Filters:</span>
-              {selectedLanguage && (
-                <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
-                  {selectedLanguage}
-                  <button 
-                    onClick={() => setSelectedLanguage("")} 
-                    className="ml-1 text-white hover:text-gray-200"
+          {/* Only show filters section if there are active filters */}
+          {hasActiveFilters && (
+            <div className="flex flex-wrap gap-2 justify-center mt-2">
+              <div className="flex items-center">
+                <span className="text-sm text-gray-500 mr-2">Filters:</span>
+                {selectedLanguage && (
+                  <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
+                    {selectedLanguage}
+                    <button 
+                      onClick={() => setSelectedLanguage("")} 
+                      className="ml-1 text-white hover:text-gray-200"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                )}
+                {selectedTags.map(tag => (
+                  <span 
+                    key={tag} 
+                    className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
                   >
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-              {selectedTags.map(tag => (
-                <span 
-                  key={tag} 
-                  className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
-                >
-                  {tag}
-                  <button 
-                    onClick={() => toggleTag(tag)} 
-                    className="ml-1 text-white hover:text-gray-200"
-                  >
-                    <X size={12} />
-                  </button>
-                </span>
-              ))}
+                    {tag}
+                    <button 
+                      onClick={() => toggleTag(tag)} 
+                      className="ml-1 text-white hover:text-gray-200"
+                    >
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="max-w-3xl mx-auto">

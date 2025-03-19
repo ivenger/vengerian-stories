@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -23,6 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface MarkdownEditorProps {
   post: BlogEntry;
@@ -81,7 +86,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
   const [content, setContent] = useState<string>(post.content || "");
-  const [date, setDate] = useState(post.date || "");
+  const [date, setDate] = useState(post.date || format(new Date(), "dd/MM/yyyy"));
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    post.date ? parseDate(post.date) : new Date()
+  );
   const [language, setLanguage] = useState(post.language?.[0] || "English");
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
@@ -93,10 +101,42 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [availableImages, setAvailableImages] = useState<string[]>([]);
+  const [filteredImages, setFilteredImages] = useState<string[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const [filteredTags, setFilteredTags] = useState<string[]>([]);
 
   const languages = ["English", "Hebrew", "Russian"];
+
+  // Function to parse date string
+  function parseDate(dateString: string): Date | undefined {
+    try {
+      // First try DD/MM/YYYY format
+      let parsedDate = parse(dateString, "dd/MM/yyyy", new Date());
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+      
+      // Try other formats if the first one fails
+      const formats = ["MM/dd/yyyy", "yyyy-MM-dd", "MMMM d, yyyy"];
+      
+      for (const formatStr of formats) {
+        parsedDate = parse(dateString, formatStr, new Date());
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+      
+      // If all parsing attempts fail, try direct Date parsing
+      parsedDate = new Date(dateString);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+    }
+    
+    return undefined;
+  }
 
   useEffect(() => {
     const loadData = async () => {
@@ -112,6 +152,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
         
         const images = await fetchBucketImages();
         setAvailableImages(images);
+        
+        // Filter out the currently selected image
+        updateFilteredImages(images, imageUrl);
       } catch (error) {
         console.error("Error loading data:", error);
         toast({
@@ -127,6 +170,19 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
 
     loadData();
   }, [post.id, toast]);
+
+  // Update filtered images when imageUrl changes
+  useEffect(() => {
+    updateFilteredImages(availableImages, imageUrl);
+  }, [imageUrl, availableImages]);
+
+  const updateFilteredImages = (images: string[], currentImage: string | null) => {
+    if (currentImage) {
+      setFilteredImages(images.filter(img => img !== currentImage));
+    } else {
+      setFilteredImages(images);
+    }
+  };
 
   useEffect(() => {
     const getTagsForLanguage = async () => {
@@ -151,21 +207,15 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     }
   }, [content]);
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputDate = e.target.value;
-    setDate(inputDate);
-  };
+  // Update date when selectedDate changes
+  useEffect(() => {
+    if (selectedDate) {
+      setDate(format(selectedDate, "dd/MM/yyyy"));
+    }
+  }, [selectedDate]);
 
   const formatDateDisplay = (dateString: string): string => {
-    try {
-      const parsedDate = new Date(dateString);
-      if (!isNaN(parsedDate.getTime())) {
-        return format(parsedDate, "dd/MM/yyyy");
-      }
-      return dateString;
-    } catch (error) {
-      return dateString;
-    }
+    return dateString;
   };
 
   const handleSave = () => {
@@ -327,7 +377,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {availableImages.map((url) => (
+                      {filteredImages.map((url) => (
                         <SelectItem key={url} value={url}>
                           {getImageFileName(url)}
                         </SelectItem>
@@ -362,13 +412,30 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   Date (DD/MM/YYYY)
                 </div>
               </label>
-              <input
-                type="text"
-                value={formatDateDisplay(date)}
-                onChange={handleDateChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-                placeholder="DD/MM/YYYY"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className="w-full flex justify-start text-left font-normal"
+                  >
+                    {selectedDate ? (
+                      format(selectedDate, "dd/MM/yyyy")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             
             <div className="mb-4">
@@ -562,7 +629,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   dir={isRtlTitle ? 'rtl' : 'ltr'} 
                   style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
                 >
-                  {date || format(new Date(), "MMMM d, yyyy")}
+                  {date || format(new Date(), "dd/MM/yyyy")}
                 </span>
               </div>
               
