@@ -30,6 +30,15 @@ const formatDateForRTL = (date: string): string => {
   return date;
 };
 
+// Get language code from post language array
+const getLanguageCode = (post: BlogEntry): string => {
+  if (!post.language || post.language.length === 0) return 'en';
+  
+  if (post.language.includes('Hebrew')) return 'he';
+  if (post.language.includes('Russian')) return 'ru';
+  return 'en'; // Default to English
+};
+
 interface BlogCardProps {
   post: BlogEntry;
 }
@@ -46,6 +55,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   
   // Format date for RTL display if needed
   const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
+  
+  // Get language code for selecting appropriate tag translations
+  const languageCode = getLanguageCode(post);
   
   return (
     <div className="flex justify-center w-full">
@@ -89,6 +101,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                       <span 
                         key={index} 
                         className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
+                        dir={isRtlTitle ? 'rtl' : 'ltr'}
                       >
                         {tag}
                       </span>

@@ -17,6 +17,26 @@ const Index = () => {
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
+  // Load saved filters from localStorage on initial render
+  useEffect(() => {
+    const savedTags = localStorage.getItem('selectedTags');
+    const savedLanguage = localStorage.getItem('selectedLanguage');
+    
+    if (savedTags) {
+      setSelectedTags(JSON.parse(savedTags));
+    }
+    
+    if (savedLanguage) {
+      setSelectedLanguage(savedLanguage);
+    }
+  }, []);
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
+    localStorage.setItem('selectedLanguage', selectedLanguage);
+  }, [selectedTags, selectedLanguage]);
+
   useEffect(() => {
     const loadTags = async () => {
       try {
@@ -142,11 +162,11 @@ const Index = () => {
                       <div className="mt-2">
                         <h3 className="text-sm font-medium">Active Filters:</h3>
                         <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedLanguage && selectedLanguage !== "Russian" && (
+                          {selectedLanguage && (
                             <span className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
                               {selectedLanguage}
                               <button 
-                                onClick={() => setSelectedLanguage("Russian")} 
+                                onClick={() => setSelectedLanguage("")} 
                                 className="ml-1 text-white hover:text-gray-200"
                               >
                                 <X size={14} />
@@ -177,38 +197,36 @@ const Index = () => {
             </Dialog>
           </div>
           
-          {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
-            <div className="flex flex-wrap gap-2 justify-center mt-2">
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2">Filters:</span>
-                {selectedLanguage && selectedLanguage !== "Russian" && (
-                  <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
-                    {selectedLanguage}
-                    <button 
-                      onClick={() => setSelectedLanguage("Russian")} 
-                      className="ml-1 text-white hover:text-gray-200"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                )}
-                {selectedTags.map(tag => (
-                  <span 
-                    key={tag} 
-                    className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
+          <div className="flex flex-wrap gap-2 justify-center mt-2">
+            <div className="flex items-center">
+              <span className="text-sm text-gray-500 mr-2">Filters:</span>
+              {selectedLanguage && (
+                <span className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
+                  {selectedLanguage}
+                  <button 
+                    onClick={() => setSelectedLanguage("")} 
+                    className="ml-1 text-white hover:text-gray-200"
                   >
-                    {tag}
-                    <button 
-                      onClick={() => toggleTag(tag)} 
-                      className="ml-1 text-white hover:text-gray-200"
-                    >
-                      <X size={12} />
-                    </button>
-                  </span>
-                ))}
-              </div>
+                    <X size={12} />
+                  </button>
+                </span>
+              )}
+              {selectedTags.map(tag => (
+                <span 
+                  key={tag} 
+                  className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
+                >
+                  {tag}
+                  <button 
+                    onClick={() => toggleTag(tag)} 
+                    className="ml-1 text-white hover:text-gray-200"
+                  >
+                    <X size={12} />
+                  </button>
+                </span>
+              ))}
             </div>
-          )}
+          </div>
         </div>
 
         <div className="max-w-3xl mx-auto">
@@ -224,7 +242,7 @@ const Index = () => {
                   : "No stories found. Check back later for new content."
                 }
               </p>
-              {(selectedTags.length > 0 || selectedLanguage !== "Russian") && (
+              {(selectedTags.length > 0 || selectedLanguage !== "") && (
                 <button 
                   onClick={clearFilters} 
                   className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"

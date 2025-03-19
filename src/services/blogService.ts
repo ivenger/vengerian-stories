@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -52,10 +51,8 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
 
 // Save a blog post (create or update)
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
-  // Make a copy to avoid modifying the original
   const postToSave = { ...post };
   
-  // Ensure all required fields are present
   if (!postToSave.language || !Array.isArray(postToSave.language)) {
     postToSave.language = Array.isArray(postToSave.language) 
       ? postToSave.language 
@@ -68,15 +65,12 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       : [postToSave.title_language || "en"];
   }
 
-  // Ensure tags is an array (if present)
   if (postToSave.tags && !Array.isArray(postToSave.tags)) {
     postToSave.tags = [postToSave.tags];
   }
   
-  // Log the post being saved for debugging
   console.log('Saving post:', postToSave);
   
-  // If post has an ID, update it; otherwise, insert a new one
   const { data, error } = await supabase
     .from('entries')
     .upsert(postToSave)
@@ -104,29 +98,27 @@ export const deletePost = async (id: string): Promise<void> => {
   }
 };
 
-// Fetch posts filtered by tags and/or language - modified to use "OR" logic within filters
+// Fetch posts filtered by tags and/or language - uses OR logic within filters
 export const fetchFilteredPosts = async (
   tags?: string[], 
   language?: string
 ): Promise<BlogEntry[]> => {
   try {
+    console.log("Filtering posts with tags:", tags, "and language:", language);
+    
     let query = supabase
       .from('entries')
       .select('*')
       .eq('status', 'published');
     
-    // Add tag filter if specified - using OR logic between tags
     if (tags && tags.length > 0) {
-      // Use the "overlaps" operator for OR logic between tags
       query = query.overlaps('tags', tags);
     }
     
-    // Add language filter if specified
     if (language) {
       query = query.contains('language', [language]);
     }
     
-    // Order by date
     query = query.order('date', { ascending: false });
     
     const { data, error } = await query;
@@ -136,6 +128,7 @@ export const fetchFilteredPosts = async (
       throw error;
     }
     
+    console.log(`Fetched ${data?.length || 0} filtered posts`);
     return data as BlogEntry[] || [];
   } catch (error) {
     console.error('Error in fetchFilteredPosts:', error);
@@ -149,10 +142,9 @@ export const fetchAllTags = fetchAllTagsOriginal;
 // Fetch tags by language
 export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
   try {
+    console.log("Fetching tags for language:", language);
     const allTags = await fetchAllTags();
     
-    // For now, we're returning all tags regardless of language
-    // In a real implementation, you might filter tags based on language
     return allTags;
   } catch (error) {
     console.error('Error fetching tags by language:', error);
@@ -193,7 +185,6 @@ export const deleteTag = async (tagName: string): Promise<void> => {
       throw error;
     }
     
-    // Also update posts that have this tag
     const { data: postsWithTag, error: findError } = await supabase
       .from('entries')
       .select('id, tags')

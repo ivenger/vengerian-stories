@@ -148,8 +148,34 @@
 /* Tag and language pill styles */
 .filter-pill {
   transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  background-color: #9ca3af;
+  color: white;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  margin-right: 0.25rem;
 }
 
 .filter-pill:hover {
   transform: translateY(-1px);
+}
+
+.filter-pill .filter-remove {
+  margin-left: 0.25rem;
+  color: white;
+}
+
+.filter-pill .filter-remove:hover {
+  color: #e5e5e5;
+}
+
+/* Always show filter section */
+.filter-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
 }

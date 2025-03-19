@@ -22,6 +22,7 @@ export type Database = {
           tags: string[] | null
           title: string
           title_language: string[]
+          translations: string[] | null
           updated_at: string
           user_id: string | null
         }
@@ -37,6 +38,7 @@ export type Database = {
           tags?: string[] | null
           title: string
           title_language: string[]
+          translations?: string[] | null
           updated_at?: string
           user_id?: string | null
         }
@@ -52,6 +54,7 @@ export type Database = {
           tags?: string[] | null
           title?: string
           title_language?: string[]
+          translations?: string[] | null
           updated_at?: string
           user_id?: string | null
         }
