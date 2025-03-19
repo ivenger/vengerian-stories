@@ -50,6 +50,41 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
   return data as BlogEntry;
 };
 
+// Fetch related translations for a post
+export const fetchRelatedTranslations = async (postId: string): Promise<BlogEntry[]> => {
+  try {
+    // First get the current post to access its translations array
+    const { data: currentPost, error: postError } = await supabase
+      .from('entries')
+      .select('translations')
+      .eq('id', postId)
+      .maybeSingle();
+    
+    if (postError) {
+      throw postError;
+    }
+    
+    if (!currentPost?.translations?.length) {
+      return [];
+    }
+    
+    // Fetch all posts that are in the translations array
+    const { data: relatedPosts, error: relatedError } = await supabase
+      .from('entries')
+      .select('*')
+      .in('id', currentPost.translations);
+    
+    if (relatedError) {
+      throw relatedError;
+    }
+    
+    return relatedPosts as BlogEntry[] || [];
+  } catch (error) {
+    console.error('Error fetching related translations:', error);
+    return [];
+  }
+};
+
 // Save a blog post (create or update)
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   // Make a copy to avoid modifying the original
@@ -73,6 +108,11 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
     postToSave.tags = [postToSave.tags];
   }
   
+  // Ensure translations is an array (if present)
+  if (postToSave.translations && !Array.isArray(postToSave.translations)) {
+    postToSave.translations = [postToSave.translations];
+  }
+  
   // Log the post being saved for debugging
   console.log('Saving post:', postToSave);
   
@@ -88,11 +128,87 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
     throw error;
   }
   
+  // After saving, update the related posts to include this post in their translations
+  if (postToSave.translations && postToSave.translations.length > 0) {
+    await updateRelatedTranslations(postToSave.id, postToSave.translations);
+  }
+  
   return data as BlogEntry;
+};
+
+// Helper function to update the translations array in related posts
+const updateRelatedTranslations = async (postId: string, relatedIds: string[]): Promise<void> => {
+  try {
+    // For each related post, add this post to its translations if not already there
+    for (const relatedId of relatedIds) {
+      // Get the current translations for the related post
+      const { data: relatedPost, error: getError } = await supabase
+        .from('entries')
+        .select('translations')
+        .eq('id', relatedId)
+        .maybeSingle();
+      
+      if (getError) {
+        console.error(`Error getting translations for post ${relatedId}:`, getError);
+        continue;
+      }
+      
+      // Create or update the translations array
+      let updatedTranslations = relatedPost?.translations || [];
+      if (!updatedTranslations.includes(postId)) {
+        updatedTranslations = [...updatedTranslations, postId];
+        
+        // Update the related post with the new translations array
+        const { error: updateError } = await supabase
+          .from('entries')
+          .update({ translations: updatedTranslations })
+          .eq('id', relatedId);
+        
+        if (updateError) {
+          console.error(`Error updating translations for post ${relatedId}:`, updateError);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error updating related translations:', error);
+  }
 };
 
 // Delete a blog post
 export const deletePost = async (id: string): Promise<void> => {
+  // First, remove this post from all related posts' translations
+  try {
+    // Get the post to get its translations
+    const { data: post, error: getError } = await supabase
+      .from('entries')
+      .select('translations')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (!getError && post?.translations) {
+      // For each related post, remove this post from its translations
+      for (const relatedId of post.translations) {
+        const { data: relatedPost, error: relatedError } = await supabase
+          .from('entries')
+          .select('translations')
+          .eq('id', relatedId)
+          .maybeSingle();
+        
+        if (!relatedError && relatedPost?.translations) {
+          const updatedTranslations = relatedPost.translations.filter(t => t !== id);
+          
+          await supabase
+            .from('entries')
+            .update({ translations: updatedTranslations })
+            .eq('id', relatedId);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error removing post from related translations:', error);
+  }
+  
+  // Now delete the post
   const { error } = await supabase
     .from('entries')
     .delete()
