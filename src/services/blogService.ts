@@ -142,3 +142,86 @@ export const fetchFilteredPosts = async (
     throw error;
   }
 };
+
+// Re-export fetchAllTags from tagService to maintain backward compatibility
+export { fetchAllTags } from "./tagService";
+
+// Fetch tags by language
+export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
+  try {
+    const allTags = await fetchAllTags();
+    
+    // For now, we're returning all tags regardless of language
+    // In a real implementation, you might filter tags based on language
+    return allTags;
+  } catch (error) {
+    console.error('Error fetching tags by language:', error);
+    throw error;
+  }
+};
+
+// Save tag
+export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('tags')
+      .insert({
+        name: tagName.trim(),
+        en: translations.en.trim() || tagName.trim(),
+        he: translations.he.trim() || null,
+        ru: translations.ru.trim() || null
+      });
+    
+    if (error) {
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error saving tag:', error);
+    throw error;
+  }
+};
+
+// Delete tag
+export const deleteTag = async (tagName: string): Promise<void> => {
+  try {
+    const { error } = await supabase
+      .from('tags')
+      .delete()
+      .eq('name', tagName);
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Also update posts that have this tag
+    const { data: postsWithTag, error: findError } = await supabase
+      .from('entries')
+      .select('id, tags')
+      .contains('tags', [tagName]);
+    
+    if (findError) {
+      throw findError;
+    }
+    
+    if (postsWithTag && postsWithTag.length > 0) {
+      for (const post of postsWithTag) {
+        const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
+        
+        const { error: updateError } = await supabase
+          .from('entries')
+          .update({ tags: updatedTags })
+          .eq('id', post.id);
+        
+        if (updateError) {
+          throw updateError;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting tag:', error);
+    throw error;
+  }
+};
+
+// Now let's also add the fetchBucketImages function from imageService
+export { uploadImage, fetchBucketImages } from "../services/imageService";
