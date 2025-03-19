@@ -1,7 +1,5 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Tag, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface MarkdownPreviewProps {
   title: string;
@@ -10,13 +8,6 @@ interface MarkdownPreviewProps {
   content: string;
   tags: string[];
   imageUrl: string | null;
-}
-
-interface TagTranslation {
-  name: string;
-  en: string | null;
-  he: string | null;
-  ru: string | null;
 }
 
 // Function to convert markdown to HTML
@@ -79,13 +70,6 @@ const formatDateForRTL = (date: string): string => {
   return date;
 };
 
-// Get language code from language string
-const getLanguageCode = (language: string): string => {
-  if (language === 'Hebrew') return 'he';
-  if (language === 'Russian') return 'ru';
-  return 'en'; // Default to English
-};
-
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ 
   title, 
   date, 
@@ -94,61 +78,12 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   tags,
   imageUrl 
 }) => {
-  const [translatedTags, setTranslatedTags] = useState<{[key: string]: string}>({});
-  
-  // Fetch tag translations when component mounts
-  useEffect(() => {
-    const fetchTagTranslations = async () => {
-      if (!tags || tags.length === 0) return;
-      
-      try {
-        const { data, error } = await supabase
-          .from('tags')
-          .select('name, en, he, ru')
-          .in('name', tags);
-        
-        if (error) {
-          console.error('Error fetching tag translations:', error);
-          return;
-        }
-        
-        // Create a mapping of tag name to translation
-        const translations: {[key: string]: string} = {};
-        const langCode = getLanguageCode(language);
-        
-        (data as TagTranslation[]).forEach(tag => {
-          // Use the appropriate translation based on language code
-          if (langCode === 'he' && tag.he) {
-            translations[tag.name] = tag.he;
-          } else if (langCode === 'ru' && tag.ru) {
-            translations[tag.name] = tag.ru;
-          } else if (langCode === 'en' && tag.en) {
-            translations[tag.name] = tag.en;
-          } else {
-            translations[tag.name] = tag.name; // Fallback to original name
-          }
-        });
-        
-        setTranslatedTags(translations);
-      } catch (err) {
-        console.error('Error in fetchTagTranslations:', err);
-      }
-    };
-    
-    fetchTagTranslations();
-  }, [tags, language]);
-  
   const isRtlTitle = hasHebrew(title);
   const isRtlContent = hasHebrew(content);
   const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
   
   // Format date for RTL display if needed
   const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
-  
-  // Get the translated tag or fallback to original tag name
-  const getTranslatedTag = (tagName: string): string => {
-    return translatedTags[tagName] || tagName;
-  };
 
   return (
     <article className="max-w-3xl mx-auto">
@@ -194,7 +129,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
                   className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
                 >
                   <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                  {getTranslatedTag(tag)}
+                  {tag}
                 </span>
               ))}
             </div>

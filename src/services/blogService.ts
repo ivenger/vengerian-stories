@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -102,10 +101,10 @@ export const deletePost = async (id: string): Promise<void> => {
 // Fetch posts filtered by tags and/or language - uses OR logic for languages
 export const fetchFilteredPosts = async (
   tags?: string[], 
-  languages?: string[]
+  language?: string
 ): Promise<BlogEntry[]> => {
   try {
-    console.log("Filtering posts with tags:", tags, "and languages:", languages);
+    console.log("Filtering posts with tags:", tags, "and language:", language);
     
     let query = supabase
       .from('entries')
@@ -116,14 +115,8 @@ export const fetchFilteredPosts = async (
       query = query.overlaps('tags', tags);
     }
     
-    if (languages && languages.length > 0) {
-      // Create a filter condition for each language
-      const languageFilters = languages.map(lang => `{${lang}}`);
-      
-      // Use or() to combine multiple language filters
-      query = query.or(
-        languageFilters.map(filter => `language.cs.${filter}`).join(',')
-      );
+    if (language) {
+      query = query.filter('language', 'cs', `{${language}}`);
     }
     
     query = query.order('date', { ascending: false });
