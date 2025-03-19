@@ -59,12 +59,17 @@ const About = () => {
           ) : (
             <div className="space-y-6">
               {authorImage && (
-                <div className="mb-6 flex justify-center">
-                  <img 
-                    src={authorImage} 
-                    alt="Author" 
-                    className="rounded-full w-40 h-40 object-cover border-4 border-gray-200 shadow-lg"
-                  />
+                <div className="mb-6">
+                  <div className="overflow-hidden border border-gray-200 shadow-md">
+                    <img 
+                      src={authorImage} 
+                      alt="Author" 
+                      className="w-full h-auto object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
+                      Illustration by Levi Pritzker
+                    </div>
+                  </div>
                 </div>
               )}
               

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BlogEntry } from '@/types/blogTypes';
@@ -34,9 +35,18 @@ const formatDateForRTL = (date: string): string => {
 const getLanguageCode = (post: BlogEntry): string => {
   if (!post.language || post.language.length === 0) return 'en';
   
+  // Check for Hebrew first, then Russian, then default to English
   if (post.language.includes('Hebrew')) return 'he';
   if (post.language.includes('Russian')) return 'ru';
   return 'en'; // Default to English
+};
+
+// Generate language-specific tag for the post based on content language
+const getLanguageTag = (post: BlogEntry): string | null => {
+  if (!post.language || post.language.length === 0) return null;
+  
+  // Return the first language as a tag
+  return post.language[0];
 };
 
 interface BlogCardProps {
@@ -58,6 +68,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   
   // Get language code for selecting appropriate tag translations
   const languageCode = getLanguageCode(post);
+  
+  // Get language-specific tag
+  const languageTag = getLanguageTag(post);
   
   return (
     <div className="flex justify-center w-full">
@@ -95,19 +108,28 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
               )}
               
               <div className="mt-auto w-full">
-                {tags && tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {tags.map((tag, index) => (
-                      <span 
-                        key={index} 
-                        className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
-                        dir={isRtlTitle ? 'rtl' : 'ltr'}
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {/* Show language tag first */}
+                  {languageTag && (
+                    <span 
+                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
+                      dir={isRtlTitle ? 'rtl' : 'ltr'}
+                    >
+                      {languageTag}
+                    </span>
+                  )}
+                  
+                  {/* Show other tags */}
+                  {tags && tags.length > 0 && tags.map((tag, index) => (
+                    <span 
+                      key={index} 
+                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
+                      dir={isRtlTitle ? 'rtl' : 'ltr'}
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 
                 <div className={`flex items-center text-sm text-gray-500 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
                   <Calendar size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
