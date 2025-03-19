@@ -49,7 +49,6 @@ const TagManagement: React.FC = () => {
     try {
       setLoading(true);
       
-      // Fetch tag records from the tags table
       const { data: tagRecords, error } = await supabase
         .from('tags')
         .select('*');
@@ -61,7 +60,6 @@ const TagManagement: React.FC = () => {
       const allTags = (tagRecords as TagRecord[]).map(record => record.name);
       setTags(allTags);
       
-      // Initialize tag data structure from tag records
       const initialTagData = (tagRecords as TagRecord[]).map(record => ({
         name: record.name,
         translations: {
@@ -104,7 +102,6 @@ const TagManagement: React.FC = () => {
     }
 
     try {
-      // Insert into the tags table
       const { error } = await supabase
         .from('tags')
         .insert({
@@ -118,7 +115,6 @@ const TagManagement: React.FC = () => {
         throw error;
       }
       
-      // Update local state
       setTags([...tags, newTagData.name.trim()]);
       setTagData([...tagData, {
         name: newTagData.name.trim(),
@@ -129,7 +125,6 @@ const TagManagement: React.FC = () => {
         }
       }]);
       
-      // Reset the new tag form
       setNewTagData({
         name: '',
         translations: {
@@ -156,7 +151,6 @@ const TagManagement: React.FC = () => {
   const handleDeleteTag = async (tagName: string) => {
     if (window.confirm(`Are you sure you want to delete tag "${tagName}"? This will remove it from all posts.`)) {
       try {
-        // Delete from tags table
         const { error } = await supabase
           .from('tags')
           .delete()
@@ -166,10 +160,30 @@ const TagManagement: React.FC = () => {
           throw error;
         }
         
-        // Also update any posts that have this tag
-        await deleteTag(tagName);
+        const { data: postsWithTag, error: findError } = await supabase
+          .from('entries')
+          .select('id, tags')
+          .contains('tags', [tagName]);
         
-        // Update local state
+        if (findError) {
+          throw findError;
+        }
+        
+        if (postsWithTag && postsWithTag.length > 0) {
+          for (const post of postsWithTag) {
+            const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
+            
+            const { error: updateError } = await supabase
+              .from('entries')
+              .update({ tags: updatedTags })
+              .eq('id', post.id);
+            
+            if (updateError) {
+              throw updateError;
+            }
+          }
+        }
+        
         setTags(tags.filter(t => t !== tagName));
         setTagData(tagData.filter(t => t.name !== tagName));
         
@@ -216,7 +230,6 @@ const TagManagement: React.FC = () => {
     if (!editingTagData) return;
     
     try {
-      // Update tag in database
       const { error } = await supabase
         .from('tags')
         .update({
@@ -231,9 +244,7 @@ const TagManagement: React.FC = () => {
         throw error;
       }
       
-      // If the name has changed, also update any posts that use this tag
       if (editingTag !== editingTagData.name) {
-        // Find posts with the old tag name
         const { data: postsWithTag, error: findError } = await supabase
           .from('entries')
           .select('id, tags')
@@ -244,30 +255,23 @@ const TagManagement: React.FC = () => {
         }
         
         if (postsWithTag && postsWithTag.length > 0) {
-          // Update each post to replace the old tag with the new one
-          const updates = postsWithTag.map(post => {
+          for (const post of postsWithTag) {
             const updatedTags = (post.tags || []).map(tag => 
               tag === editingTag ? editingTagData.name : tag
             );
             
-            return {
-              id: post.id,
-              tags: updatedTags
-            };
-          });
-          
-          // Execute all updates
-          const { error: updateError } = await supabase
-            .from('entries')
-            .upsert(updates);
-          
-          if (updateError) {
-            throw updateError;
+            const { error: updateError } = await supabase
+              .from('entries')
+              .update({ tags: updatedTags })
+              .eq('id', post.id);
+            
+            if (updateError) {
+              throw updateError;
+            }
           }
         }
       }
       
-      // Update local state
       setTagData(tagData.map(t => t.name === editingTag ? editingTagData : t));
       setTags(tags.map(t => t === editingTag ? editingTagData.name : t));
       

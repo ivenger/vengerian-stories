@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -29,6 +30,40 @@ interface MarkdownEditorProps {
   onSave: (post: BlogEntry) => void;
   onCancel: () => void;
 }
+
+// Function to convert markdown to HTML
+const getFormattedContent = (markdown: string): string => {
+  // This is a very simple markdown parsing implementation
+  // In a real app, you might use a library like marked or markdown-it
+  let html = markdown;
+  
+  // Convert headers
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  // Convert bold
+  html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+  
+  // Convert italic
+  html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+  
+  // Convert links
+  html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  // Convert images
+  html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img src="$2" alt="$1" class="w-full max-h-96 object-contain my-4" />');
+  
+  // Convert paragraphs
+  html = html.replace(/^\s*(\n)?(.+)/gim, function(m) {
+    return /\<(\/)?(h1|h2|h3|ul|ol|li|blockquote|pre|img)/.test(m) ? m : '<p>' + m + '</p>';
+  });
+  
+  // Convert line breaks
+  html = html.replace(/\n/gim, '<br>');
+  
+  return html;
+};
 
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
   const { toast } = useToast();
@@ -504,7 +539,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             </div>
           )}
           
-          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent() }} />
+          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }} />
         </div>
       )}
     </div>

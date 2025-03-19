@@ -211,21 +211,19 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     
     if (postsWithTag && postsWithTag.length > 0) {
       // Update each post to remove the tag
-      const updates = postsWithTag.map(post => {
-        return {
-          id: post.id,
-          tags: (post.tags || []).filter(tag => tag !== tagName)
-        };
-      });
-      
-      // Execute all updates
-      const { error: updateError } = await supabase
-        .from('entries')
-        .upsert(updates);
-      
-      if (updateError) {
-        console.error('Error removing tag from posts:', updateError);
-        throw updateError;
+      for (const post of postsWithTag) {
+        const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
+        
+        // Execute update one by one
+        const { error: updateError } = await supabase
+          .from('entries')
+          .update({ tags: updatedTags })
+          .eq('id', post.id);
+        
+        if (updateError) {
+          console.error('Error removing tag from post:', updateError);
+          throw updateError;
+        }
       }
     }
     
