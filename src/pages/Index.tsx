@@ -137,21 +137,19 @@ const Index = () => {
                   <div className="flex flex-col gap-4">
                     <div>
                       <h3 className="text-sm font-medium mb-2">Filter by Language</h3>
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
                         {languages.map(lang => (
-                          <div key={lang} className="flex items-center space-x-2">
-                            <Checkbox 
-                              id={`lang-${lang}`} 
-                              checked={selectedLanguages.includes(lang)} 
-                              onCheckedChange={() => toggleLanguage(lang)}
-                            />
-                            <label 
-                              htmlFor={`lang-${lang}`}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                              {lang}
-                            </label>
-                          </div>
+                          <button 
+                            key={lang} 
+                            onClick={() => toggleLanguage(lang)} 
+                            className={`px-3 py-1 text-sm rounded-full flex items-center ${
+                              selectedLanguages.includes(lang) 
+                                ? "bg-gray-400 text-white" 
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                          >
+                            {lang}
+                          </button>
                         ))}
                       </div>
                     </div>

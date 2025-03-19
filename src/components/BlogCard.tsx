@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BlogEntry } from '@/types/blogTypes';
@@ -41,14 +40,6 @@ const getLanguageCode = (post: BlogEntry): string => {
   return 'en'; // Default to English
 };
 
-// Generate language-specific tag for the post based on content language
-const getLanguageTag = (post: BlogEntry): string | null => {
-  if (!post.language || post.language.length === 0) return null;
-  
-  // Return the first language as a tag
-  return post.language[0];
-};
-
 interface BlogCardProps {
   post: BlogEntry;
 }
@@ -65,12 +56,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   
   // Format date for RTL display if needed
   const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
-  
-  // Get language code for selecting appropriate tag translations
-  const languageCode = getLanguageCode(post);
-  
-  // Get language-specific tag
-  const languageTag = getLanguageTag(post);
   
   return (
     <div className="flex justify-center w-full">
@@ -109,17 +94,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
               
               <div className="mt-auto w-full">
                 <div className="flex flex-wrap gap-1 mb-2">
-                  {/* Show language tag first */}
-                  {languageTag && (
-                    <span 
-                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
-                      dir={isRtlTitle ? 'rtl' : 'ltr'}
-                    >
-                      {languageTag}
-                    </span>
-                  )}
-                  
-                  {/* Show other tags */}
+                  {/* Show tags with appropriate language */}
                   {tags && tags.length > 0 && tags.map((tag, index) => (
                     <span 
                       key={index} 

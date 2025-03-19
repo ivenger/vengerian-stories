@@ -60,7 +60,7 @@ const About = () => {
             <div className="space-y-6">
               {authorImage && (
                 <div className="mb-6">
-                  <div className="overflow-hidden border border-gray-200 shadow-md">
+                  <div className="overflow-hidden border border-gray-200 shadow-md relative">
                     <img 
                       src={authorImage} 
                       alt="Author" 
