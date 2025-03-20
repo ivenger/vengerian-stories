@@ -116,11 +116,13 @@ export const fetchFilteredPosts = async (
       query = query.overlaps('tags', tags);
     }
     
-    // Handle multiple languages using OR logic
+    // Handle multiple languages using OR logic with direct filter
     if (languages && languages.length > 0) {
-      // This creates a condition like: language && (language.cs.{English} || language.cs.{Russian} || ...)
-      const languagesFilter = languages.map(lang => `language.cs.{${lang}}`).join(',');
-      query = query.or(languagesFilter);
+      const filters = languages.map(lang => `language.cs.{${lang}}`);
+      const filterString = filters.join(',');
+      
+      console.log("Using filter string:", filterString);
+      query = query.or(filterString);
     }
     
     query = query.order('date', { ascending: false });

@@ -6,8 +6,7 @@ import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
 import { BlogEntry } from "../types/blogTypes";
 import { useToast } from "@/components/ui/use-toast";
 import { Tag, X, Filter } from "lucide-react";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 const Index = () => {
   const [posts, setPosts] = useState<BlogEntry[]>([]);
@@ -120,6 +119,7 @@ const Index = () => {
                 </button>
               </DialogTrigger>
               <DialogContent>
+                <DialogTitle>Filter Stories</DialogTitle>
                 <div className="p-4">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-semibold">Filter Stories</h3>
