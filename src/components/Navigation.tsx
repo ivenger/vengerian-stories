@@ -2,12 +2,15 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, InfoIcon, Settings } from "lucide-react";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "../components/AuthProvider";
 import LanguageSelector from "./LanguageSelector";
 
 const Navigation = () => {
-  const { isAdmin } = useAuth();
+  const { user, session } = useAuth();
   const location = useLocation();
+  
+  // Determine if user is admin (you could add proper role check here)
+  const isAdmin = !!user;
 
   const isActive = (path: string) => {
     return location.pathname === path;
