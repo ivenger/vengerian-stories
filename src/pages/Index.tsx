@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import BlogCard from "../components/BlogCard";
 import Navigation from "../components/Navigation";
 import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
@@ -7,13 +7,17 @@ import { BlogEntry } from "../types/blogTypes";
 import { useToast } from "@/components/ui/use-toast";
 import { Tag, X, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { LanguageContext } from "../App";
+import LanguageSelector from "../components/LanguageSelector";
 
 const Index = () => {
+  // Get language context
+  const { currentLanguage } = useContext(LanguageContext);
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(["Russian"]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
@@ -28,8 +32,20 @@ const Index = () => {
     
     if (savedLanguages) {
       setSelectedLanguages(JSON.parse(savedLanguages));
+    } else {
+      // Use the current language from context as default
+      setSelectedLanguages([currentLanguage]);
     }
-  }, []);
+  }, [currentLanguage]);
+
+  // When current language changes, update the selected languages filter
+  useEffect(() => {
+    // Only update if there's not already a selection saved
+    if (selectedLanguages.length === 0 || 
+        (selectedLanguages.length === 1 && selectedLanguages[0] !== currentLanguage)) {
+      setSelectedLanguages([currentLanguage]);
+    }
+  }, [currentLanguage, selectedLanguages]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
@@ -91,12 +107,12 @@ const Index = () => {
 
   const clearFilters = () => {
     setSelectedTags([]);
-    setSelectedLanguages(["Russian"]);
+    setSelectedLanguages([currentLanguage]);
   };
 
   // Check if any filters are active
   const hasActiveFilters = selectedTags.length > 0 || 
-    (selectedLanguages.length !== 1 || selectedLanguages[0] !== "Russian");
+    (selectedLanguages.length !== 1 || selectedLanguages[0] !== currentLanguage);
 
   return <div className="min-h-screen bg-gray-50">
       <Navigation />

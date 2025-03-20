@@ -1,176 +1,66 @@
 
-import { useState } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, LogIn, LogOut } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "./AuthProvider";
+import React from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Home, InfoIcon, Settings } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import LanguageSelector from "./LanguageSelector";
 
 const Navigation = () => {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { isAdmin } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
-  const toggleMenu = () => {
-    setMobileMenuOpen(!mobileMenuOpen);
-  };
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      toast({
-        title: "Success",
-        description: "You have been signed out",
-      });
-      navigate("/");
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sign out",
-        variant: "destructive",
-      });
-    }
-  };
-
   return (
-    <nav className="py-6 mb-8 border-b border-gray-200">
-      <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-2xl font-caraterre tracking-tight">
-          Vengerian Stories
-        </Link>
-
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex space-x-8">
-          <Link 
-            to="/" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/') ? 'font-medium' : ''
-            }`}
-          >
-            Stories
-            {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-          </Link>
-          <Link 
-            to="/about" 
-            className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-              isActive('/about') ? 'font-medium' : ''
-            }`}
-          >
-            About
-            {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-          </Link>
-          {user && (
-            <Link 
-              to="/admin" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/admin') ? 'font-medium' : ''
-              }`}
-            >
-              Admin
-              {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
-          )}
-          {user ? (
-            <button
-              onClick={handleSignOut}
-              className="text-gray-700 hover:text-black transition-colors flex items-center gap-1"
-            >
-              <LogOut size={16} />
-              Sign Out
-            </button>
-          ) : (
+    <nav className="bg-white shadow-sm">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex">
             <Link
-              to="/auth"
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 flex items-center gap-1 ${
-                isActive('/auth') ? 'font-medium' : ''
+              to="/"
+              className={`flex items-center px-2 py-1 text-sm font-medium rounded-md ${
+                isActive("/")
+                  ? "text-blue-600"
+                  : "text-gray-600 hover:text-blue-600"
               }`}
             >
-              <LogIn size={16} />
-              Sign In
-              {isActive('/auth') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+              <Home size={18} className="mr-1" />
+              <span>Home</span>
             </Link>
-          )}
-        </div>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={toggleMenu}
-          className="md:hidden text-gray-700 hover:text-black transition-colors"
-          aria-label="Toggle menu"
-        >
-          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden absolute top-16 left-0 right-0 bg-white z-10 py-4 px-6 border-b border-gray-200">
-          <div className="flex flex-col space-y-4">
-            <Link 
-              to="/" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/') ? 'font-medium' : ''
+            <Link
+              to="/about"
+              className={`ml-4 flex items-center px-2 py-1 text-sm font-medium rounded-md ${
+                isActive("/about")
+                  ? "text-blue-600"
+                  : "text-gray-600 hover:text-blue-600"
               }`}
-              onClick={() => setMobileMenuOpen(false)}
             >
-              Stories
-              {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+              <InfoIcon size={18} className="mr-1" />
+              <span>About</span>
             </Link>
-            <Link 
-              to="/about" 
-              className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                isActive('/about') ? 'font-medium' : ''
-              }`}
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              About
-              {isActive('/about') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-            </Link>
-            {user && (
-              <Link 
-                to="/admin" 
-                className={`text-gray-700 hover:text-black transition-colors relative pb-1 ${
-                  isActive('/admin') ? 'font-medium' : ''
-                }`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Admin
-                {isActive('/admin') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
-              </Link>
-            )}
-            {user ? (
-              <button
-                onClick={() => {
-                  handleSignOut();
-                  setMobileMenuOpen(false);
-                }}
-                className="text-gray-700 hover:text-black transition-colors flex items-center gap-1"
-              >
-                <LogOut size={16} />
-                Sign Out
-              </button>
-            ) : (
+          </div>
+          
+          <div className="flex items-center">
+            <LanguageSelector />
+            
+            {isAdmin && (
               <Link
-                to="/auth"
-                className={`text-gray-700 hover:text-black transition-colors relative pb-1 flex items-center gap-1 ${
-                  isActive('/auth') ? 'font-medium' : ''
+                to="/admin"
+                className={`ml-4 flex items-center px-2 py-1 text-sm font-medium rounded-md ${
+                  isActive("/admin")
+                    ? "text-blue-600"
+                    : "text-gray-600 hover:text-blue-600"
                 }`}
-                onClick={() => setMobileMenuOpen(false)}
               >
-                <LogIn size={16} />
-                Sign In
-                {isActive('/auth') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
+                <Settings size={18} className="mr-1" />
+                <span>Admin</span>
               </Link>
             )}
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 };
