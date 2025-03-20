@@ -124,6 +124,7 @@ export const fetchFilteredPosts = async (
       console.log("Using filter string:", filterString);
       query = query.or(filterString);
     }
+    // If no languages are selected, we still get all posts (no language filter applied)
     
     query = query.order('date', { ascending: false });
     

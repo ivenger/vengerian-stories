@@ -79,12 +79,11 @@ const Index = () => {
     }
   };
 
+  // Updated toggleLanguage to allow removing all languages
   const toggleLanguage = (language: string) => {
     if (selectedLanguages.includes(language)) {
-      // Don't allow removing the last language
-      if (selectedLanguages.length > 1) {
-        setSelectedLanguages(selectedLanguages.filter(l => l !== language));
-      }
+      // Allow removing even the last language
+      setSelectedLanguages(selectedLanguages.filter(l => l !== language));
     } else {
       setSelectedLanguages([...selectedLanguages, language]);
     }
@@ -184,14 +183,12 @@ const Index = () => {
                               className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center"
                             >
                               {lang}
-                              {selectedLanguages.length > 1 && (
-                                <button 
-                                  onClick={() => toggleLanguage(lang)} 
-                                  className="ml-1 text-white hover:text-gray-200"
-                                >
-                                  <X size={14} />
-                                </button>
-                              )}
+                              <button 
+                                onClick={() => toggleLanguage(lang)} 
+                                className="ml-1 text-white hover:text-gray-200"
+                              >
+                                <X size={14} />
+                              </button>
                             </span>
                           ))}
                           {selectedTags.map(tag => (
@@ -229,14 +226,12 @@ const Index = () => {
                     className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1"
                   >
                     {lang}
-                    {selectedLanguages.length > 1 && (
-                      <button 
-                        onClick={() => toggleLanguage(lang)} 
-                        className="ml-1 text-white hover:text-gray-200"
-                      >
-                        <X size={12} />
-                      </button>
-                    )}
+                    <button 
+                      onClick={() => toggleLanguage(lang)} 
+                      className="ml-1 text-white hover:text-gray-200"
+                    >
+                      <X size={12} />
+                    </button>
                   </span>
                 ))}
                 {selectedTags.map(tag => (
@@ -249,7 +244,7 @@ const Index = () => {
                       onClick={() => toggleTag(tag)} 
                       className="ml-1 text-white hover:text-gray-200"
                     >
-                      <X size={12} />
+                      <X size={14} />
                     </button>
                   </span>
                 ))}
