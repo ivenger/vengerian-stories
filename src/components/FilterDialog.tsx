@@ -31,10 +31,10 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
         </button>
       </DialogTrigger>
       <DialogContent>
-        <DialogTitle>Browse Stories</DialogTitle>
+        <DialogTitle>Filter stories</DialogTitle>
         <div className="p-4">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Story Options</h3>
+            
             {hasActiveFilters && <button onClick={clearFilters} className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
                 <X size={14} className="mr-1" />
                 Clear All
