@@ -7,7 +7,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Tag, X, Filter } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { LanguageContext } from "../App";
-import LanguageSelector from "../components/LanguageSelector";
+import MultilingualTitle from "../components/MultilingualTitle";
+
 const Index = () => {
   // Get language context
   const {
@@ -33,7 +34,6 @@ const Index = () => {
     if (savedLanguages) {
       setSelectedLanguages(JSON.parse(savedLanguages));
     } else {
-      // Use the current language from context as default
       setSelectedLanguages([currentLanguage]);
     }
   }, []);
@@ -67,7 +67,6 @@ const Index = () => {
       try {
         setLoading(true);
         const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
-        // Fixed bug: If no languages selected, pass undefined (show all languages)
         const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
         const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
         setPosts(filteredPosts);
@@ -92,10 +91,8 @@ const Index = () => {
     }
   };
 
-  // Fixed toggle language function to allow selecting no languages
   const toggleLanguage = (language: string) => {
     if (selectedLanguages.includes(language)) {
-      // Allow removing a language, even if it results in empty selection
       const newSelection = selectedLanguages.filter(l => l !== language);
       setSelectedLanguages(newSelection);
     } else {
@@ -104,19 +101,15 @@ const Index = () => {
   };
   const clearFilters = () => {
     setSelectedTags([]);
-    // When clearing filters, default to current language (not empty array)
     setSelectedLanguages([currentLanguage]);
   };
 
-  // Check if any filters are active
   const hasActiveFilters = selectedTags.length > 0 || selectedLanguages.length !== 1 || selectedLanguages[0] !== currentLanguage;
   return <div className="min-h-screen bg-gray-50">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
         <div className="mb-6 text-center relative">
-          <h1 className="font-caraterre tracking-tight text-5xl">
-            Vengerian Stories
-          </h1>
+          <MultilingualTitle />
           <div className="flex items-center justify-center gap-2">
             <p className="text-gray-600">
               Короткое, длиннее и странное
@@ -184,7 +177,6 @@ const Index = () => {
             </Dialog>
           </div>
           
-          {/* Only show filters section if there are active filters */}
           {hasActiveFilters && <div className="flex flex-wrap gap-2 justify-center mt-2">
               <div className="flex items-center">
                 <span className="text-sm text-gray-500 mr-2">Filters:</span>

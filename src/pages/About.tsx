@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from "react";
 import Navigation from "../components/Navigation";
 import { fetchAboutContent } from "../services/blogService";
 import { useToast } from "@/hooks/use-toast";
+import MultilingualTitle from "../components/MultilingualTitle";
 
 // Function to detect if text has Hebrew characters
 const hasHebrew = (text: string): boolean => {
@@ -50,7 +50,7 @@ const About = () => {
       
       <main className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-raleway font-semibold mb-8">About Me</h1>
+          <MultilingualTitle className="mb-8" />
           
           {loading ? (
             <div className="flex justify-center items-center h-64">

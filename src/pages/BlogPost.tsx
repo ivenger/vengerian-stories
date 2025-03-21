@@ -1,10 +1,10 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
 import { BlogEntry } from '../types/blogTypes';
 import Navigation from '../components/Navigation';
 import { Calendar, Tag } from 'lucide-react';
+import MultilingualTitle from '../components/MultilingualTitle';
 
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
@@ -98,6 +98,10 @@ const BlogPost = () => {
       <Navigation />
       
       <main className="container mx-auto px-4 py-8">
+        <div className="text-center mb-8">
+          <MultilingualTitle />
+        </div>
+        
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>

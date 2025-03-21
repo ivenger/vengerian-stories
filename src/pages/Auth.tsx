@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navigation from "../components/Navigation";
 import { useAuth } from "@/components/AuthProvider";
+import MultilingualTitle from "../components/MultilingualTitle";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -121,9 +122,10 @@ const Auth = () => {
       <main className="flex-grow container mx-auto px-4 py-8 flex items-center justify-center">
         <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
           <div className="text-center">
-            <h1 className="text-2xl font-bold">
+            <MultilingualTitle />
+            <h2 className="text-2xl font-bold mt-4">
               {isLogin ? "Sign in to your account" : "Create a new account"}
-            </h1>
+            </h2>
             <p className="mt-2 text-gray-600">
               {isLogin
                 ? "Enter your credentials to access Vengerian Stories"

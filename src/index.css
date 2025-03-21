@@ -1,14 +1,14 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;500;600;700&family=Marck+Script&family=Great+Vibes&display=swap');
 @import url('https://fonts.cdnfonts.com/css/caraterre');
 @import url('https://fonts.googleapis.com/css2?family=Carattere&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Rubik+Pixels&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
- 
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -81,13 +81,11 @@
     @apply bg-background text-foreground;
   }
   
-  /* Ensure all dialogs and popovers have white backgrounds */
   [role="dialog"], .popover-content {
     background-color: white !important;
     z-index: 50;
   }
 
-  /* Apply Raleway font to all headings */
   h1, h2, h3, h4, h5, h6 {
     @apply font-raleway font-semibold;
   }
@@ -97,29 +95,22 @@
   font-family: 'Dancing Script', 'Great Vibes', cursive;
 }
 
-/* Update Cyrillic script font to use Great Vibes first */
 .font-cursive-cyrillic {
   font-family: 'Great Vibes', 'Dancing Script', cursive;
 }
 
-/* Add Caraterre font class */
 .font-caraterre {
   font-family: 'Caraterre', 'Carattere', sans-serif;
 }
 
-/* Add Carattere cursive font class */
 .font-carattere {
   font-family: 'Carattere', cursive;
 }
 
-/* Add Pacifico font class with specific sizes */
 .font-pacifico {
   font-family: 'Pacifico', cursive;
 }
 
-/* Default for blog listing (38px) and detail (44px) pages are now handled inline */
-
-/* RTL text support */
 [dir="rtl"] {
   text-align: right;
 }
@@ -128,7 +119,6 @@
   text-align: left;
 }
 
-/* Legacy RTL class for backward compatibility */
 .rtl {
   direction: rtl;
   text-align: right;
@@ -141,12 +131,10 @@
   unicode-bidi: bidi-override;
 }
 
-/* Specific RTL styling for numbers in RTL context */
 [dir="rtl"] {
   font-feature-settings: "tnum" on;
 }
 
-/* Enhanced styling for the filter modal */
 .dialog-content {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   border-radius: 10px;
@@ -159,7 +147,6 @@
   color: #666;
 }
 
-/* Tag and language pill styles */
 .filter-pill {
   transition: all 0.2s ease;
   display: inline-flex;
@@ -185,7 +172,6 @@
   color: #e5e5e5;
 }
 
-/* Always show filter section */
 .filter-section {
   display: flex;
   flex-wrap: wrap;
@@ -194,12 +180,10 @@
   margin-top: 0.5rem;
 }
 
-/* Style for markdown content */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
   @apply font-raleway font-semibold;
 }
 
-/* Style for English markdown titles */
 .prose:not([dir="rtl"]) h1, 
 .prose:not([dir="rtl"]) h2 {
   font-family: 'Pacifico', cursive;

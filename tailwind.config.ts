@@ -25,6 +25,7 @@ const config = {
         'carattere': ['Carattere', 'cursive'],
         'raleway': ['Raleway', 'sans-serif'],
         'pacifico': ['Pacifico', 'cursive'],
+        'rubik-pixels': ['Rubik Pixels', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
