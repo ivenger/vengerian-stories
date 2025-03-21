@@ -50,7 +50,7 @@ const About = () => {
       
       <main className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-caraterre mb-8">About Me</h1>
+          <h1 className="text-3xl md:text-4xl font-raleway font-semibold mb-8">About Me</h1>
           
           {loading ? (
             <div className="flex justify-center items-center h-64">

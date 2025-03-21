@@ -1,4 +1,3 @@
-
 import type { Config } from "tailwindcss";
 
 const config = {
@@ -24,6 +23,7 @@ const config = {
         'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
         'caraterre': ['Caraterre', 'sans-serif'],
         'carattere': ['Carattere', 'cursive'],
+        'raleway': ['Raleway', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
