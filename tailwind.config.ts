@@ -24,6 +24,7 @@ const config = {
         'caraterre': ['Caraterre', 'sans-serif'],
         'carattere': ['Carattere', 'cursive'],
         'raleway': ['Raleway', 'sans-serif'],
+        'pacifico': ['Pacifico', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",

@@ -3,6 +3,7 @@
 @import url('https://fonts.cdnfonts.com/css/caraterre');
 @import url('https://fonts.googleapis.com/css2?family=Carattere&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Raleway:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -111,6 +112,12 @@
   font-family: 'Carattere', cursive;
 }
 
+/* Add Pacifico font class for English titles */
+.font-pacifico {
+  font-family: 'Pacifico', cursive;
+  font-size: 48px;
+}
+
 /* RTL text support */
 [dir="rtl"] {
   text-align: right;
@@ -189,4 +196,11 @@
 /* Style for markdown content */
 .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
   @apply font-raleway font-semibold;
+}
+
+/* Style for English markdown titles */
+.prose:not([dir="rtl"]) h1, 
+.prose:not([dir="rtl"]) h2 {
+  font-family: 'Pacifico', cursive;
+  font-size: 48px;
 }

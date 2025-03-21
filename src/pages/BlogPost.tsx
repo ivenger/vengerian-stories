@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
@@ -80,9 +81,14 @@ const BlogPost = () => {
   // Determine if the content needs RTL
   const isRtlContent = post && hasHebrew(post.content);
   const isRtlTitle = post && hasHebrew(post.title);
+  const hasCyrillicTitle = post && hasCyrillic(post.title);
 
   // Determine the appropriate font class based on the content
-  const titleFontClass = post && hasCyrillic(post.title) ? 'font-cursive-cyrillic' : 'font-cursive';
+  const getTitleFontClass = () => {
+    if (isRtlTitle) return 'font-raleway font-semibold';
+    if (hasCyrillicTitle) return 'font-cursive-cyrillic';
+    return 'font-pacifico'; // English titles use Pacifico
+  };
   
   // Format date for RTL display if needed
   const displayDate = post && isRtlTitle ? formatDateForRTL(post.date) : post?.date;
@@ -131,7 +137,7 @@ const BlogPost = () => {
               
               <div className="flex-grow">
                 <h1 
-                  className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                  className={`${getTitleFontClass()} mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                   dir={isRtlTitle ? 'rtl' : 'ltr'}
                 >
                   {post.title}

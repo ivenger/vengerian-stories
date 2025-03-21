@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BlogEntry } from '@/types/blogTypes';
@@ -50,6 +51,14 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   // Determine text direction based on language
   const isRtlTitle = hasHebrew(title);
   const isRtlExcerpt = excerpt ? hasHebrew(excerpt) : false;
+  const hasCyrillicText = hasCyrillic(title);
+  
+  // Get font class based on language
+  const getTitleFontClass = () => {
+    if (isRtlTitle) return 'font-raleway font-semibold';
+    if (hasCyrillicText) return 'font-cursive-cyrillic';
+    return 'font-pacifico'; // English titles use Pacifico
+  };
   
   // Format date for RTL display if needed
   const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
@@ -74,7 +83,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
               <h2 
-                className={`font-raleway font-semibold text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                className={`${getTitleFontClass()} text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                 dir={isRtlTitle ? 'rtl' : 'ltr'}
               >
                 {title}
