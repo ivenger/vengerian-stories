@@ -86,8 +86,8 @@ const BlogPost = () => {
   // Determine the appropriate font class based on the content
   const getTitleFontClass = () => {
     if (isRtlTitle) return 'font-raleway font-semibold';
-    if (hasCyrillicTitle) return 'font-cursive-cyrillic';
-    return 'font-pacifico'; // English titles use Pacifico
+    // Both English and Cyrillic titles now use Pacifico at 44px
+    return 'font-pacifico text-[44px]';
   };
   
   // Format date for RTL display if needed

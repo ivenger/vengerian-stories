@@ -86,8 +86,8 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
   // Get font class based on language
   const getTitleFontClass = () => {
     if (isRtlTitle) return 'font-raleway font-semibold';
-    if (hasCyrillicTitle) return 'font-cursive-cyrillic';
-    return 'font-pacifico'; // English titles use Pacifico
+    // Both English and Cyrillic titles now use Pacifico
+    return 'font-pacifico text-[44px]'; // 44px for MarkdownPreview
   };
   
   // Format date for RTL display if needed

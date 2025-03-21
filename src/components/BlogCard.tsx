@@ -56,8 +56,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   // Get font class based on language
   const getTitleFontClass = () => {
     if (isRtlTitle) return 'font-raleway font-semibold';
-    if (hasCyrillicText) return 'font-cursive-cyrillic';
-    return 'font-pacifico'; // English titles use Pacifico
+    // Both English and Cyrillic titles now use Pacifico
+    return 'font-pacifico text-[38px]'; // 38px font size for Stories page
   };
   
   // Format date for RTL display if needed
@@ -83,7 +83,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
               <h2 
-                className={`${getTitleFontClass()} text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                className={`${getTitleFontClass()} text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                 dir={isRtlTitle ? 'rtl' : 'ltr'}
               >
                 {title}

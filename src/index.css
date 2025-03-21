@@ -112,11 +112,12 @@
   font-family: 'Carattere', cursive;
 }
 
-/* Add Pacifico font class for English titles */
+/* Add Pacifico font class with specific sizes */
 .font-pacifico {
   font-family: 'Pacifico', cursive;
-  font-size: 48px;
 }
+
+/* Default for blog listing (38px) and detail (44px) pages are now handled inline */
 
 /* RTL text support */
 [dir="rtl"] {
@@ -202,5 +203,5 @@
 .prose:not([dir="rtl"]) h1, 
 .prose:not([dir="rtl"]) h2 {
   font-family: 'Pacifico', cursive;
-  font-size: 48px;
+  font-size: 44px;
 }

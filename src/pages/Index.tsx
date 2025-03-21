@@ -36,16 +36,15 @@ const Index = () => {
       // Use the current language from context as default
       setSelectedLanguages([currentLanguage]);
     }
-  }, [currentLanguage]);
+  }, []);
 
   // When current language changes, update the selected languages filter
+  // but only if no language has been explicitly selected by the user
   useEffect(() => {
-    // Only update if there's not already a selection saved
-    if (selectedLanguages.length === 0 || 
-        (selectedLanguages.length === 1 && selectedLanguages[0] !== currentLanguage)) {
+    if (selectedLanguages.length === 0) {
       setSelectedLanguages([currentLanguage]);
     }
-  }, [currentLanguage, selectedLanguages]);
+  }, [currentLanguage]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
@@ -70,6 +69,7 @@ const Index = () => {
       try {
         setLoading(true);
         const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
+        // Fixed bug: If no languages selected, pass undefined (show all languages)
         const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
         const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
         setPosts(filteredPosts);
@@ -95,11 +95,12 @@ const Index = () => {
     }
   };
 
-  // Updated toggleLanguage to allow removing all languages
+  // Fixed toggle language function to allow selecting no languages
   const toggleLanguage = (language: string) => {
     if (selectedLanguages.includes(language)) {
-      // Allow removing even the last language
-      setSelectedLanguages(selectedLanguages.filter(l => l !== language));
+      // Allow removing a language, even if it results in empty selection
+      const newSelection = selectedLanguages.filter(l => l !== language);
+      setSelectedLanguages(newSelection);
     } else {
       setSelectedLanguages([...selectedLanguages, language]);
     }
@@ -107,6 +108,7 @@ const Index = () => {
 
   const clearFilters = () => {
     setSelectedTags([]);
+    // When clearing filters, default to current language (not empty array)
     setSelectedLanguages([currentLanguage]);
   };
 
