@@ -1,110 +1,31 @@
-import { useEffect, useState, useContext } from "react";
-import BlogCard from "../components/BlogCard";
+
+import React, { useContext } from "react";
 import Navigation from "../components/Navigation";
-import { fetchFilteredPosts, fetchAllTags } from "../services/blogService";
-import { BlogEntry } from "../types/blogTypes";
-import { useToast } from "@/components/ui/use-toast";
-import { Tag, X, Filter } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Filter } from "lucide-react";
 import { LanguageContext } from "../App";
 import MultilingualTitle from "../components/MultilingualTitle";
+import FilterDialog from "../components/FilterDialog";
+import ActiveFilters from "../components/ActiveFilters";
+import StoriesList from "../components/StoriesList";
+import { useStoryFilters } from "../hooks/useStoryFilters";
 
 const Index = () => {
   // Get language context
+  const { currentLanguage } = useContext(LanguageContext);
+  
+  // Use our custom hook to handle all filter logic
   const {
-    currentLanguage
-  } = useContext(LanguageContext);
-  const [posts, setPosts] = useState<BlogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
-  const {
-    toast
-  } = useToast();
-  const languages = ["English", "Hebrew", "Russian"];
-
-  // Load saved filters from localStorage on initial render
-  useEffect(() => {
-    const savedTags = localStorage.getItem('selectedTags');
-    const savedLanguages = localStorage.getItem('selectedLanguages');
-    if (savedTags) {
-      setSelectedTags(JSON.parse(savedTags));
-    }
-    if (savedLanguages) {
-      setSelectedLanguages(JSON.parse(savedLanguages));
-    } else {
-      setSelectedLanguages([currentLanguage]);
-    }
-  }, []);
-
-  // When current language changes, update the selected languages filter
-  // but only if no language has been explicitly selected by the user
-  useEffect(() => {
-    if (selectedLanguages.length === 0) {
-      setSelectedLanguages([currentLanguage]);
-    }
-  }, [currentLanguage]);
-
-  // Save filters to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
-    localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
-  }, [selectedTags, selectedLanguages]);
-  useEffect(() => {
-    const loadTags = async () => {
-      try {
-        const tags = await fetchAllTags();
-        setAllTags(tags);
-      } catch (error) {
-        console.error("Failed to load tags:", error);
-      }
-    };
-    loadTags();
-  }, []);
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        setLoading(true);
-        const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
-        const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
-        const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
-        setPosts(filteredPosts);
-      } catch (error) {
-        console.error("Failed to load posts:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load blog posts. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadPosts();
-  }, [selectedTags, selectedLanguages, toast]);
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
-  const toggleLanguage = (language: string) => {
-    if (selectedLanguages.includes(language)) {
-      const newSelection = selectedLanguages.filter(l => l !== language);
-      setSelectedLanguages(newSelection);
-    } else {
-      setSelectedLanguages([...selectedLanguages, language]);
-    }
-  };
-  const clearFilters = () => {
-    setSelectedTags([]);
-    setSelectedLanguages([currentLanguage]);
-  };
-
-  const hasActiveFilters = selectedTags.length > 0 || selectedLanguages.length !== 1 || selectedLanguages[0] !== currentLanguage;
+    posts,
+    loading,
+    allTags,
+    selectedTags,
+    selectedLanguages,
+    toggleTag,
+    toggleLanguage,
+    clearFilters,
+    hasActiveFilters,
+    languages
+  } = useStoryFilters();
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -117,100 +38,35 @@ const Index = () => {
               Короткое, длиннее и странное
             </p>
             
-            <Dialog>
-              <DialogTrigger asChild>
-                <button className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm">
-                  <Filter size={14} className="text-gray-400" />
-                  <span className="hidden sm:inline">Browse</span>
-                </button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogTitle>Browse Stories</DialogTitle>
-                <div className="p-4">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">Story Options</h3>
-                    {hasActiveFilters && <button onClick={clearFilters} className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
-                        <X size={14} className="mr-1" />
-                        Clear All
-                      </button>}
-                  </div>
-                
-                  <div className="flex flex-col gap-4">
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">By Language</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {languages.map(lang => <button key={lang} onClick={() => toggleLanguage(lang)} className={`px-3 py-1 text-sm rounded-full flex items-center ${selectedLanguages.includes(lang) ? "bg-gray-400 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
-                            {lang}
-                          </button>)}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-medium mb-2">By Tag</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {allTags.map(tag => <button key={tag} onClick={() => toggleTag(tag)} className={`px-3 py-1 text-sm rounded-full flex items-center ${selectedTags.includes(tag) ? "bg-gray-400 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
-                            <Tag size={12} className="mr-1" />
-                            {tag}
-                          </button>)}
-                      </div>
-                    </div>
-
-                    {hasActiveFilters && <div className="mt-2">
-                        <h3 className="text-sm font-medium">Current Selection:</h3>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {selectedLanguages.map(lang => <span key={lang} className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
-                              {lang}
-                              <button onClick={() => toggleLanguage(lang)} className="ml-1 text-white hover:text-gray-200">
-                                <X size={14} />
-                              </button>
-                            </span>)}
-                          {selectedTags.map(tag => <span key={tag} className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
-                              <Tag size={12} className="mr-1" />
-                              {tag}
-                              <button onClick={() => toggleTag(tag)} className="ml-1 text-white hover:text-gray-200">
-                                <X size={14} />
-                              </button>
-                            </span>)}
-                        </div>
-                      </div>}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <FilterDialog 
+              allTags={allTags}
+              selectedTags={selectedTags}
+              selectedLanguages={selectedLanguages}
+              toggleTag={toggleTag}
+              toggleLanguage={toggleLanguage}
+              clearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              languages={languages}
+            />
           </div>
           
-          {hasActiveFilters && <div className="flex flex-wrap gap-2 justify-center mt-2">
-              <div className="flex items-center">
-                <span className="text-sm text-gray-500 mr-2">Viewing:</span>
-                {selectedLanguages.map(lang => <span key={lang} className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
-                    {lang}
-                    <button onClick={() => toggleLanguage(lang)} className="ml-1 text-white hover:text-gray-200">
-                      <X size={12} />
-                    </button>
-                  </span>)}
-                {selectedTags.map(tag => <span key={tag} className="px-2 py-0.5 bg-gray-400 text-white text-xs rounded-full flex items-center mr-1">
-                    {tag}
-                    <button onClick={() => toggleTag(tag)} className="ml-1 text-white hover:text-gray-200">
-                      <X size={12} />
-                    </button>
-                  </span>)}
-              </div>
-            </div>}
+          <ActiveFilters 
+            selectedLanguages={selectedLanguages}
+            selectedTags={selectedTags}
+            toggleLanguage={toggleLanguage}
+            toggleTag={toggleTag}
+            clearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
         </div>
 
         <div className="max-w-3xl mx-auto">
-          {loading ? <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-            </div> : posts.length === 0 ? <div className="text-center py-12">
-              <p className="text-gray-600">
-                {hasActiveFilters ? "No stories found with the current selection. Try different options or clear them." : "No stories found. Check back later for new content."}
-              </p>
-              {hasActiveFilters && <button onClick={clearFilters} className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors">
-                  Clear Selection
-                </button>}
-            </div> : <div className="grid gap-8">
-              {posts.map(post => <BlogCard key={post.id} post={post} />)}
-            </div>}
+          <StoriesList 
+            posts={posts} 
+            loading={loading} 
+            hasActiveFilters={hasActiveFilters} 
+            clearFilters={clearFilters} 
+          />
         </div>
       </main>
     </div>

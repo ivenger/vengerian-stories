@@ -18,13 +18,13 @@ const MultilingualTitle: React.FC<MultilingualTitleProps> = ({ className = '' })
   
   // Font class based on language
   const fontClass = {
-    English: "font-cursive-cyrillic text-6xl",
-    Russian: "font-cursive-cyrillic text-6xl",
-    Hebrew: "font-rubik-pixels text-5xl"
+    English: "font-cursive-cyrillic text-6xl font-normal",
+    Russian: "font-cursive-cyrillic text-6xl font-normal",
+    Hebrew: "font-rubik-pixels text-5xl font-normal"
   }[currentLanguage];
   
   return (
-    <h1 className={`${fontClass} tracking-tight ${className}`} dir={currentLanguage === "Hebrew" ? "rtl" : "ltr"}>
+    <h1 className={`${fontClass} tracking-tight text-center ${className}`} dir={currentLanguage === "Hebrew" ? "rtl" : "ltr"}>
       {titleText}
     </h1>
   );
