@@ -21,11 +21,11 @@ const Navigation = () => {
           <div className="flex">
             <Link to="/" className={`flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
               <Home size={18} className="mr-1" />
-              <span className="font-normal">Home</span>
+              <span className="font-semibold">Home</span>
             </Link>
             <Link to="/about" className={`ml-4 flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/about") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
               <InfoIcon size={18} className="mr-1" />
-              <span>About</span>
+              <span className="font-semibold">About</span>
             </Link>
           </div>
           
