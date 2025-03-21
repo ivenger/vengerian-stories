@@ -47,9 +47,6 @@ interface BlogCardProps {
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const { id, title, date, excerpt, image_url, tags } = post;
   
-  // Determine the appropriate font class based on the content
-  const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-caraterre';
-  
   // Determine text direction based on language
   const isRtlTitle = hasHebrew(title);
   const isRtlExcerpt = excerpt ? hasHebrew(excerpt) : false;
@@ -77,7 +74,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
             
             <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
               <h2 
-                className={`${titleFontClass} text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                className={`font-raleway font-semibold text-4xl text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                 dir={isRtlTitle ? 'rtl' : 'ltr'}
               >
                 {title}
