@@ -1,17 +1,18 @@
 
 import React, { useContext } from "react";
 import Navigation from "../components/Navigation";
-import { Filter } from "lucide-react";
 import { LanguageContext } from "../App";
 import MultilingualTitle from "../components/MultilingualTitle";
 import FilterDialog from "../components/FilterDialog";
 import ActiveFilters from "../components/ActiveFilters";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const Index = () => {
   // Get language context
   const { currentLanguage } = useContext(LanguageContext);
+  const isMobile = useIsMobile();
   
   // Use our custom hook to handle all filter logic
   const {
@@ -30,7 +31,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
+      <main className={`container mx-auto px-4 ${isMobile ? 'py-4' : 'py-8'}`}>
         <div className="mb-6 text-center relative">
           <MultilingualTitle />
           <div className="flex items-center justify-center gap-2">
@@ -60,7 +61,7 @@ const Index = () => {
           />
         </div>
 
-        <div className="max-w-3xl mx-auto">
+        <div className={`mx-auto ${isMobile ? 'max-w-full' : 'max-w-3xl'}`}>
           <StoriesList 
             posts={posts} 
             loading={loading} 
