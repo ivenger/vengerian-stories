@@ -2,43 +2,59 @@
 import React from 'react';
 import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 interface StoriesListProps {
   posts: BlogEntry[];
   loading: boolean;
   hasActiveFilters: boolean;
   clearFilters: () => void;
+  error?: string | null;
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
   posts, 
   loading, 
   hasActiveFilters,
-  clearFilters 
+  clearFilters,
+  error
 }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  
+  if (error) {
+    return (
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()} variant="outline">
+          Try Again
+        </Button>
       </div>
     );
   }
   
   if (posts.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 bg-gray-50 rounded-lg">
         <p className="text-gray-600">
           {hasActiveFilters 
             ? "No stories found with the current selection. Try different options or clear them." 
             : "No stories found. Check back later for new content."}
         </p>
         {hasActiveFilters && (
-          <button 
+          <Button 
             onClick={clearFilters} 
-            className="mt-4 px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+            className="mt-4"
+            variant="outline"
           >
             Clear Selection
-          </button>
+          </Button>
         )}
       </div>
     );
