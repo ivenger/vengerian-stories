@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchPostById } from '../services/blogService';
@@ -5,6 +6,8 @@ import { BlogEntry } from '../types/blogTypes';
 import Navigation from '../components/Navigation';
 import { Calendar, Tag } from 'lucide-react';
 import MultilingualTitle from '../components/MultilingualTitle';
+import { useAuth } from '../components/AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
 
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
@@ -38,6 +41,7 @@ const BlogPost = () => {
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   useEffect(() => {
     const loadPost = async () => {
@@ -47,6 +51,11 @@ const BlogPost = () => {
         setIsLoading(true);
         const postData = await fetchPostById(id);
         setPost(postData);
+        
+        // Record that the user has read this post if they're logged in
+        if (user && postData) {
+          await recordReadingHistory(id);
+        }
       } catch (err) {
         console.error('Error loading post:', err);
         setError('Failed to load the blog post. Please try again later.');
@@ -56,7 +65,31 @@ const BlogPost = () => {
     };
 
     loadPost();
-  }, [id]);
+  }, [id, user]);
+  
+  // Record that the user has read this post
+  const recordReadingHistory = async (postId: string) => {
+    if (!user) return;
+    
+    try {
+      // Upsert to reading_history table
+      const { error } = await supabase
+        .from('reading_history')
+        .upsert(
+          { 
+            user_id: user.id, 
+            post_id: postId,
+            read_at: new Date().toISOString()
+          },
+          { onConflict: 'user_id,post_id' }
+        );
+        
+      if (error) throw error;
+    } catch (err) {
+      // Just log the error but don't show to user as this is non-critical
+      console.error('Error recording reading history:', err);
+    }
+  };
 
   // Format the content with basic HTML when in preview mode
   const getFormattedContent = (content: string) => {

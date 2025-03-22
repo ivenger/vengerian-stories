@@ -1,6 +1,23 @@
+
 import React from 'react';
-import { Tag, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Filter } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { LanguageContext } from "../App";
+import { useContext } from 'react';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useAuth } from "./AuthProvider";
+
 interface FilterDialogProps {
   allTags: string[];
   selectedTags: string[];
@@ -10,7 +27,10 @@ interface FilterDialogProps {
   clearFilters: () => void;
   hasActiveFilters: boolean;
   languages: string[];
+  showUnreadOnly?: boolean;
+  toggleUnreadFilter?: () => void;
 }
+
 const FilterDialog: React.FC<FilterDialogProps> = ({
   allTags,
   selectedTags,
@@ -19,69 +39,109 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   toggleLanguage,
   clearFilters,
   hasActiveFilters,
-  languages
+  languages,
+  showUnreadOnly = false,
+  toggleUnreadFilter
 }) => {
-  return <Dialog>
+  const { currentLanguage } = useContext(LanguageContext);
+  const { user } = useAuth();
+  
+  return (
+    <Dialog>
       <DialogTrigger asChild>
-        <button className="text-gray-400 hover:text-gray-600 flex items-center gap-1 text-sm">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-          </svg>
-          
-        </button>
+        <Button 
+          variant="outline" 
+          size="sm"
+          className={hasActiveFilters ? "border-blue-300 bg-blue-50 text-blue-700" : ""}
+        >
+          <Filter size={16} className="mr-2" />
+          {hasActiveFilters ? "Filters Active" : "Filter Stories"}
+          {hasActiveFilters && (
+            <Badge className="ml-2 bg-blue-200 text-blue-800 hover:bg-blue-200">
+              {selectedTags.length + (selectedLanguages.length > 0 ? 1 : 0) + (showUnreadOnly ? 1 : 0)}
+            </Badge>
+          )}
+        </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogTitle>Filter stories</DialogTitle>
-        <div className="p-4">
-          <div className="flex justify-between items-center mb-4">
-            
-            {hasActiveFilters && <button onClick={clearFilters} className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
-                <X size={14} className="mr-1" />
-                Clear All
-              </button>}
+      
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Filter Stories</DialogTitle>
+        </DialogHeader>
+          
+        <div className="py-4 space-y-4">
+          <div>
+            <h3 className="text-sm font-medium mb-2">By Language</h3>
+            <div className="flex flex-wrap gap-1">
+              {languages.map(language => (
+                <Badge
+                  key={language}
+                  variant={selectedLanguages.includes(language) ? "default" : "outline"}
+                  className="cursor-pointer"
+                  onClick={() => toggleLanguage(language)}
+                >
+                  {language}
+                  {language === currentLanguage && " (Default)"}
+                </Badge>
+              ))}
+            </div>
           </div>
           
-          <div className="flex flex-col gap-4">
-            <div>
-              <h3 className="text-sm font-medium mb-2">By Language</h3>
-              <div className="flex flex-wrap gap-2">
-                {languages.map(lang => <button key={lang} onClick={() => toggleLanguage(lang)} className={`px-3 py-1 text-sm rounded-full flex items-center ${selectedLanguages.includes(lang) ? "bg-gray-400 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
-                    {lang}
-                  </button>)}
-              </div>
-            </div>
-
+          {allTags.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-2">By Tag</h3>
-              <div className="flex flex-wrap gap-2">
-                {allTags.map(tag => <button key={tag} onClick={() => toggleTag(tag)} className={`px-3 py-1 text-sm rounded-full flex items-center ${selectedTags.includes(tag) ? "bg-gray-400 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
-                    <Tag size={12} className="mr-1" />
+              <div className="flex flex-wrap gap-1">
+                {allTags.map(tag => (
+                  <Badge
+                    key={tag}
+                    variant={selectedTags.includes(tag) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => toggleTag(tag)}
+                  >
                     {tag}
-                  </button>)}
+                  </Badge>
+                ))}
               </div>
             </div>
-
-            {hasActiveFilters && <div className="mt-2">
-                <h3 className="text-sm font-medium">Current Selection:</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedLanguages.map(lang => <span key={lang} className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
-                      {lang}
-                      <button onClick={() => toggleLanguage(lang)} className="ml-1 text-white hover:text-gray-200">
-                        <X size={14} />
-                      </button>
-                    </span>)}
-                  {selectedTags.map(tag => <span key={tag} className="px-3 py-1 bg-gray-400 text-white text-sm rounded-full flex items-center">
-                      <Tag size={12} className="mr-1" />
-                      {tag}
-                      <button onClick={() => toggleTag(tag)} className="ml-1 text-white hover:text-gray-200">
-                        <X size={14} />
-                      </button>
-                    </span>)}
+          )}
+          
+          {user && toggleUnreadFilter && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label htmlFor="unread-filter" className="text-sm font-medium">Show Unread Only</Label>
+                  <p className="text-xs text-gray-500">Only display stories you haven't read yet</p>
                 </div>
-              </div>}
-          </div>
+                <Switch 
+                  id="unread-filter" 
+                  checked={showUnreadOnly}
+                  onCheckedChange={toggleUnreadFilter}
+                />
+              </div>
+            </>
+          )}
         </div>
+          
+        <DialogFooter className="sm:justify-between">
+          {hasActiveFilters && (
+            <Button 
+              variant="ghost" 
+              size="sm"
+              onClick={clearFilters}
+            >
+              Clear All
+            </Button>
+          )}
+          <DialogTrigger asChild>
+            <Button type="button" size="sm">
+              Done
+            </Button>
+          </DialogTrigger>
+        </DialogFooter>
       </DialogContent>
-    </Dialog>;
+    </Dialog>
+  );
 };
+
 export default FilterDialog;

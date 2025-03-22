@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
-      return data || false;
+      return Boolean(data); // Ensure we return a boolean
     } catch (err) {
       console.error("Failed to check user role:", err);
       return false;
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             if (isMounted) setIsAdmin(adminStatus);
           } catch (roleError) {
             console.error("Error checking admin status:", roleError);
-            // Don't set error here as it's not critical
+            if (isMounted) setIsAdmin(false); // Default to non-admin on error
           }
         } else {
           setSession(null);
@@ -113,7 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (isMounted) setIsAdmin(adminStatus);
         } catch (roleError) {
           console.error("Error checking initial admin status:", roleError);
-          // Don't set error here as it's not critical
+          if (isMounted) setIsAdmin(false); // Default to non-admin on error
         }
       }
       

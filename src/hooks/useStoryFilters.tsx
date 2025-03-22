@@ -4,15 +4,20 @@ import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
 import { useToast } from "@/components/ui/use-toast";
 import { LanguageContext } from "../App";
+import { useAuth } from "../components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useStoryFilters = () => {
   const { currentLanguage } = useContext(LanguageContext);
+  const { user } = useAuth();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
+  const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
@@ -20,6 +25,8 @@ export const useStoryFilters = () => {
   useEffect(() => {
     const savedTags = localStorage.getItem('selectedTags');
     const savedLanguages = localStorage.getItem('selectedLanguages');
+    const savedUnreadFilter = localStorage.getItem('showUnreadOnly');
+    
     if (savedTags) {
       try {
         setSelectedTags(JSON.parse(savedTags));
@@ -28,6 +35,7 @@ export const useStoryFilters = () => {
         localStorage.removeItem('selectedTags');
       }
     }
+    
     if (savedLanguages) {
       try {
         setSelectedLanguages(JSON.parse(savedLanguages));
@@ -39,7 +47,16 @@ export const useStoryFilters = () => {
     } else {
       setSelectedLanguages([currentLanguage]);
     }
-  }, [currentLanguage]);
+    
+    if (savedUnreadFilter && user) {
+      try {
+        setShowUnreadOnly(JSON.parse(savedUnreadFilter));
+      } catch (e) {
+        console.error("Error parsing saved unread filter:", e);
+        localStorage.removeItem('showUnreadOnly');
+      }
+    }
+  }, [currentLanguage, user]);
 
   // When current language changes, update the selected languages filter
   // but only if no language has been explicitly selected by the user
@@ -54,10 +71,41 @@ export const useStoryFilters = () => {
     try {
       localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
       localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
+      
+      if (user) {
+        localStorage.setItem('showUnreadOnly', JSON.stringify(showUnreadOnly));
+      }
     } catch (e) {
       console.error("Error saving filters to localStorage:", e);
     }
-  }, [selectedTags, selectedLanguages]);
+  }, [selectedTags, selectedLanguages, showUnreadOnly, user]);
+
+  // Fetch reading history if user is logged in
+  useEffect(() => {
+    if (!user) {
+      setReadPostIds([]);
+      setShowUnreadOnly(false);
+      return;
+    }
+    
+    const fetchReadPosts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('reading_history')
+          .select('post_id')
+          .eq('user_id', user.id);
+          
+        if (error) throw error;
+        
+        setReadPostIds(data?.map(item => item.post_id) || []);
+      } catch (err) {
+        console.error("Error fetching reading history:", err);
+        // Non-critical, don't set error state
+      }
+    };
+    
+    fetchReadPosts();
+  }, [user]);
 
   // Fetch all available tags
   useEffect(() => {
@@ -87,7 +135,13 @@ export const useStoryFilters = () => {
       console.log("Filtering posts with tags:", tagsToFilter, "and languages:", langsToFilter);
       
       const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
-      setPosts(filteredPosts);
+      
+      // Apply read/unread filter if enabled
+      const postsAfterReadFilter = showUnreadOnly && user
+        ? filteredPosts.filter(post => !readPostIds.includes(post.id))
+        : filteredPosts;
+        
+      setPosts(postsAfterReadFilter);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       setError(
@@ -102,7 +156,7 @@ export const useStoryFilters = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedTags, selectedLanguages, posts.length]);
+  }, [selectedTags, selectedLanguages, posts.length, showUnreadOnly, user, readPostIds]);
 
   // Fetch posts when filters change
   useEffect(() => {
@@ -125,15 +179,21 @@ export const useStoryFilters = () => {
       setSelectedLanguages([...selectedLanguages, language]);
     }
   };
+  
+  const toggleUnreadFilter = () => {
+    setShowUnreadOnly(!showUnreadOnly);
+  };
 
   const clearFilters = () => {
     setSelectedTags([]);
     setSelectedLanguages([currentLanguage]);
+    setShowUnreadOnly(false);
   };
 
   const hasActiveFilters = selectedTags.length > 0 || 
     selectedLanguages.length !== 1 || 
-    (selectedLanguages.length === 1 && selectedLanguages[0] !== currentLanguage);
+    (selectedLanguages.length === 1 && selectedLanguages[0] !== currentLanguage) ||
+    showUnreadOnly;
 
   return {
     posts,
@@ -142,8 +202,10 @@ export const useStoryFilters = () => {
     allTags,
     selectedTags,
     selectedLanguages,
+    showUnreadOnly,
     toggleTag,
     toggleLanguage,
+    toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
     languages,

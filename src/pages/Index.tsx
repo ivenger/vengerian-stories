@@ -20,8 +20,10 @@ const Index = () => {
     allTags,
     selectedTags,
     selectedLanguages,
+    showUnreadOnly,
     toggleTag,
     toggleLanguage,
+    toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
     languages,
@@ -48,6 +50,8 @@ const Index = () => {
               clearFilters={clearFilters}
               hasActiveFilters={hasActiveFilters}
               languages={languages}
+              showUnreadOnly={showUnreadOnly}
+              toggleUnreadFilter={toggleUnreadFilter}
             />
           </div>
           

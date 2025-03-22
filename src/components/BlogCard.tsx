@@ -1,128 +1,108 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BlogEntry } from '@/types/blogTypes';
-import { Calendar } from 'lucide-react';
-
-// Function to detect if text has Cyrillic characters
-const hasCyrillic = (text: string): boolean => {
-  return /[А-Яа-яЁё]/.test(text);
-};
-
-// Function to detect if text has Hebrew characters
-const hasHebrew = (text: string): boolean => {
-  return /[\u0590-\u05FF]/.test(text);
-};
-
-// Function to format date properly for RTL languages
-const formatDateForRTL = (date: string): string => {
-  // If the date contains numbers and is in a format like "Month DD, YYYY"
-  if (/\d/.test(date)) {
-    // Split into parts (assuming format like "Month DD, YYYY")
-    const parts = date.split(/,\s*/);
-    if (parts.length > 1) {
-      // Keep the month and day part
-      let monthDay = parts[0];
-      // Reverse the year part (if it's 4 digits)
-      let year = parts[1].trim();
-      return `${monthDay}, ${year}`;
-    }
-  }
-  return date;
-};
-
-// Get language code from post language array
-const getLanguageCode = (post: BlogEntry): string => {
-  if (!post.language || post.language.length === 0) return 'en';
-  
-  // Check for Hebrew first, then Russian, then default to English
-  if (post.language.includes('Hebrew')) return 'he';
-  if (post.language.includes('Russian')) return 'ru';
-  return 'en'; // Default to English
-};
+import { Calendar, Tag, Eye } from 'lucide-react';
+import { BlogEntry } from '../types/blogTypes';
+import { useAuth } from './AuthProvider';
+import { supabase } from '@/integrations/supabase/client';
 
 interface BlogCardProps {
   post: BlogEntry;
 }
 
+const hasCyrillic = (text: string): boolean => {
+  return /[А-Яа-яЁё]/.test(text);
+};
+
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
+
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
-  const { id, title, date, excerpt, image_url, tags } = post;
+  const isRtl = hasHebrew(post.title);
+  const hasCyrillicText = hasCyrillic(post.title);
+  const { user } = useAuth();
+  const [isRead, setIsRead] = useState(false);
   
-  // Determine text direction based on language
-  const isRtlTitle = hasHebrew(title);
-  const isRtlExcerpt = excerpt ? hasHebrew(excerpt) : false;
-  const hasCyrillicText = hasCyrillic(title);
-  
-  // Get font class based on language
-  const getTitleFontClass = () => {
-    if (isRtlTitle) return 'font-raleway font-semibold';
-    // Both English and Cyrillic titles now use Pacifico
-    return 'font-pacifico text-[38px]'; // 38px font size for Stories page
-  };
-  
-  // Format date for RTL display if needed
-  const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
-  
+  // Check if the post has been read by the user
+  useEffect(() => {
+    if (!user) return;
+    
+    const checkReadStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('reading_history')
+          .select('post_id')
+          .eq('user_id', user.id)
+          .eq('post_id', post.id)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
+          console.error("Error checking read status:", error);
+          return;
+        }
+        
+        setIsRead(!!data);
+      } catch (err) {
+        console.error("Error checking post read status:", err);
+      }
+    };
+    
+    checkReadStatus();
+  }, [user, post.id]);
+
   return (
-    <div className="flex justify-center w-full">
-      <Link to={`/blog/${id}`} className="block w-full group">
-        <div className="overflow-hidden rounded-lg border border-gray-200 shadow-[4px_8px_16px_4px_rgba(0,0,0,0.2)] hover:shadow-[8px_16px_24px_6px_rgba(0,0,0,0.3)] transition-all">
-          <div className="flex flex-col md:flex-row h-full">
-            {image_url && (
-              <div className="md:w-1/3 relative">
-                <img 
-                  src={image_url} 
-                  alt={title} 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
-                  Illustration by Levi Pritzker
-                </div>
+    <div className="bg-white rounded-lg shadow-md overflow-hidden relative">
+      {/* Read indicator for logged in users */}
+      {user && (
+        <div className={`absolute top-3 right-3 ${isRead ? 'text-green-500' : 'text-gray-200'}`}>
+          <Eye size={18} />
+        </div>
+      )}
+      
+      <div className="p-5">
+        <div className="flex flex-col md:flex-row gap-4">
+          {post.image_url && (
+            <img 
+              src={post.image_url} 
+              alt={post.title}
+              className="w-full md:w-32 h-32 object-cover rounded-md"
+            />
+          )}
+          
+          <div className={`flex-1 ${isRtl ? 'text-right' : 'text-left'}`}>
+            <Link 
+              to={`/blog/${post.id}`}
+              className={`
+                block text-xl mb-2 hover:text-blue-600 transition-colors
+                ${isRtl ? 'font-raleway font-semibold' : hasCyrillicText ? 'font-pacifico' : 'font-pacifico'}
+              `}
+              dir={isRtl ? 'rtl' : 'ltr'}
+            >
+              {post.title}
+            </Link>
+            
+            <div className={`flex items-center text-gray-500 text-sm mb-3 ${isRtl ? 'justify-end' : 'justify-start'}`}>
+              <Calendar className={`h-4 w-4 ${isRtl ? 'ml-1' : 'mr-1'}`} />
+              <span>{post.date}</span>
+            </div>
+            
+            {post.tags && post.tags.length > 0 && (
+              <div className={`flex flex-wrap gap-1 mt-2 ${isRtl ? 'justify-end' : 'justify-start'}`}>
+                {post.tags.map((tag, index) => (
+                  <span 
+                    key={index}
+                    className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs"
+                  >
+                    <Tag className={`h-3 w-3 ${isRtl ? 'ml-1' : 'mr-1'}`} />
+                    {tag}
+                  </span>
+                ))}
               </div>
             )}
-            
-            <div className={`p-4 ${image_url ? 'md:w-2/3' : 'w-full'} flex flex-col h-full`}>
-              <h2 
-                className={`${getTitleFontClass()} text-gray-900 mb-3 ${isRtlTitle ? 'text-right' : 'text-left'}`}
-                dir={isRtlTitle ? 'rtl' : 'ltr'}
-              >
-                {title}
-              </h2>
-              
-              {excerpt && (
-                <p 
-                  className={`text-gray-600 text-lg mb-4 flex-grow ${isRtlExcerpt ? 'text-right' : 'text-left'}`}
-                  dir={isRtlExcerpt ? 'rtl' : 'ltr'}
-                >
-                  {excerpt}
-                </p>
-              )}
-              
-              <div className="mt-auto w-full">
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {/* Show tags with appropriate language */}
-                  {tags && tags.length > 0 && tags.map((tag, index) => (
-                    <span 
-                      key={index} 
-                      className="px-2 py-0.5 bg-gray-100 text-gray-600 text-sm rounded-full"
-                      dir={isRtlTitle ? 'rtl' : 'ltr'}
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-                
-                <div className={`flex items-center text-sm text-gray-500 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
-                  <Calendar size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                  <span dir={isRtlTitle ? 'rtl' : 'ltr'}>
-                    {displayDate}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
-      </Link>
+      </div>
     </div>
   );
 };

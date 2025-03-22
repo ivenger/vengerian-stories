@@ -1,7 +1,6 @@
-
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Home, InfoIcon, Settings, LogOut } from "lucide-react";
+import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import LanguageSelector from "./LanguageSelector";
 import { Button } from "@/components/ui/button";
@@ -27,8 +26,29 @@ const Navigation = () => {
     }
   };
 
-  // Extract display name from email
-  const displayName = user?.email ? user.email.split('@')[0] : null;
+  // Get display name based on auth method
+  const getDisplayName = () => {
+    if (!user) return null;
+    
+    // If user has metadata with first_name (typically from OAuth providers like Google)
+    if (user.user_metadata?.full_name) {
+      return user.user_metadata.full_name.split(' ')[0]; // Get first name
+    }
+    
+    // If user has a name in user_metadata
+    if (user.user_metadata?.name) {
+      return user.user_metadata.name.split(' ')[0]; // Get first name 
+    }
+    
+    // Otherwise extract from email
+    if (user.email) {
+      return user.email.split('@')[0];
+    }
+    
+    return 'User'; // Fallback
+  };
+  
+  const displayName = getDisplayName();
   
   return (
     <nav className="bg-white shadow-md">
@@ -50,14 +70,10 @@ const Navigation = () => {
             
             {user ? (
               <>
-                <div className="text-sm text-gray-700 font-medium flex items-center">
-                  {displayName}
-                  {isAdmin && (
-                    <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">
-                      Admin
-                    </span>
-                  )}
-                </div>
+                <Link to="/profile" className="text-sm text-gray-700 hover:text-blue-600 font-medium flex items-center">
+                  <User size={16} className="mr-1" />
+                  <span className="max-w-[120px] truncate">{displayName}</span>
+                </Link>
                 
                 {isAdmin && (
                   <Link to="/admin" className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
