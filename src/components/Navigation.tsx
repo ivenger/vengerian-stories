@@ -41,24 +41,43 @@ const Navigation = () => {
     </>
   );
 
+  // Extract username from email or use displayName if available
+  const getUserDisplayName = () => {
+    if (!user) return null;
+    
+    if (user.user_metadata?.name) return user.user_metadata.name;
+    
+    // Extract username from email (part before @)
+    if (user.email) {
+      return user.email.split('@')[0];
+    }
+    
+    return "User";
+  };
+
   const UserSection = () => (
     <>
       {user ? (
-        <>
-          <div className="text-sm text-gray-700 font-medium hidden md:block">
-            {user.email}
-          </div>
+        <div className="flex items-center">
+          {!isMobile && (
+            <div className="text-sm text-gray-700 font-medium mr-4">
+              {getUserDisplayName()}
+              {isAdmin && <span className="ml-1 text-xs bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">Admin</span>}
+            </div>
+          )}
           
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={signOut} 
-            className="flex items-center gap-2 text-gray-700 hover:text-gray-900 ml-4"
+            onClick={() => {
+              signOut();
+            }} 
+            className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
           >
             <LogOut size={16} />
             <span>Sign Out</span>
           </Button>
-        </>
+        </div>
       ) : (
         <Link to="/auth">
           <Button variant="outline" size="sm" className="font-medium">
@@ -84,6 +103,12 @@ const Navigation = () => {
                 <SheetContent side="left">
                   <div className="flex flex-col gap-4 mt-8">
                     <NavLinks />
+                    {user && isAdmin && (
+                      <div className="text-sm text-gray-700 font-medium mt-4">
+                        {getUserDisplayName()}
+                        {isAdmin && <span className="ml-1 text-xs bg-gray-200 px-1.5 py-0.5 rounded text-gray-700">Admin</span>}
+                      </div>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>

@@ -25,7 +25,8 @@ const Index = () => {
     toggleLanguage,
     clearFilters,
     hasActiveFilters,
-    languages
+    languages,
+    error
   } = useStoryFilters();
   
   return (
@@ -66,7 +67,8 @@ const Index = () => {
             posts={posts} 
             loading={loading} 
             hasActiveFilters={hasActiveFilters} 
-            clearFilters={clearFilters} 
+            clearFilters={clearFilters}
+            error={error}
           />
         </div>
       </main>

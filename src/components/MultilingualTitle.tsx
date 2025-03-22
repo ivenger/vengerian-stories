@@ -26,7 +26,7 @@ const MultilingualTitle: React.FC<MultilingualTitleProps> = ({ className = '' })
   }[currentLanguage];
   
   return (
-    <div className="w-full flex justify-center py-6 px-4">
+    <div className="w-full flex justify-center py-8 px-4">
       <h1 
         className={`${fontClass} tracking-tight text-center ${className}`} 
         dir={currentLanguage === "Hebrew" ? "rtl" : "ltr"}

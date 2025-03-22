@@ -12,6 +12,7 @@ export const useStoryFilters = () => {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const languages = ["English", "Hebrew", "Russian"];
 
@@ -27,7 +28,7 @@ export const useStoryFilters = () => {
     } else {
       setSelectedLanguages([currentLanguage]);
     }
-  }, []);
+  }, [currentLanguage]);
 
   // When current language changes, update the selected languages filter
   // but only if no language has been explicitly selected by the user
@@ -35,7 +36,7 @@ export const useStoryFilters = () => {
     if (selectedLanguages.length === 0) {
       setSelectedLanguages([currentLanguage]);
     }
-  }, [currentLanguage]);
+  }, [currentLanguage, selectedLanguages.length]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
@@ -51,6 +52,7 @@ export const useStoryFilters = () => {
         setAllTags(tags);
       } catch (error) {
         console.error("Failed to load tags:", error);
+        setError("Failed to load tags. Please try again later.");
       }
     };
     loadTags();
@@ -61,12 +63,19 @@ export const useStoryFilters = () => {
     const loadPosts = async () => {
       try {
         setLoading(true);
+        setError(null);
+        
+        // Debug logging
+        console.info("Filtering posts with tags:", selectedTags, "and languages:", selectedLanguages);
+        
         const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
         const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
+        
         const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
         setPosts(filteredPosts);
       } catch (error) {
         console.error("Failed to load posts:", error);
+        setError("Failed to load blog posts. Please try again later.");
         toast({
           title: "Error",
           description: "Failed to load blog posts. Please try again later.",
@@ -90,7 +99,7 @@ export const useStoryFilters = () => {
   const toggleLanguage = (language: string) => {
     if (selectedLanguages.includes(language)) {
       const newSelection = selectedLanguages.filter(l => l !== language);
-      setSelectedLanguages(newSelection);
+      setSelectedLanguages(newSelection.length > 0 ? newSelection : [currentLanguage]);
     } else {
       setSelectedLanguages([...selectedLanguages, language]);
     }
@@ -115,6 +124,7 @@ export const useStoryFilters = () => {
     toggleLanguage,
     clearFilters,
     hasActiveFilters,
-    languages
+    languages,
+    error
   };
 };
