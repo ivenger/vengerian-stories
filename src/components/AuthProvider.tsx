@@ -10,6 +10,7 @@ type AuthContextType = {
   loading: boolean;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  error: string | null;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   isAdmin: false,
+  error: null,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -26,6 +28,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const checkUserRole = async (userId: string) => {
@@ -46,21 +49,35 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Handle auth state changes and session management
   useEffect(() => {
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event);
-        setSession(newSession);
+        
+        if (!isMounted) return;
         
         if (newSession?.user) {
-          const adminStatus = await checkUserRole(newSession.user.id);
-          setIsAdmin(adminStatus);
+          setSession(newSession);
+          
+          try {
+            const adminStatus = await checkUserRole(newSession.user.id);
+            if (isMounted) setIsAdmin(adminStatus);
+          } catch (roleError) {
+            console.error("Error checking admin status:", roleError);
+            // Don't set error here as it's not critical
+          }
         } else {
+          setSession(null);
           setIsAdmin(false);
         }
         
-        setLoading(false);
+        if (isMounted) setLoading(false);
         
         // Show toast for specific events
         if (event === 'SIGNED_IN') {
@@ -88,24 +105,65 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
+      if (!isMounted) return;
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        setError("Failed to retrieve authentication session. Please check your network connection.");
+        setLoading(false);
+        return;
+      }
+      
       setSession(currentSession);
       
       if (currentSession?.user) {
-        const adminStatus = await checkUserRole(currentSession.user.id);
-        setIsAdmin(adminStatus);
+        try {
+          const adminStatus = await checkUserRole(currentSession.user.id);
+          if (isMounted) setIsAdmin(adminStatus);
+        } catch (roleError) {
+          console.error("Error checking initial admin status:", roleError);
+          // Don't set error here as it's not critical
+        }
       }
       
-      setLoading(false);
+      if (isMounted) setLoading(false);
+    }).catch(err => {
+      if (isMounted) {
+        console.error("Failed to get session:", err);
+        setError("Connection error. Please check your network and try again.");
+        setLoading(false);
+      }
     });
 
     return () => {
+      isMounted = false;
       subscription.unsubscribe();
     };
   }, [toast]);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    setLoading(true);
+    try {
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        console.error("Error signing out:", signOutError);
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive"
+        });
+      }
+    } catch (err) {
+      console.error("Sign out exception:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const value = {
@@ -114,6 +172,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     signOut,
     isAdmin,
+    error,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import LanguageSelector from "./LanguageSelector";
@@ -9,10 +9,19 @@ import { Button } from "@/components/ui/button";
 const Navigation = () => {
   const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  // Extract display name from email
+  const displayName = user?.email ? user.email.split('@')[0] : null;
   
   return (
     <nav className="bg-white shadow-md">
@@ -34,8 +43,13 @@ const Navigation = () => {
             
             {user ? (
               <>
-                <div className="text-sm text-gray-700 font-medium">
-                  {user.email}
+                <div className="text-sm text-gray-700 font-medium flex items-center">
+                  {displayName}
+                  {isAdmin && (
+                    <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 text-purple-800 rounded-full">
+                      Admin
+                    </span>
+                  )}
                 </div>
                 
                 {isAdmin && (
@@ -48,7 +62,7 @@ const Navigation = () => {
                 <Button 
                   variant="ghost" 
                   size="sm" 
-                  onClick={signOut} 
+                  onClick={handleSignOut} 
                   className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
                 >
                   <LogOut size={16} />

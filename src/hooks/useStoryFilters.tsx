@@ -1,5 +1,4 @@
-
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
 import { useToast } from "@/components/ui/use-toast";
@@ -9,6 +8,7 @@ export const useStoryFilters = () => {
   const { currentLanguage } = useContext(LanguageContext);
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
@@ -47,37 +47,46 @@ export const useStoryFilters = () => {
   useEffect(() => {
     const loadTags = async () => {
       try {
+        setError(null);
         const tags = await fetchAllTags();
         setAllTags(tags);
       } catch (error) {
         console.error("Failed to load tags:", error);
+        // Don't set error state for tags failure as it's not critical
       }
     };
     loadTags();
   }, []);
 
   // Fetch posts based on selected filters
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        setLoading(true);
-        const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
-        const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
-        const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
-        setPosts(filteredPosts);
-      } catch (error) {
-        console.error("Failed to load posts:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load blog posts. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setLoading(false);
+  const loadPosts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
+      const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
+      const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
+      setPosts(filteredPosts);
+    } catch (error: any) {
+      console.error("Failed to load posts:", error);
+      setError(
+        error?.message === "TypeError: Failed to fetch" 
+          ? "Network error. Please check your connection and try again." 
+          : "Failed to load stories. Please try again later."
+      );
+      // Keep existing posts if available
+      if (posts.length === 0) {
+        setPosts([]);
       }
-    };
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedTags, selectedLanguages, posts.length]);
+
+  // Fetch posts when filters change
+  useEffect(() => {
     loadPosts();
-  }, [selectedTags, selectedLanguages, toast]);
+  }, [loadPosts]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {
@@ -108,6 +117,7 @@ export const useStoryFilters = () => {
   return {
     posts,
     loading,
+    error,
     allTags,
     selectedTags,
     selectedLanguages,
@@ -115,6 +125,7 @@ export const useStoryFilters = () => {
     toggleLanguage,
     clearFilters,
     hasActiveFilters,
-    languages
+    languages,
+    loadPosts // Expose reload function
   };
 };

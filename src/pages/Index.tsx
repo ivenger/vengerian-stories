@@ -1,7 +1,6 @@
 
 import React, { useContext } from "react";
 import Navigation from "../components/Navigation";
-import { Filter } from "lucide-react";
 import { LanguageContext } from "../App";
 import MultilingualTitle from "../components/MultilingualTitle";
 import FilterDialog from "../components/FilterDialog";
@@ -17,6 +16,7 @@ const Index = () => {
   const {
     posts,
     loading,
+    error,
     allTags,
     selectedTags,
     selectedLanguages,
@@ -24,7 +24,8 @@ const Index = () => {
     toggleLanguage,
     clearFilters,
     hasActiveFilters,
-    languages
+    languages,
+    loadPosts
   } = useStoryFilters();
   
   return (
@@ -64,8 +65,10 @@ const Index = () => {
           <StoriesList 
             posts={posts} 
             loading={loading} 
+            error={error}
             hasActiveFilters={hasActiveFilters} 
-            clearFilters={clearFilters} 
+            clearFilters={clearFilters}
+            onRetry={loadPosts}
           />
         </div>
       </main>
