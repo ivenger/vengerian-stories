@@ -3,9 +3,8 @@ import Navigation from "../components/Navigation";
 import { fetchAboutContent } from "../services/blogService";
 import { useToast } from "@/hooks/use-toast";
 import MultilingualTitle from "../components/MultilingualTitle";
-import { Spinner } from "@/components/ui/spinner";
-import { Button } from "@/components/ui/button";
 
+// Function to detect if text has Hebrew characters
 const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
 };
@@ -14,14 +13,12 @@ const About = () => {
   const [content, setContent] = useState("");
   const [authorImage, setAuthorImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   
   useEffect(() => {
     const loadContent = async () => {
       try {
         setLoading(true);
-        setError(null);
         const aboutData = await fetchAboutContent("Russian");
         if (typeof aboutData === 'string') {
           setContent(aboutData);
@@ -31,7 +28,6 @@ const About = () => {
         }
       } catch (error) {
         console.error("Failed to load about content:", error);
-        setError("Failed to load the about page content");
         toast({
           title: "Error",
           description: "Failed to load the about page content. Please try again later.",
@@ -45,13 +41,8 @@ const About = () => {
     loadContent();
   }, [toast]);
 
+  // Determine if content has Hebrew characters to set text direction
   const isRtlContent = hasHebrew(content);
-
-  const handleRetry = () => {
-    setLoading(true);
-    setError(null);
-    window.location.reload();
-  };
 
   return (
     <div className="min-h-screen bg-white">
@@ -63,14 +54,7 @@ const About = () => {
           
           {loading ? (
             <div className="flex justify-center items-center h-64">
-              <Spinner size="lg" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <p className="text-gray-600 mb-4">{error}</p>
-              <Button onClick={handleRetry} variant="outline">
-                Try Again
-              </Button>
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
             </div>
           ) : (
             <div className="space-y-6">

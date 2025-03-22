@@ -47,24 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    const setupAuth = async () => {
-      try {
-        // First check for existing session
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        setSession(currentSession);
-        
-        if (currentSession?.user) {
-          const adminStatus = await checkUserRole(currentSession.user.id);
-          setIsAdmin(adminStatus);
-        }
-      } catch (error) {
-        console.error("Error setting up auth:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event);
@@ -76,6 +59,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         } else {
           setIsAdmin(false);
         }
+        
+        setLoading(false);
         
         // Show toast for specific events
         if (event === 'SIGNED_IN') {
@@ -102,7 +87,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    setupAuth();
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        const adminStatus = await checkUserRole(currentSession.user.id);
+        setIsAdmin(adminStatus);
+      }
+      
+      setLoading(false);
+    });
 
     return () => {
       subscription.unsubscribe();
@@ -110,20 +105,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [toast]);
 
   const signOut = async () => {
-    try {
-      setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-    } catch (error: any) {
-      console.error("Error during sign out:", error.message);
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    await supabase.auth.signOut();
   };
 
   const value = {
