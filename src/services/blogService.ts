@@ -135,26 +135,21 @@ export const uploadImage = async (file: File): Promise<string> => {
 
 // Fetch all available tags
 export const fetchAllTags = async (): Promise<string[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('entries')
-      .select('tags');
-    
-    if (error) {
-      console.error('Error fetching tags:', error);
-      throw error;
-    }
-    
-    // Extract unique tags from all posts, safely handling potential nulls
-    const allTags = data
-      .filter(post => post.tags && Array.isArray(post.tags))
-      .flatMap(post => post.tags || [])
-      .filter(Boolean);
-    
-    // Remove duplicates
-    return [...new Set(allTags)];
-  } catch (error) {
-    console.error('Error in fetchAllTags:', error);
-    return []; // Return empty array on error
+  const { data, error } = await supabase
+    .from('entries')
+    .select('tags');
+  
+  if (error) {
+    console.error('Error fetching tags:', error);
+    throw error;
   }
+  
+  // Extract unique tags from all posts
+  const allTags = data
+    .filter(post => post.tags && Array.isArray(post.tags))
+    .flatMap(post => post.tags as string[])
+    .filter(Boolean);
+  
+  // Remove duplicates
+  return [...new Set(allTags)];
 };

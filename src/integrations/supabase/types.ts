@@ -19,7 +19,6 @@ export type Database = {
           image_url: string | null
           language: string[]
           status: Database["public"]["Enums"]["post_status"]
-          tags: string[] | null
           title: string
           title_language: string[]
           updated_at: string
@@ -33,7 +32,6 @@ export type Database = {
           image_url?: string | null
           language: string[]
           status?: Database["public"]["Enums"]["post_status"]
-          tags?: string[] | null
           title: string
           title_language: string[]
           updated_at?: string
@@ -47,7 +45,6 @@ export type Database = {
           image_url?: string | null
           language?: string[]
           status?: Database["public"]["Enums"]["post_status"]
-          tags?: string[] | null
           title?: string
           title_language?: string[]
           updated_at?: string
