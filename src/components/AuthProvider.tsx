@@ -115,9 +115,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Error checking initial admin status:", roleError);
           // Don't set error here as it's not critical
         }
-      } else {
-        // If no session exists, ensure we're not in loading state
-        setLoading(false);
       }
       
       if (isMounted) setLoading(false);
@@ -137,8 +134,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signOut = async () => {
     try {
+      console.log("Attempting to sign out");
       setLoading(true);
       const { error: signOutError } = await supabase.auth.signOut();
+      
       if (signOutError) {
         console.error("Error signing out:", signOutError);
         toast({
@@ -148,6 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         });
       } else {
         // Clear the session immediately for improved UX
+        console.log("Sign out successful, clearing session");
         setSession(null);
         setIsAdmin(false);
         

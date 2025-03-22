@@ -65,9 +65,10 @@ const Navigation = () => {
                 
                 <Button 
                   variant="ghost" 
-                  size="sm" 
-                  onClick={handleSignOut} 
+                  size="sm"
+                  onClick={handleSignOut}
                   className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
+                  type="button"
                 >
                   <LogOut size={16} />
                   <span>Sign Out</span>
