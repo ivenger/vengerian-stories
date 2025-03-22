@@ -15,16 +15,16 @@ const Navigation = () => {
   };
   
   return (
-    <nav className="bg-white shadow-sm">
+    <nav className="bg-white shadow-md">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex">
-            <Link to="/" className={`flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
-              <Home size={18} className="mr-1" />
+            <Link to="/" className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
+              <Home size={18} className="mr-2" />
               <span className="font-semibold">Home</span>
             </Link>
-            <Link to="/about" className={`ml-4 flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/about") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
-              <InfoIcon size={18} className="mr-1" />
+            <Link to="/about" className={`ml-4 flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/about") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
+              <InfoIcon size={18} className="mr-2" />
               <span className="font-semibold">About the Author</span>
             </Link>
           </div>
@@ -34,13 +34,13 @@ const Navigation = () => {
             
             {user ? (
               <>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-700 font-medium">
                   {user.email}
                 </div>
                 
                 {isAdmin && (
-                  <Link to="/admin" className={`flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
-                    <Settings size={18} className="mr-1" />
+                  <Link to="/admin" className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
+                    <Settings size={18} className="mr-2" />
                     <span>Admin</span>
                   </Link>
                 )}
@@ -49,7 +49,7 @@ const Navigation = () => {
                   variant="ghost" 
                   size="sm" 
                   onClick={signOut} 
-                  className="flex items-center gap-1 text-gray-600"
+                  className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
                 >
                   <LogOut size={16} />
                   <span>Sign Out</span>
@@ -57,7 +57,7 @@ const Navigation = () => {
               </>
             ) : (
               <Link to="/auth">
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="font-medium">
                   Sign In
                 </Button>
               </Link>
