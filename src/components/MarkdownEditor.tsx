@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -10,11 +9,11 @@ import {
   X, 
   Link as LinkIcon,
   ArrowLeft,
-  Upload,
-  Tag
+  Tag,
+  Image
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { uploadImage, fetchAllPosts, fetchAllTags } from "../services/blogService";
+import { fetchAllPosts, fetchAllTags, fetchBucketImages, fetchTagsByLanguage } from "../services/blogService";
 import { useToast } from "../hooks/use-toast";
 import { 
   Select,
@@ -24,6 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface MarkdownEditorProps {
   post: BlogEntry;
@@ -31,112 +34,176 @@ interface MarkdownEditorProps {
   onCancel: () => void;
 }
 
+const getFormattedContent = (markdown: string): string => {
+  let html = markdown;
+  
+  html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+  html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+  html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+  
+  html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+  
+  html = html.replace(/\*(.*?)\*/gim, '<em>$1</em>');
+  
+  html = html.replace(/\[(.*?)\]\((.*?)\)/gim, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+  
+  html = html.replace(/!\[(.*?)\]\((.*?)\)/gim, '<img src="$2" alt="$1" class="w-full max-h-96 object-contain my-4" />');
+  
+  html = html.replace(/^\s*(\n)?(.+)/gim, function(m) {
+    return /\<(\/)?(h1|h2|h3|ul|ol|li|blockquote|pre|img)/.test(m) ? m : '<p>' + m + '</p>';
+  });
+  
+  html = html.replace(/\n/gim, '<br>');
+  
+  return html;
+};
+
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
+
+const hasCyrillic = (text: string): boolean => {
+  return /[А-Яа-яЁё]/.test(text);
+};
+
+const detectLanguage = (text: string): string => {
+  if (hasHebrew(text)) {
+    return "Hebrew";
+  } else if (hasCyrillic(text)) {
+    return "Russian";
+  } else {
+    return "English";
+  }
+};
+
 const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
   const [content, setContent] = useState<string>(post.content || "");
-  const [date, setDate] = useState(post.date);
-  const [language, setLanguage] = useState(post.language[0] || "English");
+  const [date, setDate] = useState(post.date || format(new Date(), "dd/MM/yyyy"));
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    post.date ? parseDate(post.date) : new Date()
+  );
+  const [language, setLanguage] = useState(post.language?.[0] || "English");
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [imageUrl, setImageUrl] = useState<string | null>(post.image_url || null);
-  const [uploading, setUploading] = useState(false);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [tags, setTags] = useState<string[]>(post.tags || []);
   const [tagInput, setTagInput] = useState("");
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [availablePosts, setAvailablePosts] = useState<BlogEntry[]>([]);
   const [isLoadingPosts, setIsLoadingPosts] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [availableImages, setAvailableImages] = useState<string[]>([]);
+  const [filteredImages, setFilteredImages] = useState<string[]>([]);
+  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [filteredTags, setFilteredTags] = useState<string[]>([]);
 
-  // Available languages for selection
-  const languages = ["English", "Spanish", "French", "German", "Russian", "Hebrew", "Chinese", "Japanese"];
+  const languages = ["English", "Hebrew", "Russian"];
 
-  // Load available posts and tags
+  function parseDate(dateString: string): Date | undefined {
+    try {
+      let parsedDate = parse(dateString, "dd/MM/yyyy", new Date());
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+      
+      const formats = ["MM/dd/yyyy", "yyyy-MM-dd", "MMMM d, yyyy"];
+      
+      for (const formatStr of formats) {
+        parsedDate = parse(dateString, formatStr, new Date());
+        if (!isNaN(parsedDate.getTime())) {
+          return parsedDate;
+        }
+      }
+      
+      parsedDate = new Date(dateString);
+      if (!isNaN(parsedDate.getTime())) {
+        return parsedDate;
+      }
+    } catch (error) {
+      console.error("Error parsing date:", error);
+    }
+    
+    return undefined;
+  }
+
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoadingPosts(true);
-        // Load all posts for translation selection
+        setIsLoadingImages(true);
+        
         const posts = await fetchAllPosts();
-        // Filter out the current post
         setAvailablePosts(posts.filter(p => p.id !== post.id));
         
-        // Load all tags
         const tags = await fetchAllTags();
         setAvailableTags(tags);
+        
+        const images = await fetchBucketImages();
+        setAvailableImages(images);
+        
+        updateFilteredImages(images, imageUrl);
       } catch (error) {
         console.error("Error loading data:", error);
         toast({
           title: "Error",
-          description: "Failed to load posts and tags",
+          description: "Failed to load data. Please try again later.",
           variant: "destructive"
         });
       } finally {
         setIsLoadingPosts(false);
+        setIsLoadingImages(false);
       }
     };
 
     loadData();
   }, [post.id, toast]);
 
-  // Format the content with basic HTML when in preview mode
-  const getFormattedContent = () => {
-    // This is a very basic markdown-to-html conversion
-    // In a real app, you'd use a proper markdown parser
-    let formatted = content
-      .replace(/# (.*)/g, '<h1>$1</h1>')
-      .replace(/## (.*)/g, '<h2>$1</h2>')
-      .replace(/### (.*)/g, '<h3>$1</h3>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br />');
+  useEffect(() => {
+    updateFilteredImages(availableImages, imageUrl);
+  }, [imageUrl, availableImages]);
 
-    // Convert URL-like text to actual links
-    formatted = formatted.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>'
-    );
-
-    return formatted;
-  };
-
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputDate = e.target.value;
-    try {
-      // Parse the input date (DD/MM/YYYY) to a Date object
-      const parsedDate = parse(inputDate, "dd/MM/yyyy", new Date());
-      // Format it to the blog post format (Month D, YYYY)
-      const formattedDate = format(parsedDate, "MMMM d, yyyy");
-      setDate(formattedDate);
-    } catch (error) {
-      // If parsing fails, just use the input as is
-      setDate(inputDate);
+  const updateFilteredImages = (images: string[], currentImage: string | null) => {
+    if (currentImage) {
+      setFilteredImages(images.filter(img => img !== currentImage));
+    } else {
+      setFilteredImages(images);
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  useEffect(() => {
+    const getTagsForLanguage = async () => {
       try {
-        setUploading(true);
-        const imageUrl = await uploadImage(file);
-        setImageUrl(imageUrl);
-        toast({
-          title: "Success",
-          description: "Image uploaded successfully",
-        });
+        const tags = await fetchTagsByLanguage(language);
+        setFilteredTags(tags);
       } catch (error) {
-        console.error("Error uploading image:", error);
-        toast({
-          title: "Error",
-          description: "Failed to upload image. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setUploading(false);
+        console.error("Error fetching tags for language:", error);
+        setFilteredTags([]);
+      }
+    };
+    
+    getTagsForLanguage();
+  }, [language]);
+
+  useEffect(() => {
+    if (content && content.trim().length > 20) {
+      const detectedLanguage = detectLanguage(content);
+      if (detectedLanguage !== language) {
+        setLanguage(detectedLanguage);
       }
     }
+  }, [content]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      setDate(format(selectedDate, "dd/MM/yyyy"));
+    }
+  }, [selectedDate]);
+
+  const formatDateDisplay = (dateString: string): string => {
+    return dateString;
   };
 
   const handleSave = () => {
@@ -145,7 +212,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       title,
       excerpt: excerpt || null,
       content,
-      date,
+      date: date || format(new Date(), "dd/MM/yyyy"),
       language: [language],
       title_language: post.title_language || ["en"],
       translations: translations.length > 0 ? translations : undefined,
@@ -170,9 +237,9 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       setTags([...tags, tagInput]);
       setTagInput("");
       
-      // Add to available tags if it's new
       if (!availableTags.includes(tagInput)) {
         setAvailableTags([...availableTags, tagInput]);
+        setFilteredTags([...filteredTags, tagInput]);
       }
     }
   };
@@ -187,27 +254,21 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     }
   };
 
-  // Filter the posts based on search term
+  const handleSelectImage = (url: string) => {
+    setImageUrl(url);
+  };
+
   const filteredPosts = availablePosts.filter(p => 
     p.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Get the current date in DD/MM/YYYY format for the date input field
-  const getInputDateFormat = () => {
-    try {
-      // Try to parse the current date string to a Date object
-      // This assumes the date is in "Month D, YYYY" format
-      const dateObj = new Date(date);
-      if (isNaN(dateObj.getTime())) {
-        // If the date is invalid, return an empty string
-        return "";
-      }
-      // Format to DD/MM/YYYY
-      return format(dateObj, "dd/MM/yyyy");
-    } catch (error) {
-      return "";
-    }
+  const getImageFileName = (url: string) => {
+    const parts = url.split('/');
+    return parts[parts.length - 1];
   };
+
+  const isRtlTitle = hasHebrew(title);
+  const isRtlContent = hasHebrew(content);
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
@@ -263,7 +324,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       
       {activeTab === "edit" ? (
         <div className="p-4">
-          {/* Title Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
@@ -275,7 +335,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             />
           </div>
           
-          {/* Excerpt Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Excerpt</label>
             <textarea
@@ -287,38 +346,52 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             />
           </div>
 
-          {/* Featured Image */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
-                <Upload size={16} className="mr-1" />
+                <Image size={16} className="mr-1" />
                 Featured Image
               </div>
             </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-              {uploading && <span className="text-sm text-gray-500">Uploading...</span>}
-              {imageUrl && (
-                <div className="relative w-16 h-16 border border-gray-200 rounded overflow-hidden">
-                  <img src={imageUrl} alt="Featured" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => setImageUrl(null)}
-                    className="absolute top-0 right-0 p-0.5 bg-white bg-opacity-75 rounded-bl text-red-600 hover:text-red-700"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              )}
-            </div>
+            
+            {isLoadingImages ? (
+              <div className="py-2 text-sm text-gray-500">Loading images...</div>
+            ) : (
+              <div>
+                <Select onValueChange={handleSelectImage}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an image from storage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {filteredImages.map((url) => (
+                        <SelectItem key={url} value={url}>
+                          {getImageFileName(url)}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+                
+                {imageUrl && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden">
+                      <img src={imageUrl} alt="Featured" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setImageUrl(null)}
+                        className="absolute top-0 right-0 p-1 bg-white bg-opacity-75 rounded-bl text-red-600 hover:text-red-700"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <span className="text-sm text-gray-500 break-all">{getImageFileName(imageUrl)}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            {/* Date Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -326,21 +399,37 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   Date (DD/MM/YYYY)
                 </div>
               </label>
-              <input
-                type="text"
-                value={getInputDateFormat()}
-                onChange={handleDateChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-                placeholder="DD/MM/YYYY"
-              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant={"outline"}
+                    className="w-full flex justify-start text-left font-normal"
+                  >
+                    {selectedDate ? (
+                      format(selectedDate, "dd/MM/yyyy")
+                    ) : (
+                      <span>Pick a date</span>
+                    )}
+                    <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={setSelectedDate}
+                    initialFocus
+                    className={cn("p-3 pointer-events-auto")}
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             
-            {/* Language Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
                   <Languages size={16} className="mr-1" />
-                  Language
+                  Language (Auto-detected)
                 </div>
               </label>
               <select
@@ -356,7 +445,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               </select>
             </div>
             
-            {/* Tags Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -380,8 +468,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                 </button>
               </div>
               
-              {/* Tags dropdown */}
-              {availableTags.length > 0 && (
+              {filteredTags.length > 0 && (
                 <div className="mt-2">
                   <Select onValueChange={handleSelectTag}>
                     <SelectTrigger className="w-full">
@@ -389,7 +476,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        {availableTags.map((tag) => (
+                        {filteredTags.map((tag) => (
                           <SelectItem key={tag} value={tag}>{tag}</SelectItem>
                         ))}
                       </SelectGroup>
@@ -419,7 +506,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             </div>
           </div>
           
-          {/* Translations Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
@@ -427,7 +513,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                 Related Translations
               </div>
             </label>
-            {/* Search field for posts */}
             <div className="mb-2">
               <input
                 type="text"
@@ -438,7 +523,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               />
             </div>
             
-            {/* Post selection dropdown */}
             {isLoadingPosts ? (
               <div className="text-sm text-gray-500">Loading posts...</div>
             ) : (
@@ -450,7 +534,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   <SelectGroup>
                     {filteredPosts.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.title} ({p.language.join(', ')})
+                        {p.title} ({p.language?.join(', ')})
                       </SelectItem>
                     ))}
                   </SelectGroup>
@@ -465,7 +549,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                   {translations.map((id) => {
                     const relatedPost = availablePosts.find(p => p.id === id);
                     const displayName = relatedPost 
-                      ? `${relatedPost.title} (${relatedPost.language.join(', ')})` 
+                      ? `${relatedPost.title} (${relatedPost.language?.join(', ')})` 
                       : id;
                     
                     return (
@@ -488,7 +572,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             )}
           </div>
           
-          {/* Content Field */}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               <div className="flex items-center">
@@ -506,29 +589,59 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
           </div>
         </div>
       ) : (
-        <div className="p-4">
-          {imageUrl && (
-            <div className="mb-4">
-              <img src={imageUrl} alt={title} className="w-full max-h-64 object-cover rounded-lg" />
-            </div>
-          )}
-          <h1 className="text-3xl font-cursive mb-2">{title}</h1>
-          <div className="text-sm text-gray-500 mb-4">
-            {date} • {language}
-          </div>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
-                  <Tag size={12} className="mr-1" />
-                  {tag}
+        <div className="p-4 max-w-3xl mx-auto">
+          <article>
+            {imageUrl && (
+              <div className="flex-none mb-4">
+                <img 
+                  src={imageUrl} 
+                  alt={title} 
+                  className="max-w-full max-h-[300px] object-contain rounded-lg"
+                />
+              </div>
+            )}
+            
+            <div className="flex-grow">
+              <h1 
+                className={`font-raleway font-semibold text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                dir={isRtlTitle ? 'rtl' : 'ltr'}
+                style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+              >
+                {title}
+              </h1>
+              
+              <div className={`flex items-center text-gray-500 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+                <Calendar size={16} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+                <span 
+                  dir={isRtlTitle ? 'rtl' : 'ltr'} 
+                  style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+                >
+                  {date || format(new Date(), "dd/MM/yyyy")}
                 </span>
-              ))}
+              </div>
+              
+              {tags.length > 0 && (
+                <div className={`flex flex-wrap gap-2 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
+                  {tags.map((tag, index) => (
+                    <span 
+                      key={index}
+                      className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                    >
+                      <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-          
-          <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent() }} />
+            
+            <div 
+              className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
+              dir={isRtlContent ? 'rtl' : 'ltr'}
+              style={isRtlContent ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
+              dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }}
+            />
+          </article>
         </div>
       )}
     </div>

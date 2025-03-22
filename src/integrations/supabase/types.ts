@@ -9,6 +9,33 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      about_content: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          image_url: string | null
+          language: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          language: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          language?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       entries: {
         Row: {
           content: string
@@ -22,7 +49,9 @@ export type Database = {
           tags: string[] | null
           title: string
           title_language: string[]
+          translations: string[] | null
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -36,7 +65,9 @@ export type Database = {
           tags?: string[] | null
           title: string
           title_language: string[]
+          translations?: string[] | null
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -50,6 +81,38 @@ export type Database = {
           tags?: string[] | null
           title?: string
           title_language?: string[]
+          translations?: string[] | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          created_at: string
+          en: string | null
+          he: string | null
+          id: string
+          name: string
+          ru: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          en?: string | null
+          he?: string | null
+          id?: string
+          name: string
+          ru?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          en?: string | null
+          he?: string | null
+          id?: string
+          name?: string
+          ru?: string | null
           updated_at?: string
         }
         Relationships: []
