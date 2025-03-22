@@ -1,6 +1,6 @@
 
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, Menu } from "lucide-react";
 import { useAuth } from "./AuthProvider";
 import LanguageSelector from "./LanguageSelector";
@@ -15,10 +15,16 @@ import {
 const Navigation = () => {
   const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isMobile = useIsMobile();
 
   const isActive = (path: string) => {
     return location.pathname === path;
+  };
+  
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
   };
   
   const NavLinks = () => (
@@ -69,9 +75,7 @@ const Navigation = () => {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => {
-              signOut();
-            }} 
+            onClick={handleSignOut} 
             className="flex items-center gap-2 text-gray-700 hover:text-gray-900"
           >
             <LogOut size={16} />
