@@ -1,6 +1,7 @@
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,7 +20,7 @@ const ProtectedRoute = ({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <Spinner size="lg" />
       </div>
     );
   }
