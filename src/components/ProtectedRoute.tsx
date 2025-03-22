@@ -1,7 +1,6 @@
 
 import { Navigate } from "react-router-dom";
 import { useAuth } from "./AuthProvider";
-import { Spinner } from "@/components/ui/spinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,13 +13,14 @@ const ProtectedRoute = ({
   redirectTo = "/auth",
   adminOnly = false
 }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, loading } = useAuth();
+  const adminEmail = "ilya.venger@gmail.com";
 
   // If authentication is still loading, show a loading indicator
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <Spinner size="lg" />
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -30,8 +30,8 @@ const ProtectedRoute = ({
     return <Navigate to={redirectTo} />;
   }
 
-  // If adminOnly flag is true, check if the current user is an admin
-  if (adminOnly && !isAdmin) {
+  // If adminOnly flag is true, check if the current user is the admin
+  if (adminOnly && user.email !== adminEmail) {
     return <Navigate to="/" />;
   }
 
