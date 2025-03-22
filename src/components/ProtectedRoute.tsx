@@ -13,8 +13,7 @@ const ProtectedRoute = ({
   redirectTo = "/auth",
   adminOnly = false
 }: ProtectedRouteProps) => {
-  const { user, loading } = useAuth();
-  const adminEmail = "ilya.venger@gmail.com";
+  const { user, loading, isAdmin } = useAuth();
 
   // If authentication is still loading, show a loading indicator
   if (loading) {
@@ -30,8 +29,8 @@ const ProtectedRoute = ({
     return <Navigate to={redirectTo} />;
   }
 
-  // If adminOnly flag is true, check if the current user is the admin
-  if (adminOnly && user.email !== adminEmail) {
+  // If adminOnly flag is true, check if the current user is an admin
+  if (adminOnly && !isAdmin) {
     return <Navigate to="/" />;
   }
 

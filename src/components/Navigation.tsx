@@ -1,16 +1,15 @@
 
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, InfoIcon, Settings } from "lucide-react";
-import { useAuth } from "../components/AuthProvider";
+import { Home, InfoIcon, Settings, LogOut } from "lucide-react";
+import { useAuth } from "./AuthProvider";
 import LanguageSelector from "./LanguageSelector";
+import { Button } from "@/components/ui/button";
 
 const Navigation = () => {
-  const { user, session } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
 
-  // Determine if user is admin (you could add proper role check here)
-  const isAdmin = !!user;
   const isActive = (path: string) => {
     return location.pathname === path;
   };
@@ -30,13 +29,37 @@ const Navigation = () => {
             </Link>
           </div>
           
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <LanguageSelector />
             
-            {isAdmin && (
-              <Link to="/admin" className={`ml-4 flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
-                <Settings size={18} className="mr-1" />
-                <span>Admin</span>
+            {user ? (
+              <>
+                <div className="text-sm text-gray-600">
+                  {user.email}
+                </div>
+                
+                {isAdmin && (
+                  <Link to="/admin" className={`flex items-center px-2 py-1 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600" : "text-gray-600 hover:text-blue-600"}`}>
+                    <Settings size={18} className="mr-1" />
+                    <span>Admin</span>
+                  </Link>
+                )}
+                
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={signOut} 
+                  className="flex items-center gap-1 text-gray-600"
+                >
+                  <LogOut size={16} />
+                  <span>Sign Out</span>
+                </Button>
+              </>
+            ) : (
+              <Link to="/auth">
+                <Button variant="outline" size="sm">
+                  Sign In
+                </Button>
               </Link>
             )}
           </div>

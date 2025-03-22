@@ -9,6 +9,7 @@ type AuthContextType = {
   user: Session['user'] | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  isAdmin: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +17,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
+  isAdmin: false,
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -23,20 +25,41 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+  const checkUserRole = async (userId: string) => {
+    if (!userId) return false;
+    
+    try {
+      const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      
+      if (error) {
+        console.error("Error checking admin role:", error);
+        return false;
+      }
+      
+      return data || false;
+    } catch (err) {
+      console.error("Failed to check user role:", err);
+      return false;
+    }
+  };
 
-    // Listen for auth changes
+  useEffect(() => {
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, newSession) => {
         console.log("Auth state changed:", event);
-        setSession(session);
+        setSession(newSession);
+        
+        if (newSession?.user) {
+          const adminStatus = await checkUserRole(newSession.user.id);
+          setIsAdmin(adminStatus);
+        } else {
+          setIsAdmin(false);
+        }
+        
         setLoading(false);
         
         // Show toast for specific events
@@ -64,6 +87,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    // THEN check for existing session
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        const adminStatus = await checkUserRole(currentSession.user.id);
+        setIsAdmin(adminStatus);
+      }
+      
+      setLoading(false);
+    });
+
     return () => {
       subscription.unsubscribe();
     };
@@ -78,6 +113,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user: session?.user || null,
     loading,
     signOut,
+    isAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
