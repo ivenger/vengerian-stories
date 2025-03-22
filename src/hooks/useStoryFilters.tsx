@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useContext, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
@@ -20,14 +21,25 @@ export const useStoryFilters = () => {
     const savedTags = localStorage.getItem('selectedTags');
     const savedLanguages = localStorage.getItem('selectedLanguages');
     if (savedTags) {
-      setSelectedTags(JSON.parse(savedTags));
+      try {
+        setSelectedTags(JSON.parse(savedTags));
+      } catch (e) {
+        console.error("Error parsing saved tags:", e);
+        localStorage.removeItem('selectedTags');
+      }
     }
     if (savedLanguages) {
-      setSelectedLanguages(JSON.parse(savedLanguages));
+      try {
+        setSelectedLanguages(JSON.parse(savedLanguages));
+      } catch (e) {
+        console.error("Error parsing saved languages:", e);
+        localStorage.removeItem('selectedLanguages');
+        setSelectedLanguages([currentLanguage]);
+      }
     } else {
       setSelectedLanguages([currentLanguage]);
     }
-  }, []);
+  }, [currentLanguage]);
 
   // When current language changes, update the selected languages filter
   // but only if no language has been explicitly selected by the user
@@ -35,12 +47,16 @@ export const useStoryFilters = () => {
     if (selectedLanguages.length === 0) {
       setSelectedLanguages([currentLanguage]);
     }
-  }, [currentLanguage]);
+  }, [currentLanguage, selectedLanguages]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
-    localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
+    try {
+      localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
+      localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
+    } catch (e) {
+      console.error("Error saving filters to localStorage:", e);
+    }
   }, [selectedTags, selectedLanguages]);
 
   // Fetch all available tags
@@ -63,8 +79,13 @@ export const useStoryFilters = () => {
     try {
       setLoading(true);
       setError(null);
-      const tagsToFilter = selectedTags.length > 0 ? selectedTags : undefined;
-      const langsToFilter = selectedLanguages.length > 0 ? selectedLanguages : undefined;
+      
+      // Ensure we have valid arrays for filtering
+      const tagsToFilter = Array.isArray(selectedTags) && selectedTags.length > 0 ? selectedTags : undefined;
+      const langsToFilter = Array.isArray(selectedLanguages) && selectedLanguages.length > 0 ? selectedLanguages : undefined;
+      
+      console.log("Filtering posts with tags:", tagsToFilter, "and languages:", langsToFilter);
+      
       const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
       setPosts(filteredPosts);
     } catch (error: any) {
@@ -74,7 +95,7 @@ export const useStoryFilters = () => {
           ? "Network error. Please check your connection and try again." 
           : "Failed to load stories. Please try again later."
       );
-      // Keep existing posts if available
+      // Only clear posts if we have an error and no existing posts
       if (posts.length === 0) {
         setPosts([]);
       }
@@ -99,7 +120,7 @@ export const useStoryFilters = () => {
   const toggleLanguage = (language: string) => {
     if (selectedLanguages.includes(language)) {
       const newSelection = selectedLanguages.filter(l => l !== language);
-      setSelectedLanguages(newSelection);
+      setSelectedLanguages(newSelection.length > 0 ? newSelection : [currentLanguage]);
     } else {
       setSelectedLanguages([...selectedLanguages, language]);
     }

@@ -90,16 +90,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             title: "Signed out",
             description: "You've been signed out successfully.",
           });
-        } else if (event === 'PASSWORD_RECOVERY') {
-          toast({
-            title: "Password Recovery",
-            description: "Please check your email for reset instructions.",
-          });
-        } else if (event === 'USER_UPDATED') {
-          toast({
-            title: "Profile Updated",
-            description: "Your profile has been updated successfully.",
-          });
         }
       }
     );
@@ -125,6 +115,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Error checking initial admin status:", roleError);
           // Don't set error here as it's not critical
         }
+      } else {
+        // If no session exists, ensure we're not in loading state
+        setLoading(false);
       }
       
       if (isMounted) setLoading(false);
@@ -143,8 +136,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [toast]);
 
   const signOut = async () => {
-    setLoading(true);
     try {
+      setLoading(true);
       const { error: signOutError } = await supabase.auth.signOut();
       if (signOutError) {
         console.error("Error signing out:", signOutError);
@@ -152,6 +145,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           title: "Error",
           description: "Failed to sign out. Please try again.",
           variant: "destructive"
+        });
+      } else {
+        // Clear the session immediately for improved UX
+        setSession(null);
+        setIsAdmin(false);
+        
+        toast({
+          title: "Signed out",
+          description: "You've been signed out successfully.",
         });
       }
     } catch (err) {
