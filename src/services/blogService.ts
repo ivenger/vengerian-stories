@@ -66,11 +66,6 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       ? postToSave.title_language 
       : [postToSave.title_language || "en"];
   }
-
-  // Ensure tags is an array (if present)
-  if (postToSave.tags && !Array.isArray(postToSave.tags)) {
-    postToSave.tags = [postToSave.tags];
-  }
   
   // Log the post being saved for debugging
   console.log('Saving post:', postToSave);
@@ -105,22 +100,16 @@ export const deletePost = async (id: string): Promise<void> => {
 
 // Upload an image for a blog post
 export const uploadImage = async (file: File): Promise<string> => {
-  // Generate a unique filename to prevent collisions
-  const filePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const filePath = `${Date.now()}_${file.name}`;
   
-  console.log('Uploading image to path:', filePath);
-  
-  const { error: uploadError } = await supabase
+  const { error } = await supabase
     .storage
     .from('blog_images')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
+    .upload(filePath, file);
   
-  if (uploadError) {
-    console.error('Error uploading image:', uploadError);
-    throw uploadError;
+  if (error) {
+    console.error('Error uploading image:', error);
+    throw error;
   }
   
   const { data } = supabase
@@ -128,28 +117,5 @@ export const uploadImage = async (file: File): Promise<string> => {
     .from('blog_images')
     .getPublicUrl(filePath);
   
-  console.log('Image uploaded successfully, public URL:', data.publicUrl);
-  
   return data.publicUrl;
-};
-
-// Fetch all available tags
-export const fetchAllTags = async (): Promise<string[]> => {
-  const { data, error } = await supabase
-    .from('entries')
-    .select('tags');
-  
-  if (error) {
-    console.error('Error fetching tags:', error);
-    throw error;
-  }
-  
-  // Extract unique tags from all posts
-  const allTags = data
-    .filter(post => post.tags && Array.isArray(post.tags))
-    .flatMap(post => post.tags as string[])
-    .filter(Boolean);
-  
-  // Remove duplicates
-  return [...new Set(allTags)];
 };

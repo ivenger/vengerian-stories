@@ -18,8 +18,8 @@ const Navigation = () => {
   return (
     <nav className="py-6 mb-8 border-b border-gray-200">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link to="/" className="text-xl font-cursive font-medium tracking-tight">
-          Vengerian Stories
+        <Link to="/" className="text-xl font-medium tracking-tight">
+          Minimal Writing
         </Link>
 
         {/* Desktop Navigation */}
@@ -30,7 +30,7 @@ const Navigation = () => {
               isActive('/') ? 'font-medium' : ''
             }`}
           >
-            Stories
+            Home
             {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
           </Link>
           <Link 
@@ -74,7 +74,7 @@ const Navigation = () => {
               }`}
               onClick={() => setMobileMenuOpen(false)}
             >
-              Stories
+              Home
               {isActive('/') && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gray-900"></div>}
             </Link>
             <Link 

@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
   Calendar, 
@@ -10,20 +9,11 @@ import {
   X, 
   Link as LinkIcon,
   ArrowLeft,
-  Upload,
-  Tag
+  Upload
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { uploadImage, fetchAllPosts, fetchAllTags } from "../services/blogService";
+import { uploadImage } from "../services/blogService";
 import { useToast } from "../hooks/use-toast";
-import { 
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 interface MarkdownEditorProps {
   post: BlogEntry;
@@ -39,46 +29,13 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   const [date, setDate] = useState(post.date);
   const [language, setLanguage] = useState(post.language[0] || "English");
   const [translations, setTranslations] = useState<string[]>(post.translations || []);
+  const [translationInput, setTranslationInput] = useState("");
   const [activeTab, setActiveTab] = useState<"edit" | "preview">("edit");
   const [imageUrl, setImageUrl] = useState<string | null>(post.image_url || null);
   const [uploading, setUploading] = useState(false);
-  const [tags, setTags] = useState<string[]>(post.tags || []);
-  const [tagInput, setTagInput] = useState("");
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [availablePosts, setAvailablePosts] = useState<BlogEntry[]>([]);
-  const [isLoadingPosts, setIsLoadingPosts] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   // Available languages for selection
   const languages = ["English", "Spanish", "French", "German", "Russian", "Hebrew", "Chinese", "Japanese"];
-
-  // Load available posts and tags
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setIsLoadingPosts(true);
-        // Load all posts for translation selection
-        const posts = await fetchAllPosts();
-        // Filter out the current post
-        setAvailablePosts(posts.filter(p => p.id !== post.id));
-        
-        // Load all tags
-        const tags = await fetchAllTags();
-        setAvailableTags(tags);
-      } catch (error) {
-        console.error("Error loading data:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load posts and tags",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoadingPosts(false);
-      }
-    };
-
-    loadData();
-  }, [post.id, toast]);
 
   // Format the content with basic HTML when in preview mode
   const getFormattedContent = () => {
@@ -149,48 +106,21 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
       language: [language],
       title_language: post.title_language || ["en"],
       translations: translations.length > 0 ? translations : undefined,
-      image_url: imageUrl,
-      tags: tags.length > 0 ? tags : undefined
+      image_url: imageUrl
     };
     onSave(updatedPost);
   };
 
-  const addTranslation = (id: string) => {
-    if (id && !translations.includes(id)) {
-      setTranslations([...translations, id]);
+  const addTranslation = () => {
+    if (translationInput && !translations.includes(translationInput)) {
+      setTranslations([...translations, translationInput]);
+      setTranslationInput("");
     }
   };
 
   const removeTranslation = (id: string) => {
     setTranslations(translations.filter(t => t !== id));
   };
-
-  const addTag = () => {
-    if (tagInput && !tags.includes(tagInput)) {
-      setTags([...tags, tagInput]);
-      setTagInput("");
-      
-      // Add to available tags if it's new
-      if (!availableTags.includes(tagInput)) {
-        setAvailableTags([...availableTags, tagInput]);
-      }
-    }
-  };
-
-  const removeTag = (tag: string) => {
-    setTags(tags.filter(t => t !== tag));
-  };
-
-  const handleSelectTag = (value: string) => {
-    if (!tags.includes(value)) {
-      setTags([...tags, value]);
-    }
-  };
-
-  // Filter the posts based on search term
-  const filteredPosts = availablePosts.filter(p => 
-    p.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   // Get the current date in DD/MM/YYYY format for the date input field
   const getInputDateFormat = () => {
@@ -356,58 +286,39 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               </select>
             </div>
             
-            {/* Tags Field */}
+            {/* Translations Field */}
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
-                  <Tag size={16} className="mr-1" />
-                  Tags
+                  <LinkIcon size={16} className="mr-1" />
+                  Related Translations (IDs)
                 </div>
               </label>
               <div className="flex">
                 <input
                   type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
+                  value={translationInput}
+                  onChange={(e) => setTranslationInput(e.target.value)}
                   className="flex-grow px-3 py-2 border border-gray-300 rounded-l focus:outline-none focus:ring-1 focus:ring-gray-900"
-                  placeholder="Add a tag"
+                  placeholder="Post ID"
                 />
                 <button
-                  onClick={addTag}
+                  onClick={addTranslation}
                   className="px-3 py-2 bg-gray-200 border border-gray-300 border-l-0 rounded-r hover:bg-gray-300"
                 >
                   Add
                 </button>
               </div>
-              
-              {/* Tags dropdown */}
-              {availableTags.length > 0 && (
-                <div className="mt-2">
-                  <Select onValueChange={handleSelectTag}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select existing tag" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectGroup>
-                        {availableTags.map((tag) => (
-                          <SelectItem key={tag} value={tag}>{tag}</SelectItem>
-                        ))}
-                      </SelectGroup>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              {tags.length > 0 && (
+              {translations.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {tags.map((tag) => (
+                  {translations.map((id) => (
                     <span
-                      key={tag}
+                      key={id}
                       className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-sm"
                     >
-                      {tag}
+                      {id}
                       <button
-                        onClick={() => removeTag(tag)}
+                        onClick={() => removeTranslation(id)}
                         className="ml-1 text-gray-500 hover:text-gray-700"
                       >
                         <X size={14} />
@@ -417,75 +328,6 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
                 </div>
               )}
             </div>
-          </div>
-          
-          {/* Translations Field */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              <div className="flex items-center">
-                <LinkIcon size={16} className="mr-1" />
-                Related Translations
-              </div>
-            </label>
-            {/* Search field for posts */}
-            <div className="mb-2">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search for posts by title"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-gray-900"
-              />
-            </div>
-            
-            {/* Post selection dropdown */}
-            {isLoadingPosts ? (
-              <div className="text-sm text-gray-500">Loading posts...</div>
-            ) : (
-              <Select onValueChange={addTranslation}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a post" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {filteredPosts.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.title} ({p.language.join(', ')})
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            )}
-            
-            {translations.length > 0 && (
-              <div className="mt-2">
-                <p className="text-sm font-medium text-gray-700">Selected Translations:</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {translations.map((id) => {
-                    const relatedPost = availablePosts.find(p => p.id === id);
-                    const displayName = relatedPost 
-                      ? `${relatedPost.title} (${relatedPost.language.join(', ')})` 
-                      : id;
-                    
-                    return (
-                      <span
-                        key={id}
-                        className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-sm"
-                      >
-                        {displayName}
-                        <button
-                          onClick={() => removeTranslation(id)}
-                          className="ml-1 text-gray-500 hover:text-gray-700"
-                        >
-                          <X size={14} />
-                        </button>
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
           </div>
           
           {/* Content Field */}
@@ -512,22 +354,10 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
               <img src={imageUrl} alt={title} className="w-full max-h-64 object-cover rounded-lg" />
             </div>
           )}
-          <h1 className="text-3xl font-cursive mb-2">{title}</h1>
+          <h1 className="text-3xl font-bold mb-2">{title}</h1>
           <div className="text-sm text-gray-500 mb-4">
             {date} • {language}
           </div>
-          
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {tags.map(tag => (
-                <span key={tag} className="inline-flex items-center px-2 py-1 bg-gray-100 rounded text-xs">
-                  <Tag size={12} className="mr-1" />
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-          
           <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: getFormattedContent() }} />
         </div>
       )}
