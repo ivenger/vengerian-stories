@@ -181,7 +181,14 @@ const BlogPost = () => {
             </div>
 
             <div className="prose max-w-none">
-              <MarkdownPreview content={post.content} />
+              <MarkdownPreview 
+                title={post.title}
+                date={post.date}
+                language={post.language?.[0] || 'English'}
+                content={post.content}
+                tags={post.tags || []}
+                imageUrl={post.image_url || null}
+              />
             </div>
           </div>
         </article>
@@ -191,3 +198,4 @@ const BlogPost = () => {
 };
 
 export default BlogPost;
+
