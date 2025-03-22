@@ -135,7 +135,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");
-      setLoading(true);
+      
+      // Clear local state first for better UX (feels faster)
+      setSession(null);
+      setIsAdmin(false);
+      
+      // Then perform the actual signout operation
       const { error: signOutError } = await supabase.auth.signOut();
       
       if (signOutError) {
@@ -146,10 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           variant: "destructive"
         });
       } else {
-        // Clear the session immediately for improved UX
-        console.log("Sign out successful, clearing session");
-        setSession(null);
-        setIsAdmin(false);
+        console.log("Sign out successful");
         
         toast({
           title: "Signed out",

@@ -15,12 +15,15 @@ const Navigation = () => {
     return location.pathname === path;
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault(); // Prevent any default button behavior
+    e.stopPropagation(); // Stop event propagation
+    
     try {
       await signOut();
       navigate('/');
     } catch (error) {
-      console.error("Error signing out:", error);
+      console.error("Error in Navigation handleSignOut:", error);
     }
   };
 
