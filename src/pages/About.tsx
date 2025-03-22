@@ -1,41 +1,90 @@
-
+import { useState, useEffect } from "react";
 import Navigation from "../components/Navigation";
-import Footer from "../components/Footer";
+import { fetchAboutContent } from "../services/blogService";
+import { useToast } from "@/hooks/use-toast";
+import MultilingualTitle from "../components/MultilingualTitle";
+
+// Function to detect if text has Hebrew characters
+const hasHebrew = (text: string): boolean => {
+  return /[\u0590-\u05FF]/.test(text);
+};
 
 const About = () => {
+  const [content, setContent] = useState("");
+  const [authorImage, setAuthorImage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        setLoading(true);
+        const aboutData = await fetchAboutContent("Russian");
+        if (typeof aboutData === 'string') {
+          setContent(aboutData);
+        } else {
+          setContent(aboutData.content || "");
+          setAuthorImage(aboutData.image_url || null);
+        }
+      } catch (error) {
+        console.error("Failed to load about content:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load the about page content. Please try again later.",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadContent();
+  }, [toast]);
+
+  // Determine if content has Hebrew characters to set text direction
+  const isRtlContent = hasHebrew(content);
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       
       <main className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto">
-          <h1 className="text-3xl md:text-4xl font-bold mb-8">About Me</h1>
+          <MultilingualTitle className="mb-8" />
           
-          <div className="prose prose-lg max-w-none">
-            <p>
-              Welcome to my corner of the internet. I'm a writer, thinker, and observer of life's quiet moments.
-            </p>
-            
-            <p>
-              This blog is a space for reflection, exploration, and sharing ideas. I write about creativity, mindfulness, the writing process, and the beauty found in everyday experiences.
-            </p>
-            
-            <p>
-              My approach to writing is guided by simplicity and clarity. I believe that the most profound ideas can be expressed in plain language, and that writing should illuminate rather than obscure.
-            </p>
-            
-            <p>
-              When I'm not writing, you might find me walking in nature, reading books that challenge my thinking, or enjoying conversations with friends over coffee.
-            </p>
-            
-            <p>
-              Thank you for visiting. I hope you find something here that resonates with you.
-            </p>
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {authorImage && (
+                <div className="mb-6">
+                  <div className="overflow-hidden border border-gray-200 shadow-md relative">
+                    <img 
+                      src={authorImage} 
+                      alt="Author" 
+                      className="w-full h-auto object-cover"
+                    />
+                    <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
+                      Illustration by Levi Pritzker
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div 
+                className={`prose prose-lg max-w-none ${isRtlContent ? 'text-right' : 'text-left'}`}
+                dir={isRtlContent ? 'rtl' : 'ltr'}
+              >
+                {content.split('\n').map((paragraph, index) => (
+                  <p key={index}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </main>
-      
-      <Footer />
     </div>
   );
 };
