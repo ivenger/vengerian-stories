@@ -12,6 +12,13 @@ import { Label } from "@/components/ui/label";
 import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
 
+interface ReadingHistoryItem {
+  id: string;
+  user_id: string;
+  post_id: string;
+  read_at: string;
+}
+
 const ReadingHistory = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -41,13 +48,13 @@ const ReadingHistory = () => {
         // Fetch reading history
         const { data: history, error: historyError } = await supabase
           .from("reading_history")
-          .select("post_id")
+          .select("*")
           .eq("user_id", user.id);
           
         if (historyError) throw historyError;
         
         setAllPosts(posts || []);
-        setReadPosts(history?.map(item => item.post_id) || []);
+        setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
       } catch (err: any) {
         console.error("Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");

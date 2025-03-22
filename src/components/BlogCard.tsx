@@ -32,7 +32,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
       try {
         const { data, error } = await supabase
           .from('reading_history')
-          .select('post_id')
+          .select('*')
           .eq('user_id', user.id)
           .eq('post_id', post.id)
           .single();

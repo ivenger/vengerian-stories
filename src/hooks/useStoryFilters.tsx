@@ -92,12 +92,12 @@ export const useStoryFilters = () => {
       try {
         const { data, error } = await supabase
           .from('reading_history')
-          .select('post_id')
+          .select('*')
           .eq('user_id', user.id);
           
         if (error) throw error;
         
-        setReadPostIds(data?.map(item => item.post_id) || []);
+        setReadPostIds((data || []).map(item => item.post_id));
       } catch (err) {
         console.error("Error fetching reading history:", err);
         // Non-critical, don't set error state

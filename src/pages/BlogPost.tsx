@@ -1,226 +1,191 @@
 
-import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { fetchPostById } from '../services/blogService';
-import { BlogEntry } from '../types/blogTypes';
-import Navigation from '../components/Navigation';
-import { Calendar, Tag } from 'lucide-react';
-import MultilingualTitle from '../components/MultilingualTitle';
-import { useAuth } from '../components/AuthProvider';
-import { supabase } from '@/integrations/supabase/client';
-
-// Function to detect if text has Cyrillic characters
-const hasCyrillic = (text: string): boolean => {
-  return /[А-Яа-яЁё]/.test(text);
-};
-
-// Function to detect if text has Hebrew characters
-const hasHebrew = (text: string): boolean => {
-  return /[\u0590-\u05FF]/.test(text);
-};
-
-// Function to format date properly for RTL languages
-const formatDateForRTL = (date: string): string => {
-  // If the date contains numbers and is in a format like "Month DD, YYYY"
-  if (/\d/.test(date)) {
-    // Split into parts (assuming format like "Month DD, YYYY")
-    const parts = date.split(/,\s*/);
-    if (parts.length > 1) {
-      // Keep the month and day part
-      let monthDay = parts[0];
-      // Reverse the year part (if it's 4 digits)
-      let year = parts[1].trim();
-      return `${monthDay}, ${year}`;
-    }
-  }
-  return date;
-};
+import React, { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { fetchPostById } from "../services/blogService";
+import MarkdownPreview from "../components/MarkdownPreview";
+import Navigation from "../components/Navigation";
+import { BlogEntry } from "../types/blogTypes";
+import { useAuth } from "../components/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { ArrowLeft, Tag, Calendar, Eye } from "lucide-react";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogEntry | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRead, setIsRead] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
-    const loadPost = async () => {
+    const fetchPostData = async () => {
       if (!id) return;
       
       try {
-        setIsLoading(true);
+        setLoading(true);
+        setError(null);
         const postData = await fetchPostById(id);
         setPost(postData);
         
-        // Record that the user has read this post if they're logged in
-        if (user && postData) {
-          await recordReadingHistory(id);
+        // Check if post is already marked as read
+        if (user) {
+          const { data, error } = await supabase
+            .from('reading_history')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('post_id', id)
+            .single();
+            
+          if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
+            console.error("Error checking read status:", error);
+          } else {
+            setIsRead(!!data);
+          }
         }
       } catch (err) {
-        console.error('Error loading post:', err);
-        setError('Failed to load the blog post. Please try again later.');
+        console.error("Error fetching post:", err);
+        setError("Failed to load the post. Please try again later.");
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
-    loadPost();
+    fetchPostData();
   }, [id, user]);
-  
-  // Record that the user has read this post
-  const recordReadingHistory = async (postId: string) => {
-    if (!user) return;
-    
-    try {
-      // Upsert to reading_history table
-      const { error } = await supabase
-        .from('reading_history')
-        .upsert(
-          { 
+
+  // Mark post as read when it loads
+  useEffect(() => {
+    const markAsRead = async () => {
+      if (!user || !post || isRead) return;
+      
+      try {
+        // Insert into reading history
+        const { error } = await supabase
+          .from('reading_history')
+          .upsert({ 
             user_id: user.id, 
-            post_id: postId,
+            post_id: post.id,
             read_at: new Date().toISOString()
-          },
-          { onConflict: 'user_id,post_id' }
-        );
+          }, { 
+            onConflict: 'user_id,post_id' 
+          });
+          
+        if (error) {
+          console.error("Error marking post as read:", error);
+          return;
+        }
         
-      if (error) throw error;
-    } catch (err) {
-      // Just log the error but don't show to user as this is non-critical
-      console.error('Error recording reading history:', err);
+        setIsRead(true);
+      } catch (err) {
+        console.error("Error in markAsRead:", err);
+      }
+    };
+    
+    // Only try to mark as read if the post has fully loaded
+    if (post && !loading) {
+      markAsRead();
     }
-  };
+  }, [post, user, loading, isRead]);
 
-  // Format the content with basic HTML when in preview mode
-  const getFormattedContent = (content: string) => {
-    // This is a very basic markdown-to-html conversion
-    let formatted = content
-      .replace(/# (.*)/g, '<h1>$1</h1>')
-      .replace(/## (.*)/g, '<h2>$1</h2>')
-      .replace(/### (.*)/g, '<h3>$1</h3>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em>$1</em>')
-      .replace(/\n/g, '<br />');
-
-    // Convert URL-like text to actual links
-    formatted = formatted.replace(
-      /(https?:\/\/[^\s]+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">$1</a>'
+  if (loading) {
+    return (
+      <div>
+        <Navigation />
+        <div className="container mx-auto px-4 py-16 flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        </div>
+      </div>
     );
+  }
 
-    return formatted;
-  };
-
-  // Determine if the content needs RTL
-  const isRtlContent = post && hasHebrew(post.content);
-  const isRtlTitle = post && hasHebrew(post.title);
-  const hasCyrillicTitle = post && hasCyrillic(post.title);
-
-  // Determine the appropriate font class based on the content
-  const getTitleFontClass = () => {
-    if (isRtlTitle) return 'font-raleway font-semibold';
-    // Both English and Cyrillic titles now use Pacifico at 44px
-    return 'font-pacifico text-[44px]';
-  };
-  
-  // Format date for RTL display if needed
-  const displayDate = post && isRtlTitle ? formatDateForRTL(post.date) : post?.date;
+  if (error || !post) {
+    return (
+      <div>
+        <Navigation />
+        <div className="container mx-auto px-4 py-16">
+          <div className="bg-red-50 p-8 rounded-lg text-center">
+            <h2 className="text-2xl font-semibold text-red-800 mb-4">
+              {error || "Post not found"}
+            </h2>
+            <Link
+              to="/"
+              className="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Stories
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div>
       <Navigation />
-      
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <MultilingualTitle />
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <Link
+            to="/"
+            className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <ArrowLeft className="mr-1 h-4 w-4" />
+            Back to Stories
+          </Link>
         </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold text-red-600 mb-4">Error</h2>
-            <p className="text-gray-600">{error}</p>
-            <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">
-              Return to Home
-            </Link>
-          </div>
-        ) : post ? (
-          <article className="max-w-3xl mx-auto">
-            <Link 
-              to="/" 
-              className="inline-flex items-center text-gray-600 hover:text-gray-900 mb-6"
-            >
-              ← Back to all posts
-            </Link>
-            
-            <div className="flex items-start gap-6">
-              {post.image_url && (
-                <div className="flex-none">
-                  <div className="relative">
-                    <img 
-                      src={post.image_url} 
-                      alt={post.title} 
-                      className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
-                      Illustration by Levi Pritzker
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex-grow">
-                <h1 
-                  className={`${getTitleFontClass()} mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
-                  dir={isRtlTitle ? 'rtl' : 'ltr'}
-                >
-                  {post.title}
-                </h1>
-                
-                <div className={`flex items-center text-gray-500 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
-                  <Calendar size={16} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                  <span 
-                    dir={isRtlTitle ? 'rtl' : 'ltr'} 
-                  >
-                    {displayDate}
-                  </span>
-                </div>
-                
-                {post.tags && post.tags.length > 0 && (
-                  <div className={`flex flex-wrap gap-2 mb-6 ${isRtlTitle ? 'justify-end' : 'justify-start'}`}>
-                    {post.tags.map((tag, index) => (
-                      <span 
-                        key={index}
-                        className="flex items-center px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                      >
-                        <Tag size={14} className={isRtlTitle ? 'ml-1' : 'mr-1'} />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
+
+        <article className="bg-white rounded-lg shadow-md overflow-hidden relative max-w-4xl mx-auto">
+          {user && (
+            <div className="absolute top-4 right-4">
+              <div className="flex items-center bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
+                <Eye className={`h-4 w-4 mr-1 ${isRead ? 'text-green-500' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">
+                  {isRead ? 'Read' : 'Unread'}
+                </span>
               </div>
             </div>
-            
-            <div 
-              className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
-              dir={isRtlContent ? 'rtl' : 'ltr'}
-              dangerouslySetInnerHTML={{ __html: getFormattedContent(post.content) }}
-            />
-          </article>
-        ) : (
-          <div className="text-center py-12">
-            <h2 className="text-2xl font-semibold mb-4">Post Not Found</h2>
-            <p className="text-gray-600">The blog post you're looking for doesn't exist or has been removed.</p>
-            <Link to="/" className="mt-4 inline-block text-blue-600 hover:underline">
-              Return to Home
-            </Link>
+          )}
+
+          {post.image_url && (
+            <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-100">
+              <img
+                src={post.image_url}
+                alt={post.title}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          <div className="p-8">
+            <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
+
+            <div className="flex flex-wrap items-center text-gray-500 mb-6 gap-4">
+              <div className="flex items-center">
+                <Calendar className="h-4 w-4 mr-1" />
+                <span>{post.date}</span>
+              </div>
+
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {post.tags.map((tag, index) => (
+                    <span
+                      key={index}
+                      className="flex items-center text-xs px-2 py-1 bg-gray-100 rounded-full"
+                    >
+                      <Tag className="h-3 w-3 mr-1" />
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="prose max-w-none">
+              <MarkdownPreview content={post.content} />
+            </div>
           </div>
-        )}
-      </main>
+        </article>
+      </div>
     </div>
   );
 };
