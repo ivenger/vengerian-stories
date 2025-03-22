@@ -1,74 +1,69 @@
 
-import React, { useContext } from "react";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import BlogCard from "../components/BlogCard";
+import Footer from "../components/Footer";
 import Navigation from "../components/Navigation";
-import { Filter } from "lucide-react";
-import { LanguageContext } from "../App";
-import MultilingualTitle from "../components/MultilingualTitle";
-import FilterDialog from "../components/FilterDialog";
-import ActiveFilters from "../components/ActiveFilters";
-import StoriesList from "../components/StoriesList";
-import { useStoryFilters } from "../hooks/useStoryFilters";
+import { fetchPublishedPosts } from "../services/blogService";
+import { BlogEntry } from "../types/blogTypes";
+import { useToast } from "@/components/ui/use-toast";
 
 const Index = () => {
-  // Get language context
-  const { currentLanguage } = useContext(LanguageContext);
-  
-  // Use our custom hook to handle all filter logic
-  const {
-    posts,
-    loading,
-    allTags,
-    selectedTags,
-    selectedLanguages,
-    toggleTag,
-    toggleLanguage,
-    clearFilters,
-    hasActiveFilters,
-    languages
-  } = useStoryFilters();
-  
+  const [posts, setPosts] = useState<BlogEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const loadPosts = async () => {
+      try {
+        setLoading(true);
+        const publishedPosts = await fetchPublishedPosts();
+        setPosts(publishedPosts);
+      } catch (error) {
+        console.error("Failed to load posts:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load blog posts. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPosts();
+  }, [toast]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 text-center relative">
-          <MultilingualTitle />
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-gray-600">
-              Короткое, длиннее и странное
-            </p>
-            
-            <FilterDialog 
-              allTags={allTags}
-              selectedTags={selectedTags}
-              selectedLanguages={selectedLanguages}
-              toggleTag={toggleTag}
-              toggleLanguage={toggleLanguage}
-              clearFilters={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-              languages={languages}
-            />
-          </div>
-          
-          <ActiveFilters 
-            selectedLanguages={selectedLanguages}
-            selectedTags={selectedTags}
-            toggleLanguage={toggleLanguage}
-            toggleTag={toggleTag}
-            clearFilters={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
+        <div className="mb-12 text-center">
+          <h1 className="text-4xl font-cursive font-bold text-gray-900 mb-3">
+            Vengerian Stories
+          </h1>
+          <p className="text-gray-600 max-w-lg mx-auto">
+            Welcome to our collection of wonderful stories. Explore the magic of storytelling.
+          </p>
         </div>
 
-        <div className="max-w-3xl mx-auto">
-          <StoriesList 
-            posts={posts} 
-            loading={loading} 
-            hasActiveFilters={hasActiveFilters} 
-            clearFilters={clearFilters} 
-          />
-        </div>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-600">No stories found. Check back later for new content.</p>
+          </div>
+        ) : (
+          <div className="grid gap-8">
+            {posts.map((post) => (
+              <BlogCard key={post.id} post={post} />
+            ))}
+          </div>
+        )}
       </main>
+      <Footer />
     </div>
   );
 };

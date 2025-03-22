@@ -1,7 +1,6 @@
 
-import { supabase } from "../integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
-import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
 
 // Fetch all published blog posts
 export const fetchPublishedPosts = async (): Promise<BlogEntry[]> => {
@@ -52,8 +51,10 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
 
 // Save a blog post (create or update)
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
+  // Make a copy to avoid modifying the original
   const postToSave = { ...post };
   
+  // Ensure all required fields are present
   if (!postToSave.language || !Array.isArray(postToSave.language)) {
     postToSave.language = Array.isArray(postToSave.language) 
       ? postToSave.language 
@@ -66,12 +67,15 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       : [postToSave.title_language || "en"];
   }
 
+  // Ensure tags is an array (if present)
   if (postToSave.tags && !Array.isArray(postToSave.tags)) {
     postToSave.tags = [postToSave.tags];
   }
   
+  // Log the post being saved for debugging
   console.log('Saving post:', postToSave);
   
+  // If post has an ID, update it; otherwise, insert a new one
   const { data, error } = await supabase
     .from('entries')
     .upsert(postToSave)
@@ -99,182 +103,58 @@ export const deletePost = async (id: string): Promise<void> => {
   }
 };
 
-// Fetch posts filtered by tags and/or languages - uses OR logic for languages
-export const fetchFilteredPosts = async (
-  tags?: string[], 
-  languages?: string[]
-): Promise<BlogEntry[]> => {
-  try {
-    console.log("Filtering posts with tags:", tags, "and languages:", languages);
-    
-    let query = supabase
-      .from('entries')
-      .select('*')
-      .eq('status', 'published');
-    
-    if (tags && tags.length > 0) {
-      query = query.overlaps('tags', tags);
-    }
-    
-    // Handle multiple languages using OR logic with direct filter
-    if (languages && languages.length > 0) {
-      const filters = languages.map(lang => `language.cs.{${lang}}`);
-      const filterString = filters.join(',');
-      
-      console.log("Using filter string:", filterString);
-      query = query.or(filterString);
-    }
-    // If no languages are selected, we still get all posts (no language filter applied)
-    
-    query = query.order('date', { ascending: false });
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching filtered posts:', error);
-      throw error;
-    }
-    
-    console.log(`Fetched ${data?.length || 0} filtered posts`);
-    return data as BlogEntry[] || [];
-  } catch (error) {
-    console.error('Error in fetchFilteredPosts:', error);
-    throw error;
+// Upload an image for a blog post
+export const uploadImage = async (file: File): Promise<string> => {
+  // Generate a unique filename to prevent collisions
+  const filePath = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  
+  console.log('Uploading image to path:', filePath);
+  
+  const { error: uploadError } = await supabase
+    .storage
+    .from('blog_images')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: false
+    });
+  
+  if (uploadError) {
+    console.error('Error uploading image:', uploadError);
+    throw uploadError;
   }
+  
+  const { data } = supabase
+    .storage
+    .from('blog_images')
+    .getPublicUrl(filePath);
+  
+  console.log('Image uploaded successfully, public URL:', data.publicUrl);
+  
+  return data.publicUrl;
 };
 
-// Re-export fetchAllTags from tagService to maintain backward compatibility
-export const fetchAllTags = fetchAllTagsOriginal;
-
-// Fetch tags by language
-export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
-  try {
-    console.log("Fetching tags for language:", language);
-    const allTags = await fetchAllTags();
-    
-    return allTags;
-  } catch (error) {
-    console.error('Error fetching tags by language:', error);
-    throw error;
-  }
-};
-
-// Save tag
-export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('tags')
-      .insert({
-        name: tagName.trim(),
-        en: translations.en.trim() || tagName.trim(),
-        he: translations.he.trim() || null,
-        ru: translations.ru.trim() || null
-      });
-    
-    if (error) {
-      throw error;
-    }
-  } catch (error) {
-    console.error('Error saving tag:', error);
-    throw error;
-  }
-};
-
-// Delete tag
-export const deleteTag = async (tagName: string): Promise<void> => {
-  try {
-    const { error } = await supabase
-      .from('tags')
-      .delete()
-      .eq('name', tagName);
-    
-    if (error) {
-      throw error;
-    }
-    
-    const { data: postsWithTag, error: findError } = await supabase
-      .from('entries')
-      .select('id, tags')
-      .contains('tags', [tagName]);
-    
-    if (findError) {
-      throw findError;
-    }
-    
-    if (postsWithTag && postsWithTag.length > 0) {
-      for (const post of postsWithTag) {
-        const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
-        
-        const { error: updateError } = await supabase
-          .from('entries')
-          .update({ tags: updatedTags })
-          .eq('id', post.id);
-        
-        if (updateError) {
-          throw updateError;
-        }
-      }
-    }
-  } catch (error) {
-    console.error('Error deleting tag:', error);
-    throw error;
-  }
-};
-
-// New functions for the About content
-export const fetchAboutContent = async (language: string = "Russian"): Promise<string | { content: string; image_url: string | null }> => {
+// Fetch all available tags
+export const fetchAllTags = async (): Promise<string[]> => {
   try {
     const { data, error } = await supabase
-      .from('about_content')
-      .select('content, image_url')
-      .eq('language', language)
-      .single();
+      .from('entries')
+      .select('tags');
     
     if (error) {
-      console.error(`Error fetching about content for ${language}:`, error);
+      console.error('Error fetching tags:', error);
       throw error;
     }
     
-    return data || { content: "", image_url: null };
+    // Extract unique tags from all posts, safely handling potential nulls
+    const allTags = data
+      .filter(post => post.tags && Array.isArray(post.tags))
+      .flatMap(post => post.tags || [])
+      .filter(Boolean);
+    
+    // Remove duplicates
+    return [...new Set(allTags)];
   } catch (error) {
-    console.error('Error in fetchAboutContent:', error);
-    throw error;
+    console.error('Error in fetchAllTags:', error);
+    return []; // Return empty array on error
   }
 };
-
-export const saveAboutContent = async (content: string | { content: string; image_url: string | null }, language: string): Promise<void> => {
-  try {
-    const contentData = typeof content === 'string' 
-      ? { content, image_url: null } 
-      : content;
-    
-    const { data: existingData } = await supabase
-      .from('about_content')
-      .select('id')
-      .eq('language', language)
-      .maybeSingle();
-    
-    if (existingData?.id) {
-      // Update existing record
-      const { error } = await supabase
-        .from('about_content')
-        .update(contentData)
-        .eq('id', existingData.id);
-      
-      if (error) throw error;
-    } else {
-      // Insert new record
-      const { error } = await supabase
-        .from('about_content')
-        .insert({ ...contentData, language });
-      
-      if (error) throw error;
-    }
-  } catch (error) {
-    console.error(`Error saving about content for ${language}:`, error);
-    throw error;
-  }
-};
-
-// Export the image service functions
-export { uploadImage, fetchBucketImages } from "../services/imageService";

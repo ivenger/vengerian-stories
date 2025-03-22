@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 const config = {
@@ -19,13 +20,7 @@ const config = {
     },
     extend: {
       fontFamily: {
-        cursive: ['Dancing Script', 'Great Vibes', 'cursive'],
-        'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
-        'caraterre': ['Caraterre', 'sans-serif'],
-        'carattere': ['Carattere', 'cursive'],
-        'raleway': ['Raleway', 'sans-serif'],
-        'pacifico': ['Pacifico', 'cursive'],
-        'rubik-pixels': ['Rubik Pixels', 'cursive'],
+        cursive: ['Dancing Script', 'cursive'],
       },
       colors: {
         border: "hsl(var(--border))",
