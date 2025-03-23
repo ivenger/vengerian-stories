@@ -1,17 +1,17 @@
 
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/blogService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
+import { useAuth } from "../components/AuthProvider";
 
 const About: React.FC = () => {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { isSignedIn, isLoaded } = useAuth();
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const loadAboutContent = async () => {
@@ -54,7 +54,7 @@ const About: React.FC = () => {
           </div>
         ) : (
           <div>
-            {isLoaded && isSignedIn && (
+            {!authLoading && user && (
               <div className="flex justify-end mb-4">
                 <Link to="/admin/about">
                   <Button 
