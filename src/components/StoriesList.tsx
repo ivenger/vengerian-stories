@@ -4,6 +4,7 @@ import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 interface StoriesListProps {
   posts: BlogEntry[];
@@ -52,7 +53,7 @@ const StoriesList: React.FC<StoriesListProps> = ({
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <Spinner size="lg" />
       </div>
     );
   }

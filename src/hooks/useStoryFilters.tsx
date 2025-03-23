@@ -102,16 +102,16 @@ export const useStoryFilters = () => {
       setLoading(true);
       setError(null);
       
-      let tagsToFilter = undefined;
+      let tagsParam = undefined;
       
       // Only use tags filter if there are actually selected tags
       if (selectedTags.length > 0) {
-        tagsToFilter = selectedTags;
+        tagsParam = selectedTags;
       }
       
-      console.log("Filtering posts with tags:", tagsToFilter);
+      console.log("Filtering posts with tags:", tagsParam);
       
-      const filteredPosts = await fetchFilteredPosts(tagsToFilter);
+      const filteredPosts = await fetchFilteredPosts(tagsParam);
       
       // Apply read/unread filter if enabled
       const postsAfterReadFilter = showUnreadOnly && user
@@ -119,6 +119,7 @@ export const useStoryFilters = () => {
         : filteredPosts;
         
       setPosts(postsAfterReadFilter);
+      setLoading(false);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       setError(
@@ -126,14 +127,10 @@ export const useStoryFilters = () => {
           ? "Network error. Please check your connection and try again." 
           : "Failed to load stories. Please try again later."
       );
-      // Only clear posts if we have an error and no existing posts
-      if (posts.length === 0) {
-        setPosts([]);
-      }
-    } finally {
+      setPosts([]);
       setLoading(false);
     }
-  }, [selectedTags, posts.length, showUnreadOnly, user, readPostIds]);
+  }, [selectedTags, showUnreadOnly, user, readPostIds]);
 
   // Fetch posts when filters change
   useEffect(() => {
