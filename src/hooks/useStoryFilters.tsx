@@ -1,30 +1,25 @@
 
-import { useState, useEffect, useContext, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
 import { useToast } from "@/components/ui/use-toast";
-import { LanguageContext } from "../App";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useStoryFilters = () => {
-  const { currentLanguage } = useContext(LanguageContext);
   const { user } = useAuth();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
-  const languages = ["English", "Hebrew", "Russian"];
 
   // Load saved filters from localStorage on initial render
   useEffect(() => {
     const savedTags = localStorage.getItem('selectedTags');
-    const savedLanguages = localStorage.getItem('selectedLanguages');
     const savedUnreadFilter = localStorage.getItem('showUnreadOnly');
     
     if (savedTags) {
@@ -36,18 +31,6 @@ export const useStoryFilters = () => {
       }
     }
     
-    if (savedLanguages) {
-      try {
-        setSelectedLanguages(JSON.parse(savedLanguages));
-      } catch (e) {
-        console.error("Error parsing saved languages:", e);
-        localStorage.removeItem('selectedLanguages');
-        setSelectedLanguages([currentLanguage]);
-      }
-    } else {
-      setSelectedLanguages([currentLanguage]);
-    }
-    
     if (savedUnreadFilter && user) {
       try {
         setShowUnreadOnly(JSON.parse(savedUnreadFilter));
@@ -56,21 +39,12 @@ export const useStoryFilters = () => {
         localStorage.removeItem('showUnreadOnly');
       }
     }
-  }, [currentLanguage, user]);
-
-  // When current language changes, update the selected languages filter
-  // but only if no language has been explicitly selected by the user
-  useEffect(() => {
-    if (selectedLanguages.length === 0) {
-      setSelectedLanguages([currentLanguage]);
-    }
-  }, [currentLanguage, selectedLanguages]);
+  }, [user]);
 
   // Save filters to localStorage whenever they change
   useEffect(() => {
     try {
       localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
-      localStorage.setItem('selectedLanguages', JSON.stringify(selectedLanguages));
       
       if (user) {
         localStorage.setItem('showUnreadOnly', JSON.stringify(showUnreadOnly));
@@ -78,7 +52,7 @@ export const useStoryFilters = () => {
     } catch (e) {
       console.error("Error saving filters to localStorage:", e);
     }
-  }, [selectedTags, selectedLanguages, showUnreadOnly, user]);
+  }, [selectedTags, showUnreadOnly, user]);
 
   // Fetch reading history if user is logged in
   useEffect(() => {
@@ -130,11 +104,10 @@ export const useStoryFilters = () => {
       
       // Ensure we have valid arrays for filtering
       const tagsToFilter = Array.isArray(selectedTags) && selectedTags.length > 0 ? selectedTags : undefined;
-      const langsToFilter = Array.isArray(selectedLanguages) && selectedLanguages.length > 0 ? selectedLanguages : undefined;
       
-      console.log("Filtering posts with tags:", tagsToFilter, "and languages:", langsToFilter);
+      console.log("Filtering posts with tags:", tagsToFilter);
       
-      const filteredPosts = await fetchFilteredPosts(tagsToFilter, langsToFilter);
+      const filteredPosts = await fetchFilteredPosts(tagsToFilter);
       
       // Apply read/unread filter if enabled
       const postsAfterReadFilter = showUnreadOnly && user
@@ -156,7 +129,7 @@ export const useStoryFilters = () => {
     } finally {
       setLoading(false);
     }
-  }, [selectedTags, selectedLanguages, posts.length, showUnreadOnly, user, readPostIds]);
+  }, [selectedTags, posts.length, showUnreadOnly, user, readPostIds]);
 
   // Fetch posts when filters change
   useEffect(() => {
@@ -170,15 +143,6 @@ export const useStoryFilters = () => {
       setSelectedTags([...selectedTags, tag]);
     }
   };
-
-  const toggleLanguage = (language: string) => {
-    if (selectedLanguages.includes(language)) {
-      const newSelection = selectedLanguages.filter(l => l !== language);
-      setSelectedLanguages(newSelection.length > 0 ? newSelection : [currentLanguage]);
-    } else {
-      setSelectedLanguages([...selectedLanguages, language]);
-    }
-  };
   
   const toggleUnreadFilter = () => {
     setShowUnreadOnly(!showUnreadOnly);
@@ -186,14 +150,10 @@ export const useStoryFilters = () => {
 
   const clearFilters = () => {
     setSelectedTags([]);
-    setSelectedLanguages([currentLanguage]);
     setShowUnreadOnly(false);
   };
 
-  const hasActiveFilters = selectedTags.length > 0 || 
-    selectedLanguages.length !== 1 || 
-    (selectedLanguages.length === 1 && selectedLanguages[0] !== currentLanguage) ||
-    showUnreadOnly;
+  const hasActiveFilters = selectedTags.length > 0 || showUnreadOnly;
 
   return {
     posts,
@@ -201,14 +161,11 @@ export const useStoryFilters = () => {
     error,
     allTags,
     selectedTags,
-    selectedLanguages,
     showUnreadOnly,
     toggleTag,
-    toggleLanguage,
     toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
-    languages,
     loadPosts // Expose reload function
   };
 };

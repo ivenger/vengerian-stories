@@ -11,8 +11,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Filter } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { LanguageContext } from "../App";
-import { useContext } from 'react';
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -21,12 +19,9 @@ import { useAuth } from "./AuthProvider";
 interface FilterDialogProps {
   allTags: string[];
   selectedTags: string[];
-  selectedLanguages: string[];
   toggleTag: (tag: string) => void;
-  toggleLanguage: (language: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
-  languages: string[];
   showUnreadOnly?: boolean;
   toggleUnreadFilter?: () => void;
 }
@@ -34,16 +29,12 @@ interface FilterDialogProps {
 const FilterDialog: React.FC<FilterDialogProps> = ({
   allTags,
   selectedTags,
-  selectedLanguages,
   toggleTag,
-  toggleLanguage,
   clearFilters,
   hasActiveFilters,
-  languages,
   showUnreadOnly = false,
   toggleUnreadFilter
 }) => {
-  const { currentLanguage } = useContext(LanguageContext);
   const { user } = useAuth();
   
   return (
@@ -58,7 +49,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
           {hasActiveFilters ? "Filters Active" : "Filter Stories"}
           {hasActiveFilters && (
             <Badge className="ml-2 bg-blue-200 text-blue-800 hover:bg-blue-200">
-              {selectedTags.length + (selectedLanguages.length > 0 ? 1 : 0) + (showUnreadOnly ? 1 : 0)}
+              {selectedTags.length + (showUnreadOnly ? 1 : 0)}
             </Badge>
           )}
         </Button>
@@ -70,23 +61,6 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
         </DialogHeader>
           
         <div className="py-4 space-y-4">
-          <div>
-            <h3 className="text-sm font-medium mb-2">By Language</h3>
-            <div className="flex flex-wrap gap-1">
-              {languages.map(language => (
-                <Badge
-                  key={language}
-                  variant={selectedLanguages.includes(language) ? "default" : "outline"}
-                  className="cursor-pointer"
-                  onClick={() => toggleLanguage(language)}
-                >
-                  {language}
-                  {language === currentLanguage && " (Default)"}
-                </Badge>
-              ))}
-            </div>
-          </div>
-          
           {allTags.length > 0 && (
             <div>
               <h3 className="text-sm font-medium mb-2">By Tag</h3>

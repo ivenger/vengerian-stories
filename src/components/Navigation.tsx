@@ -2,7 +2,6 @@ import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
 import { useAuth } from "./AuthProvider";
-import LanguageSelector from "./LanguageSelector";
 import { Button } from "@/components/ui/button";
 
 const Navigation = () => {
@@ -66,8 +65,6 @@ const Navigation = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <LanguageSelector />
-            
             {user ? (
               <>
                 <Link to="/profile" className="text-sm text-gray-700 hover:text-blue-600 font-medium flex items-center">

@@ -99,13 +99,12 @@ export const deletePost = async (id: string): Promise<void> => {
   }
 };
 
-// Fetch posts filtered by tags and/or languages - uses OR logic for languages
+// Fetch posts filtered by tags
 export const fetchFilteredPosts = async (
-  tags?: string[], 
-  languages?: string[]
+  tags?: string[]
 ): Promise<BlogEntry[]> => {
   try {
-    console.log("Filtering posts with tags:", tags, "and languages:", languages);
+    console.log("Filtering posts with tags:", tags);
     
     let query = supabase
       .from('entries')
@@ -115,16 +114,6 @@ export const fetchFilteredPosts = async (
     if (tags && tags.length > 0) {
       query = query.overlaps('tags', tags);
     }
-    
-    // Handle multiple languages using OR logic with direct filter
-    if (languages && languages.length > 0) {
-      const filters = languages.map(lang => `language.cs.{${lang}}`);
-      const filterString = filters.join(',');
-      
-      console.log("Using filter string:", filterString);
-      query = query.or(filterString);
-    }
-    // If no languages are selected, we still get all posts (no language filter applied)
     
     query = query.order('date', { ascending: false });
     
@@ -145,19 +134,6 @@ export const fetchFilteredPosts = async (
 
 // Re-export fetchAllTags from tagService to maintain backward compatibility
 export const fetchAllTags = fetchAllTagsOriginal;
-
-// Fetch tags by language
-export const fetchTagsByLanguage = async (language: string): Promise<string[]> => {
-  try {
-    console.log("Fetching tags for language:", language);
-    const allTags = await fetchAllTags();
-    
-    return allTags;
-  } catch (error) {
-    console.error('Error fetching tags by language:', error);
-    throw error;
-  }
-};
 
 // Save tag
 export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
@@ -222,16 +198,15 @@ export const deleteTag = async (tagName: string): Promise<void> => {
 };
 
 // New functions for the About content
-export const fetchAboutContent = async (language: string = "Russian"): Promise<string | { content: string; image_url: string | null }> => {
+export const fetchAboutContent = async (): Promise<string | { content: string; image_url: string | null }> => {
   try {
     const { data, error } = await supabase
       .from('about_content')
       .select('content, image_url')
-      .eq('language', language)
       .single();
     
     if (error) {
-      console.error(`Error fetching about content for ${language}:`, error);
+      console.error(`Error fetching about content:`, error);
       throw error;
     }
     
@@ -242,7 +217,7 @@ export const fetchAboutContent = async (language: string = "Russian"): Promise<s
   }
 };
 
-export const saveAboutContent = async (content: string | { content: string; image_url: string | null }, language: string): Promise<void> => {
+export const saveAboutContent = async (content: string | { content: string; image_url: string | null }): Promise<void> => {
   try {
     const contentData = typeof content === 'string' 
       ? { content, image_url: null } 
@@ -251,7 +226,6 @@ export const saveAboutContent = async (content: string | { content: string; imag
     const { data: existingData } = await supabase
       .from('about_content')
       .select('id')
-      .eq('language', language)
       .maybeSingle();
     
     if (existingData?.id) {
@@ -266,12 +240,12 @@ export const saveAboutContent = async (content: string | { content: string; imag
       // Insert new record
       const { error } = await supabase
         .from('about_content')
-        .insert({ ...contentData, language });
+        .insert(contentData);
       
       if (error) throw error;
     }
   } catch (error) {
-    console.error(`Error saving about content for ${language}:`, error);
+    console.error(`Error saving about content:`, error);
     throw error;
   }
 };

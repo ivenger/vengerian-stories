@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, createContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Index from "./pages/Index";
 import BlogPost from "./pages/BlogPost";
@@ -13,18 +13,8 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster"
 import ErrorBoundary from "./components/ErrorBoundary";
 
-// Create a context for language
-export const LanguageContext = createContext<{
-  currentLanguage: string;
-  setCurrentLanguage: (lang: string) => void;
-}>({
-  currentLanguage: 'English',
-  setCurrentLanguage: () => {},
-});
-
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState('English');
 
   useEffect(() => {
     // On mount, read the preferred theme from local storage
@@ -35,12 +25,6 @@ function App() {
     } else {
       setIsDarkMode(false);
       document.documentElement.classList.remove('dark');
-    }
-
-    // Load language preference
-    const storedLanguage = localStorage.getItem('preferredLanguage');
-    if (storedLanguage) {
-      setCurrentLanguage(storedLanguage);
     }
   }, []);
 
@@ -55,59 +39,46 @@ function App() {
     }
   }, [isDarkMode]);
 
-  // Save language preference whenever it changes
-  useEffect(() => {
-    localStorage.setItem('preferredLanguage', currentLanguage);
-  }, [currentLanguage]);
-
-  // Create language context value
-  const languageContextValue = {
-    currentLanguage,
-    setCurrentLanguage,
-  };
-
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <LanguageContext.Provider value={languageContextValue}>
-          <RouterProvider router={
-            createBrowserRouter([
-              {
-                path: "/",
-                element: <Index />
-              },
-              {
-                path: "/blog/:id",
-                element: <BlogPost />
-              },
-              {
-                path: "/about",
-                element: <About />
-              },
-              {
-                path: "/auth",
-                element: <Auth />
-              },
-              {
-                path: "/profile",
-                element: <Profile />
-              },
-              {
-                path: "/admin",
-                element: (
-                  <ProtectedRoute adminOnly={true}>
-                    <Admin />
-                  </ProtectedRoute>
-                )
-              },
-              {
-                path: "*",
-                element: <NotFound />
-              }
-            ])
-          } />
-          <Toaster />
-        </LanguageContext.Provider>
+        <RouterProvider router={
+          createBrowserRouter([
+            {
+              path: "/",
+              element: <Index />
+            },
+            {
+              path: "/blog/:id",
+              element: <BlogPost />
+            },
+            {
+              path: "/about",
+              element: <About />
+            },
+            {
+              path: "/auth",
+              element: <Auth />
+            },
+            {
+              path: "/profile",
+              element: <Profile />
+            },
+            {
+              path: "/admin",
+              element: (
+                <ProtectedRoute adminOnly={true}>
+                  <Admin />
+                </ProtectedRoute>
+              )
+            },
+            {
+              path: "*",
+              element: <NotFound />
+            }
+          ])
+        } />
+        <Toaster />
       </AuthProvider>
     </ErrorBoundary>
   );
