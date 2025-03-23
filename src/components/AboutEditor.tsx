@@ -1,173 +1,136 @@
 
-import { useState, useEffect } from "react";
-import { fetchAboutContent, saveAboutContent, fetchBucketImages } from "../services/blogService";
+import React, { useState, useEffect } from "react";
+import { Image, Save, X } from "lucide-react";
+import { fetchAboutContent, saveAboutContent } from "../services/blogService";
 import { useToast } from "../hooks/use-toast";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Image, X } from "lucide-react";
 
-interface AboutData {
-  content: string;
-  image_url?: string | null;
-}
-
-const AboutEditor = () => {
+const AboutEditor: React.FC = () => {
   const [content, setContent] = useState("");
-  const [language, setLanguage] = useState("Russian");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [availableImages, setAvailableImages] = useState<string[]>([]);
-  const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
-  const languages = ["English", "Hebrew", "Russian"];
 
   useEffect(() => {
-    const loadContent = async () => {
+    const loadAboutContent = async () => {
       try {
-        setLoading(true);
-        const aboutData = await fetchAboutContent(language);
-        if (typeof aboutData === 'string') {
-          setContent(aboutData);
+        setIsLoading(true);
+        const data = await fetchAboutContent();
+        
+        if (typeof data === 'string') {
+          setContent(data);
           setImageUrl(null);
         } else {
-          setContent(aboutData.content || "");
-          setImageUrl(aboutData.image_url || null);
+          setContent(data.content || "");
+          setImageUrl(data.image_url);
         }
-        
-        // Load available images
-        setIsLoadingImages(true);
-        const images = await fetchBucketImages();
-        setAvailableImages(images);
       } catch (error) {
-        console.error("Failed to load about content:", error);
+        console.error("Error loading about content:", error);
         toast({
           title: "Error",
-          description: "Failed to load the about page content. Please try again later.",
+          description: "Failed to load about content. Please try again later.",
           variant: "destructive"
         });
       } finally {
-        setLoading(false);
-        setIsLoadingImages(false);
+        setIsLoading(false);
       }
     };
 
-    loadContent();
-  }, [language, toast]);
+    loadAboutContent();
+  }, [toast]);
 
   const handleSave = async () => {
     try {
-      setSaving(true);
-      await saveAboutContent({ content, image_url: imageUrl }, language);
+      await saveAboutContent({ 
+        content: content,
+        image_url: imageUrl
+      });
+      
       toast({
         title: "Success",
-        description: `About page content for ${language} saved successfully.`,
+        description: "About content saved successfully!",
+        variant: "default"
       });
     } catch (error) {
-      console.error("Failed to save about content:", error);
+      console.error("Error saving about content:", error);
       toast({
         title: "Error",
-        description: "Failed to save the about page content. Please try again later.",
+        description: "Failed to save about content. Please try again later.",
         variant: "destructive"
       });
-    } finally {
-      setSaving(false);
     }
   };
 
-  const handleLanguageChange = (value: string) => {
-    setLanguage(value);
+  const handleCancel = () => {
+    window.history.back();
   };
 
-  const handleSelectImage = (url: string) => {
-    setImageUrl(url);
-  };
-
-  const getImageFileName = (url: string) => {
-    const parts = url.split('/');
-    return parts[parts.length - 1];
-  };
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">Edit About Page</h2>
-        <Select value={language} onValueChange={handleLanguageChange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Select language" />
-          </SelectTrigger>
-          <SelectContent>
-            {languages.map((lang) => (
-              <SelectItem key={lang} value={lang}>
-                {lang}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex space-x-2">
+          <Button
+            onClick={handleCancel}
+            variant="outline"
+            className="flex items-center"
+          >
+            <X size={16} className="mr-1" />
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            variant="default"
+            className="flex items-center bg-gray-900 hover:bg-gray-700"
+          >
+            <Save size={16} className="mr-1" />
+            Save
+          </Button>
+        </div>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="author-image">Author Image</Label>
-            <div>
-              <Select onValueChange={handleSelectImage}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select an image from storage" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableImages.map((url) => (
-                    <SelectItem key={url} value={url}>
-                      {getImageFileName(url)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              {imageUrl && (
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="relative w-24 h-24 border border-gray-200 rounded overflow-hidden">
-                    <img src={imageUrl} alt="Author" className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => setImageUrl(null)}
-                      className="absolute top-0 right-0 p-1 bg-white bg-opacity-75 rounded-bl text-red-600 hover:text-red-700"
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                  <span className="text-sm text-gray-500 break-all">{getImageFileName(imageUrl)}</span>
-                </div>
-              )}
-            </div>
-          </div>
+      <div className="mb-4">
+        <textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          placeholder="Write the content for the About page..."
+          className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[300px] focus:outline-none focus:ring-2 focus:ring-gray-200"
+          rows={15}
+        />
+      </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="about-content">Content ({language})</Label>
-            <Textarea
-              id="about-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              className="min-h-[300px]"
-              placeholder={`Write about content in ${language}...`}
-              dir={language === "Hebrew" ? "rtl" : "ltr"}
-            />
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="flex items-center">
+            <Image size={16} className="mr-1" />
+            Featured Image URL
           </div>
+        </label>
+        <input
+          type="text"
+          value={imageUrl || ""}
+          onChange={(e) => setImageUrl(e.target.value || null)}
+          placeholder="Enter image URL"
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-200"
+        />
+      </div>
 
-          <div className="flex justify-end">
-            <Button 
-              onClick={handleSave} 
-              disabled={saving}
-              className="bg-gray-900 text-white hover:bg-gray-700 transition-colors"
-            >
-              {saving ? "Saving..." : "Save Content"}
-            </Button>
-          </div>
+      {imageUrl && (
+        <div className="mt-4 p-4 border border-gray-200 rounded-lg">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Image Preview:</h3>
+          <img
+            src={imageUrl}
+            alt="Featured"
+            className="max-w-full max-h-[300px] object-contain rounded"
+          />
         </div>
       )}
     </div>

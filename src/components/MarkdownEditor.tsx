@@ -176,16 +176,16 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
   useEffect(() => {
     const getTagsForLanguage = async () => {
       try {
-        const tags = await fetchTagsByLanguage(language);
+        const tags = await fetchTagsByLanguage();
         setFilteredTags(tags);
       } catch (error) {
-        console.error("Error fetching tags for language:", error);
+        console.error("Error fetching tags:", error);
         setFilteredTags([]);
       }
     };
     
     getTagsForLanguage();
-  }, [language]);
+  }, []);
 
   useEffect(() => {
     if (content && content.trim().length > 20) {

@@ -135,6 +135,17 @@ export const fetchFilteredPosts = async (
 // Re-export fetchAllTags from tagService to maintain backward compatibility
 export const fetchAllTags = fetchAllTagsOriginal;
 
+// Adding the missing fetchTagsByLanguage function
+export const fetchTagsByLanguage = async (): Promise<string[]> => {
+  try {
+    // Since we've removed language filtering, we just return all tags
+    return await fetchAllTags();
+  } catch (error) {
+    console.error('Error in fetchTagsByLanguage:', error);
+    return []; // Return empty array on error
+  }
+};
+
 // Save tag
 export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
   try {
@@ -198,11 +209,11 @@ export const deleteTag = async (tagName: string): Promise<void> => {
 };
 
 // New functions for the About content
-export const fetchAboutContent = async (): Promise<string | { content: string; image_url: string | null }> => {
+export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null }> => {
   try {
     const { data, error } = await supabase
       .from('about_content')
-      .select('content, image_url')
+      .select('content, image_url, language')
       .single();
     
     if (error) {
@@ -210,18 +221,20 @@ export const fetchAboutContent = async (): Promise<string | { content: string; i
       throw error;
     }
     
-    return data || { content: "", image_url: null };
+    return data || { content: "", image_url: null, language: "English" };
   } catch (error) {
     console.error('Error in fetchAboutContent:', error);
     throw error;
   }
 };
 
-export const saveAboutContent = async (content: string | { content: string; image_url: string | null }): Promise<void> => {
+export const saveAboutContent = async (contentData: { content: string; image_url: string | null }): Promise<void> => {
   try {
-    const contentData = typeof content === 'string' 
-      ? { content, image_url: null } 
-      : content;
+    // Add required language field
+    const dataToSave = { 
+      ...contentData,
+      language: "English" // Default language since language filtering is removed
+    };
     
     const { data: existingData } = await supabase
       .from('about_content')
@@ -232,7 +245,7 @@ export const saveAboutContent = async (content: string | { content: string; imag
       // Update existing record
       const { error } = await supabase
         .from('about_content')
-        .update(contentData)
+        .update(dataToSave)
         .eq('id', existingData.id);
       
       if (error) throw error;
@@ -240,7 +253,7 @@ export const saveAboutContent = async (content: string | { content: string; imag
       // Insert new record
       const { error } = await supabase
         .from('about_content')
-        .insert(contentData);
+        .insert(dataToSave);
       
       if (error) throw error;
     }
