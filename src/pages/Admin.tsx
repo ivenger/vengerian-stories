@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -8,7 +9,6 @@ import AboutEditor from "../components/AboutEditor";
 import PostEditor from "../components/admin/PostEditor";
 import { BlogEntry } from "../types/blogTypes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import MultilingualTitle from "../components/MultilingualTitle";
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -26,10 +26,6 @@ const Admin = () => {
       <Navigation />
       
       <main className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <MultilingualTitle />
-        </div>
-        
         {!isEditing ? (
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">

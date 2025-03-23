@@ -6,7 +6,6 @@ import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
-import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./components/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -86,10 +85,6 @@ function App() {
             {
               path: "/auth",
               element: <Auth />
-            },
-            {
-              path: "/profile",
-              element: <Profile />
             },
             {
               path: "/admin",

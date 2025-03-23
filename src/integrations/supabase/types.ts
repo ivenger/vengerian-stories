@@ -87,35 +87,6 @@ export type Database = {
         }
         Relationships: []
       }
-      reading_history: {
-        Row: {
-          id: string
-          post_id: string
-          read_at: string
-          user_id: string
-        }
-        Insert: {
-          id?: string
-          post_id: string
-          read_at?: string
-          user_id: string
-        }
-        Update: {
-          id?: string
-          post_id?: string
-          read_at?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reading_history_post_id_fkey"
-            columns: ["post_id"]
-            isOneToOne: false
-            referencedRelation: "entries"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       tags: {
         Row: {
           created_at: string
@@ -146,47 +117,14 @@ export type Database = {
         }
         Relationships: []
       }
-      user_roles: {
-        Row: {
-          created_at: string
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      get_user_role: {
-        Args: {
-          user_id: string
-        }
-        Returns: Database["public"]["Enums"]["app_role"]
-      }
-      is_admin: {
-        Args: {
-          user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "user"
       post_status: "draft" | "published"
     }
     CompositeTypes: {

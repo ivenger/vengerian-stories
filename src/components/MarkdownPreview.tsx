@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Tag, Calendar } from 'lucide-react';
 
@@ -81,14 +80,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
 }) => {
   const isRtlTitle = hasHebrew(title);
   const isRtlContent = hasHebrew(content);
-  const hasCyrillicTitle = hasCyrillic(title);
-  
-  // Get font class based on language
-  const getTitleFontClass = () => {
-    if (isRtlTitle) return 'font-raleway font-semibold';
-    // Both English and Cyrillic titles now use Pacifico
-    return 'font-pacifico text-[44px]'; // 44px for MarkdownPreview
-  };
+  const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
   
   // Format date for RTL display if needed
   const displayDate = isRtlTitle ? formatDateForRTL(date) : date;
@@ -113,7 +105,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
         
         <div className="flex-grow">
           <h1 
-            className={`${getTitleFontClass()} mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+            className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
             dir={isRtlTitle ? 'rtl' : 'ltr'}
           >
             {title}

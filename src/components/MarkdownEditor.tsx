@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -34,6 +35,7 @@ interface MarkdownEditorProps {
   onCancel: () => void;
 }
 
+// Function to convert markdown to HTML
 const getFormattedContent = (markdown: string): string => {
   let html = markdown;
   
@@ -58,14 +60,17 @@ const getFormattedContent = (markdown: string): string => {
   return html;
 };
 
+// Function to detect if text has Hebrew characters
 const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
 };
 
+// Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
   return /[А-Яа-яЁё]/.test(text);
 };
 
+// Function to detect language based on text content
 const detectLanguage = (text: string): string => {
   if (hasHebrew(text)) {
     return "Hebrew";
@@ -102,13 +107,16 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
 
   const languages = ["English", "Hebrew", "Russian"];
 
+  // Function to parse date string
   function parseDate(dateString: string): Date | undefined {
     try {
+      // First try DD/MM/YYYY format
       let parsedDate = parse(dateString, "dd/MM/yyyy", new Date());
       if (!isNaN(parsedDate.getTime())) {
         return parsedDate;
       }
       
+      // Try other formats if the first one fails
       const formats = ["MM/dd/yyyy", "yyyy-MM-dd", "MMMM d, yyyy"];
       
       for (const formatStr of formats) {
@@ -118,6 +126,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
         }
       }
       
+      // If all parsing attempts fail, try direct Date parsing
       parsedDate = new Date(dateString);
       if (!isNaN(parsedDate.getTime())) {
         return parsedDate;
@@ -144,6 +153,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
         const images = await fetchBucketImages();
         setAvailableImages(images);
         
+        // Filter out the currently selected image
         updateFilteredImages(images, imageUrl);
       } catch (error) {
         console.error("Error loading data:", error);
@@ -161,6 +171,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     loadData();
   }, [post.id, toast]);
 
+  // Update filtered images when imageUrl changes
   useEffect(() => {
     updateFilteredImages(availableImages, imageUrl);
   }, [imageUrl, availableImages]);
@@ -196,6 +207,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     }
   }, [content]);
 
+  // Update date when selectedDate changes
   useEffect(() => {
     if (selectedDate) {
       setDate(format(selectedDate, "dd/MM/yyyy"));
@@ -269,6 +281,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
 
   const isRtlTitle = hasHebrew(title);
   const isRtlContent = hasHebrew(content);
+  const titleFontClass = hasCyrillic(title) ? 'font-cursive-cyrillic' : 'font-cursive';
 
   return (
     <div className="bg-white rounded-lg border border-gray-200">
@@ -603,7 +616,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
             
             <div className="flex-grow">
               <h1 
-                className={`font-raleway font-semibold text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
+                className={`${titleFontClass} text-4xl mb-4 ${isRtlTitle ? 'text-right' : 'text-left'}`}
                 dir={isRtlTitle ? 'rtl' : 'ltr'}
                 style={isRtlTitle ? { unicodeBidi: 'bidi-override', direction: 'rtl' } : {}}
               >
