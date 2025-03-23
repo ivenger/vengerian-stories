@@ -6,6 +6,7 @@ import { fetchAboutContent } from "../services/blogService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";
+import { Spinner } from "@/components/ui/spinner";
 
 const About: React.FC = () => {
   const [content, setContent] = useState("");
@@ -50,7 +51,7 @@ const About: React.FC = () => {
       <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-sm">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+            <Spinner size="lg" />
           </div>
         ) : (
           <div>

@@ -85,7 +85,6 @@ export const useStoryFilters = () => {
   useEffect(() => {
     const loadTags = async () => {
       try {
-        setError(null);
         const tags = await fetchAllTags();
         setAllTags(tags);
       } catch (error) {
@@ -102,12 +101,7 @@ export const useStoryFilters = () => {
       setLoading(true);
       setError(null);
       
-      let tagsParam = undefined;
-      
-      // Only use tags filter if there are actually selected tags
-      if (selectedTags.length > 0) {
-        tagsParam = selectedTags;
-      }
+      const tagsParam = selectedTags.length > 0 ? selectedTags : undefined;
       
       console.log("Filtering posts with tags:", tagsParam);
       
@@ -119,7 +113,6 @@ export const useStoryFilters = () => {
         : filteredPosts;
         
       setPosts(postsAfterReadFilter);
-      setLoading(false);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       setError(
@@ -128,6 +121,7 @@ export const useStoryFilters = () => {
           : "Failed to load stories. Please try again later."
       );
       setPosts([]);
+    } finally {
       setLoading(false);
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds]);

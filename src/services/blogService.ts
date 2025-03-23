@@ -111,7 +111,7 @@ export const fetchFilteredPosts = async (
       .select('*')
       .eq('status', 'published');
     
-    if (Array.isArray(tags) && tags.length > 0) {
+    if (tags && Array.isArray(tags) && tags.length > 0) {
       query = query.overlaps('tags', tags);
     }
     
