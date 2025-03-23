@@ -7,17 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
-
-interface ReadingHistoryItem {
-  id: string;
-  user_id: string;
-  post_id: string;
-  read_at: string;
-}
+import { ReadingHistoryItem } from "../types/readingHistory";
 
 const ReadingHistory = () => {
   const { user } = useAuth();
@@ -26,7 +18,6 @@ const ReadingHistory = () => {
   const [readPosts, setReadPosts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -66,11 +57,6 @@ const ReadingHistory = () => {
     fetchData();
   }, [user]);
 
-  // Filter posts based on read/unread toggle
-  const filteredPosts = showUnreadOnly 
-    ? allPosts.filter(post => !readPosts.includes(post.id))
-    : allPosts;
-
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -105,87 +91,108 @@ const ReadingHistory = () => {
     );
   }
 
+  // Separate posts into read and unread
+  const readPostsList = allPosts.filter(post => readPosts.includes(post.id));
+  const unreadPostsList = allPosts.filter(post => !readPosts.includes(post.id));
+
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Your Reading History</h3>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium mb-4">Your Reading Activity</h3>
         
-        <div className="flex items-center space-x-2">
-          <Switch 
-            id="show-unread" 
-            checked={showUnreadOnly}
-            onCheckedChange={setShowUnreadOnly}
-          />
-          <Label htmlFor="show-unread">Show unread only</Label>
-        </div>
-      </div>
-      
-      {filteredPosts.length === 0 ? (
-        <div className="text-center py-6 bg-gray-50 rounded-lg">
-          {showUnreadOnly ? (
-            <div>
-              <Check className="h-8 w-8 text-green-500 mx-auto mb-2" />
-              <p className="text-gray-600">You've read all available stories!</p>
+        {/* Unread Posts Section */}
+        <div className="mb-6">
+          <h4 className="text-md font-medium mb-3 flex items-center">
+            <EyeOff size={16} className="mr-2 text-gray-500" />
+            Stories You Haven't Read Yet ({unreadPostsList.length})
+          </h4>
+          
+          {unreadPostsList.length === 0 ? (
+            <div className="text-center py-6 bg-gray-50 rounded-lg">
+              <Check className="h-6 w-6 text-green-500 mx-auto mb-2" />
+              <p className="text-gray-600">You're all caught up! You've read all available stories.</p>
             </div>
           ) : (
-            <div>
-              <Clock className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-              <p className="text-gray-600">Your reading history will appear here.</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {filteredPosts.map(post => (
-            <Card key={post.id} className="overflow-hidden relative">
-              <div className={`absolute top-3 right-3 ${readPosts.includes(post.id) ? 'text-green-500' : 'text-gray-300'}`}>
-                {readPosts.includes(post.id) ? (
-                  <Eye size={18} />
-                ) : (
-                  <EyeOff size={18} />
-                )}
-              </div>
-              
-              <CardContent className="p-4">
-                <div className="flex flex-col">
-                  <Link 
-                    to={`/blog/${post.id}`} 
-                    className="text-md font-medium hover:text-blue-600 transition-colors mb-2"
-                  >
-                    {post.title}
-                  </Link>
-                  
-                  <div className="text-sm text-gray-600 mb-2">
-                    {post.date}
-                  </div>
-                  
-                  {post.tags && post.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {post.tags.map((tag, idx) => (
+            <div className="grid grid-cols-1 gap-3">
+              {unreadPostsList.slice(0, 5).map(post => (
+                <Card key={post.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <Link 
+                      to={`/blog/${post.id}`} 
+                      className="text-md font-medium hover:text-blue-600 transition-colors"
+                    >
+                      {post.title}
+                    </Link>
+                    
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {post.tags && post.tags.map((tag, idx) => (
                         <Badge key={idx} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
                       ))}
                     </div>
-                  )}
-                  
-                  <div className="flex items-center mt-3">
-                    <Badge 
-                      variant="outline" 
-                      className={readPosts.includes(post.id) 
-                        ? "bg-green-50 text-green-700 border-green-200" 
-                        : "bg-gray-50 text-gray-500"
-                      }
-                    >
-                      {readPosts.includes(post.id) ? "Read" : "Unread"}
-                    </Badge>
-                  </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {unreadPostsList.length > 5 && (
+                <div className="text-center py-3">
+                  <span className="text-sm text-gray-500">
+                    + {unreadPostsList.length - 5} more unread stories
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              )}
+            </div>
+          )}
         </div>
-      )}
+        
+        {/* Read Posts Section */}
+        <div>
+          <h4 className="text-md font-medium mb-3 flex items-center">
+            <Eye size={16} className="mr-2 text-green-500" />
+            Stories You've Read ({readPostsList.length})
+          </h4>
+          
+          {readPostsList.length === 0 ? (
+            <div className="text-center py-6 bg-gray-50 rounded-lg">
+              <Clock className="h-6 w-6 text-blue-500 mx-auto mb-2" />
+              <p className="text-gray-600">You haven't read any stories yet. Start exploring!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {readPostsList.map(post => (
+                <Card key={post.id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    <Link 
+                      to={`/blog/${post.id}`} 
+                      className="text-md font-medium hover:text-blue-600 transition-colors"
+                    >
+                      {post.title}
+                    </Link>
+                    
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {post.tags && post.tags.map((tag, idx) => (
+                        <Badge key={idx} variant="outline" className="text-xs">
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-3">
+                      <Badge 
+                        variant="outline" 
+                        className="bg-green-50 text-green-700 border-green-200"
+                      >
+                        Read
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

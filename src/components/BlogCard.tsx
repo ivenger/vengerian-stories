@@ -51,6 +51,10 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     checkReadStatus();
   }, [user, post.id]);
 
+  // Determine layout direction based on language
+  const isHebrewPost = post.language?.includes('Hebrew');
+  const contentDirection = isHebrewPost ? 'flex-row-reverse' : 'flex-row';
+
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden relative">
       {/* Read indicator for logged in users */}
@@ -61,7 +65,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
       )}
       
       <div className="p-5">
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className={`flex flex-col md:${contentDirection} gap-4`}>
           {post.image_url && (
             <img 
               src={post.image_url} 

@@ -18,13 +18,13 @@ export const LanguageContext = createContext<{
   currentLanguage: string;
   setCurrentLanguage: (lang: string) => void;
 }>({
-  currentLanguage: 'Russian',
+  currentLanguage: 'English',
   setCurrentLanguage: () => {},
 });
 
 function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
-  const [currentLanguage, setCurrentLanguage] = useState('Russian');
+  const [currentLanguage, setCurrentLanguage] = useState('English');
 
   useEffect(() => {
     // On mount, read the preferred theme from local storage
