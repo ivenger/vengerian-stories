@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -36,18 +35,31 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
 
 // Fetch a single blog post by ID
 export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
-  const { data, error } = await supabase
-    .from('entries')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  console.log(`blogService: Fetching post with ID: ${id}`);
   
-  if (error) {
-    console.error(`Error fetching post with ID ${id}:`, error);
-    throw error;
+  try {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) {
+      console.error(`blogService: Error fetching post with ID ${id}:`, error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.log(`blogService: No post found with ID: ${id}`);
+      return null;
+    }
+    
+    console.log(`blogService: Successfully fetched post: ${data.title}`);
+    return data as BlogEntry;
+  } catch (err) {
+    console.error(`blogService: Exception in fetchPostById for ID ${id}:`, err);
+    throw err;
   }
-  
-  return data as BlogEntry;
 };
 
 // Save a blog post (create or update)

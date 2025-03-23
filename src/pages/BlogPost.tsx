@@ -8,6 +8,7 @@ import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Tag, Calendar, Eye } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -18,47 +19,84 @@ const BlogPost = () => {
   const { user } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchPostData = async () => {
-      if (!id) return;
+      if (!id) {
+        console.log("BlogPost: No post ID found in URL parameters");
+        if (isMounted) {
+          setError("Post ID is missing");
+          setLoading(false);
+        }
+        return;
+      }
       
       try {
+        console.log(`BlogPost: Fetching post with ID: ${id}`);
         setLoading(true);
         setError(null);
         const postData = await fetchPostById(id);
-        setPost(postData);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
+          setPost(postData);
+          setLoading(false);
+        }
         
         // Check if post is already marked as read
-        if (user) {
-          const { data, error } = await supabase
-            .from('reading_history')
-            .select('*')
-            .eq('user_id', user.id)
-            .eq('post_id', id)
-            .single();
-            
-          if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-            console.error("Error checking read status:", error);
-          } else {
-            setIsRead(!!data);
+        if (user && isMounted) {
+          console.log(`BlogPost: Checking read status for user ${user.id} and post ${id}`);
+          try {
+            const { data, error } = await supabase
+              .from('reading_history')
+              .select('*')
+              .eq('user_id', user.id)
+              .eq('post_id', id)
+              .single();
+              
+            if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
+              console.error("Error checking read status:", error);
+            } else if (isMounted) {
+              console.log(`BlogPost: Read status is ${!!data}`);
+              setIsRead(!!data);
+            }
+          } catch (readErr) {
+            console.error("Error checking read status:", readErr);
+            // Non-critical error, don't update UI
           }
         }
       } catch (err) {
         console.error("Error fetching post:", err);
-        setError("Failed to load the post. Please try again later.");
-      } finally {
-        setLoading(false);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setError("Failed to load the post. Please try again later.");
+          setLoading(false);
+          setPost(null);
+        }
       }
     };
 
     fetchPostData();
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, [id, user]);
 
   // Mark post as read when it loads
   useEffect(() => {
+    let isMounted = true;
+    
     const markAsRead = async () => {
-      if (!user || !post || isRead) return;
+      if (!user || !post || isRead) {
+        console.log("BlogPost: Not marking as read because:", !user ? "no user" : !post ? "no post" : "already read");
+        return;
+      }
       
       try {
+        console.log(`BlogPost: Marking post ${post.id} as read for user ${user.id}`);
         // Insert into reading history
         const { error } = await supabase
           .from('reading_history')
@@ -75,7 +113,10 @@ const BlogPost = () => {
           return;
         }
         
-        setIsRead(true);
+        if (isMounted) {
+          console.log("BlogPost: Successfully marked post as read");
+          setIsRead(true);
+        }
       } catch (err) {
         console.error("Error in markAsRead:", err);
       }
@@ -85,14 +126,19 @@ const BlogPost = () => {
     if (post && !loading) {
       markAsRead();
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [post, user, loading, isRead]);
 
   if (loading) {
     return (
       <div>
         <Navigation />
-        <div className="container mx-auto px-4 py-16 flex justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <div className="container mx-auto px-4 py-16 flex flex-col items-center justify-center">
+          <Spinner size="lg" />
+          <p className="mt-4 text-gray-600">Loading post...</p>
         </div>
       </div>
     );
@@ -198,4 +244,3 @@ const BlogPost = () => {
 };
 
 export default BlogPost;
-
