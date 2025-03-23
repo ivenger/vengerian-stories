@@ -104,7 +104,7 @@ export const fetchFilteredPosts = async (
   tags?: string[]
 ): Promise<BlogEntry[]> => {
   try {
-    console.log("Filtering posts with tags:", tags);
+    console.log("fetchFilteredPosts started with tags:", tags);
     
     let query = supabase
       .from('entries')
@@ -112,6 +112,7 @@ export const fetchFilteredPosts = async (
       .eq('status', 'published');
     
     if (tags && Array.isArray(tags) && tags.length > 0) {
+      console.log("Applying tag filter with tags:", tags);
       query = query.overlaps('tags', tags);
     }
     
@@ -211,6 +212,8 @@ export const deleteTag = async (tagName: string): Promise<void> => {
 // Fetch about content
 export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null; language?: string }> => {
   try {
+    console.log("Fetching about content from Supabase");
+    
     const { data, error } = await supabase
       .from('about_content')
       .select('content, image_url, language')
@@ -221,6 +224,7 @@ export const fetchAboutContent = async (): Promise<{ content: string; image_url:
       throw error;
     }
     
+    console.log("About content retrieved:", data);
     return data || { content: "", image_url: null, language: "English" };
   } catch (error) {
     console.error('Error in fetchAboutContent:', error);

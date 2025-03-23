@@ -12,29 +12,50 @@ const About: React.FC = () => {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadAboutContent = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        console.log("Fetching about content...");
+        
         const data = await fetchAboutContent();
         
-        if (typeof data === 'string') {
-          setContent(data);
-        } else {
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          console.log("About content fetched successfully:", data);
+          
+          if (typeof data === 'string') {
+            setContent(data);
+          } else {
+            setContent(data.content || "");
+            setImageUrl(data.image_url);
+          }
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error loading about content:", error);
-        setContent("About content could not be loaded. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setError("About content could not be loaded. Please try again later.");
+          setContent("");
+          setIsLoading(false);
+        }
       }
     };
 
     loadAboutContent();
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const formatContent = (text: string) => {
@@ -52,6 +73,17 @@ const About: React.FC = () => {
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
             <Spinner size="lg" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">
+            <p>{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="mt-4"
+            >
+              Try Again
+            </Button>
           </div>
         ) : (
           <div>
