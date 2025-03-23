@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, createContext } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Index from "./pages/Index";
 import BlogPost from "./pages/BlogPost";
@@ -11,7 +11,7 @@ import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./components/AuthProvider";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster"
-import { createContext } from 'react';
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // Create a context for language
 export const LanguageContext = createContext<{
@@ -67,47 +67,49 @@ function App() {
   };
 
   return (
-    <AuthProvider>
-      <LanguageContext.Provider value={languageContextValue}>
-        <RouterProvider router={
-          createBrowserRouter([
-            {
-              path: "/",
-              element: <Index />
-            },
-            {
-              path: "/blog/:id",
-              element: <BlogPost />
-            },
-            {
-              path: "/about",
-              element: <About />
-            },
-            {
-              path: "/auth",
-              element: <Auth />
-            },
-            {
-              path: "/profile",
-              element: <Profile />
-            },
-            {
-              path: "/admin",
-              element: (
-                <ProtectedRoute adminOnly={true}>
-                  <Admin />
-                </ProtectedRoute>
-              )
-            },
-            {
-              path: "*",
-              element: <NotFound />
-            }
-          ])
-        } />
-        <Toaster />
-      </LanguageContext.Provider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <LanguageContext.Provider value={languageContextValue}>
+          <RouterProvider router={
+            createBrowserRouter([
+              {
+                path: "/",
+                element: <Index />
+              },
+              {
+                path: "/blog/:id",
+                element: <BlogPost />
+              },
+              {
+                path: "/about",
+                element: <About />
+              },
+              {
+                path: "/auth",
+                element: <Auth />
+              },
+              {
+                path: "/profile",
+                element: <Profile />
+              },
+              {
+                path: "/admin",
+                element: (
+                  <ProtectedRoute adminOnly={true}>
+                    <Admin />
+                  </ProtectedRoute>
+                )
+              },
+              {
+                path: "*",
+                element: <NotFound />
+              }
+            ])
+          } />
+          <Toaster />
+        </LanguageContext.Provider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
