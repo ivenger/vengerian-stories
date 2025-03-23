@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -111,7 +110,7 @@ export const fetchFilteredPosts = async (
       .select('*')
       .eq('status', 'published');
     
-    if (tags && tags.length > 0) {
+    if (Array.isArray(tags) && tags.length > 0) {
       query = query.overlaps('tags', tags);
     }
     
@@ -135,7 +134,7 @@ export const fetchFilteredPosts = async (
 // Re-export fetchAllTags from tagService to maintain backward compatibility
 export const fetchAllTags = fetchAllTagsOriginal;
 
-// Adding the missing fetchTagsByLanguage function
+// Adding the fetchTagsByLanguage function
 export const fetchTagsByLanguage = async (): Promise<string[]> => {
   try {
     // Since we've removed language filtering, we just return all tags
@@ -208,8 +207,8 @@ export const deleteTag = async (tagName: string): Promise<void> => {
   }
 };
 
-// New functions for the About content
-export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null }> => {
+// Fetch about content
+export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null; language?: string }> => {
   try {
     const { data, error } = await supabase
       .from('about_content')
@@ -228,9 +227,9 @@ export const fetchAboutContent = async (): Promise<{ content: string; image_url:
   }
 };
 
+// Save about content
 export const saveAboutContent = async (contentData: { content: string; image_url: string | null }): Promise<void> => {
   try {
-    // Add required language field
     const dataToSave = { 
       ...contentData,
       language: "English" // Default language since language filtering is removed

@@ -102,8 +102,12 @@ export const useStoryFilters = () => {
       setLoading(true);
       setError(null);
       
-      // Ensure we have valid arrays for filtering
-      const tagsToFilter = Array.isArray(selectedTags) && selectedTags.length > 0 ? selectedTags : undefined;
+      let tagsToFilter = undefined;
+      
+      // Only use tags filter if there are actually selected tags
+      if (selectedTags.length > 0) {
+        tagsToFilter = selectedTags;
+      }
       
       console.log("Filtering posts with tags:", tagsToFilter);
       
