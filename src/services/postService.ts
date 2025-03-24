@@ -62,9 +62,11 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     let query = supabase
       .from('entries')
       .select('*')
-      .eq('status', 'published');
+      .eq('status', 'published')
+      .order('date', { ascending: false });
     
     if (tags && tags.length > 0) {
+      console.log(`Applying tag filters: ${tags.join(', ')}`);
       // For each tag, we need to check if it's in the tags array
       tags.forEach(tag => {
         query = query.contains('tags', [tag]);
@@ -78,7 +80,7 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw error;
     }
     
-    console.log(`Fetched ${data?.length || 0} posts`);
+    console.log(`Fetched ${data?.length || 0} filtered posts`);
     return data as BlogEntry[] || [];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
@@ -90,8 +92,16 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   try {
     if (!post) {
+      console.error("Error: Post data is required to save.");
       throw new Error("Post data is required to save.");
     }
+
+    console.log("Saving post data:", {
+      id: post.id,
+      title: post.title,
+      status: post.status,
+      tags: post.tags
+    });
 
     // Omit the 'created_at' field from the post data
     const { created_at, ...postData } = post;
@@ -160,6 +170,8 @@ export const deletePost = async (id: string): Promise<void> => {
 
 // Mark a post as read for a user
 export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
+  console.log(`Marking post ${postId} as read for user ${userId}`);
+  
   try {
     const { data, error } = await supabase
       .from('reading_history')
@@ -172,6 +184,8 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
       console.error("Error marking post as read:", error);
       throw error;
     }
+    
+    console.log(`Post ${postId} marked as read successfully`);
   } catch (error) {
     console.error("Error in markPostAsRead:", error);
     throw error;
@@ -180,20 +194,24 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
 
 // Check if a post has been read by a user
 export const hasReadPost = async (userId: string, postId: string): Promise<boolean> => {
+  console.log(`Checking if user ${userId} has read post ${postId}`);
+  
   try {
     const { data, error } = await supabase
       .from('reading_history')
       .select('*')
       .eq('user_id', userId)
       .eq('post_id', postId)
-      .single();
+      .maybeSingle();
       
     if (error) {
       console.error("Error checking if post was read:", error);
       return false; // Assume not read in case of error
     }
     
-    return !!data;
+    const hasRead = !!data;
+    console.log(`User ${userId} has ${hasRead ? '' : 'not '}read post ${postId}`);
+    return hasRead;
   } catch (error) {
     console.error("Error in hasReadPost:", error);
     return false; // Assume not read in case of error

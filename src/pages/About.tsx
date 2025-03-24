@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchAboutContent } from "../services/blogService";
+import { fetchAboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";

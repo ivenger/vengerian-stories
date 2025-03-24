@@ -4,17 +4,20 @@ import { Image, Save, X } from "lucide-react";
 import { fetchAboutContent, saveAboutContent } from "../services/aboutService";
 import { useToast } from "../hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 const AboutEditor: React.FC = () => {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     const loadAboutContent = async () => {
       try {
         setIsLoading(true);
+        console.log("AboutEditor: Loading about content");
         const data = await fetchAboutContent();
         
         if (typeof data === 'string') {
@@ -24,8 +27,9 @@ const AboutEditor: React.FC = () => {
           setContent(data.content || "");
           setImageUrl(data.image_url);
         }
+        console.log("AboutEditor: About content loaded successfully");
       } catch (error) {
-        console.error("Error loading about content:", error);
+        console.error("AboutEditor: Error loading about content:", error);
         toast({
           title: "Error",
           description: "Failed to load about content. Please try again later.",
@@ -41,23 +45,29 @@ const AboutEditor: React.FC = () => {
 
   const handleSave = async () => {
     try {
+      setIsSaving(true);
+      console.log("AboutEditor: Saving about content");
+      
       await saveAboutContent({ 
         content: content,
         image_url: imageUrl
       });
       
+      console.log("AboutEditor: About content saved successfully");
       toast({
         title: "Success",
         description: "About content saved successfully!",
         variant: "default"
       });
     } catch (error) {
-      console.error("Error saving about content:", error);
+      console.error("AboutEditor: Error saving about content:", error);
       toast({
         title: "Error",
         description: "Failed to save about content. Please try again later.",
         variant: "destructive"
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -68,7 +78,7 @@ const AboutEditor: React.FC = () => {
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <Spinner size="lg" />
       </div>
     );
   }
@@ -82,6 +92,7 @@ const AboutEditor: React.FC = () => {
             onClick={handleCancel}
             variant="outline"
             className="flex items-center"
+            disabled={isSaving}
           >
             <X size={16} className="mr-1" />
             Cancel
@@ -90,9 +101,19 @@ const AboutEditor: React.FC = () => {
             onClick={handleSave}
             variant="default"
             className="flex items-center bg-gray-900 hover:bg-gray-700"
+            disabled={isSaving}
           >
-            <Save size={16} className="mr-1" />
-            Save
+            {isSaving ? (
+              <>
+                <Spinner size="sm" className="mr-2" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save size={16} className="mr-1" />
+                Save
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -104,6 +125,7 @@ const AboutEditor: React.FC = () => {
           placeholder="Write the content for the About page..."
           className="w-full px-3 py-2 border border-gray-300 rounded-md min-h-[300px] focus:outline-none focus:ring-2 focus:ring-gray-200"
           rows={15}
+          disabled={isSaving}
         />
       </div>
 
@@ -120,6 +142,7 @@ const AboutEditor: React.FC = () => {
           onChange={(e) => setImageUrl(e.target.value || null)}
           placeholder="Enter image URL"
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-200"
+          disabled={isSaving}
         />
       </div>
 
