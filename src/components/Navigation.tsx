@@ -50,6 +50,8 @@ const Navigation = () => {
   
   const displayName = getDisplayName();
   
+  console.log("Navigation component - isAdmin:", isAdmin);
+
   return (
     <nav className="bg-white shadow-md">
       <div className="container mx-auto px-4">

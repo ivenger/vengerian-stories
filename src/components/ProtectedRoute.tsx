@@ -48,12 +48,13 @@ const ProtectedRoute = ({
 
   // If user is not authenticated, redirect to the login page
   if (!user) {
+    console.log("User not authenticated, redirecting to", redirectTo);
     return <Navigate to={redirectTo} />;
   }
 
   // If adminOnly flag is true, check if the current user is an admin
   if (adminOnly && !isAdmin) {
-    console.log("Access denied: User is not an admin", { isAdmin });
+    console.log("Access denied: User is not an admin", { isAdmin, userId: user.id });
     return (
       <div className="flex flex-col justify-center items-center h-screen p-4">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md text-center">

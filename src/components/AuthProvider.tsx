@@ -36,7 +36,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   const checkUserRole = async (userId: string) => {
-    if (!userId) return false;
+    if (!userId) {
+      console.log("No user ID provided for admin check");
+      return false;
+    }
     
     try {
       console.log("Checking admin role for user:", userId);
