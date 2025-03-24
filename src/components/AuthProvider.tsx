@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Check if app was rebuilt and force logout if needed
+  // Force sign out when app is rebuilt
   useEffect(() => {
     const storedVersion = localStorage.getItem(LAST_VERSION_KEY);
     
@@ -63,10 +63,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     if (storedVersion && storedVersion !== APP_VERSION) {
       console.log("App version changed, forcing logout");
+      // Update version immediately to prevent loops
+      localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
+      
+      // Force sign out
       supabase.auth.signOut().then(() => {
         console.log("User signed out due to app version change");
-        localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
-        window.location.reload(); // Force page reload after signout
+        setSession(null);
+        setUser(null);
+        // Don't reload the page as it can cause loops - let React handle the state change
+      }).catch(err => {
+        console.error("Error during forced sign out:", err);
       });
     } else {
       localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);

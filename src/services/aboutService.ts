@@ -61,7 +61,7 @@ export const saveAboutContent = async (contentData: { content: string; image_url
       console.log("AboutService: Creating new about content record");
       const { error } = await supabase
         .from('about_content')
-        .insert(fullContentData);
+        .insert([fullContentData]);
       
       if (error) {
         console.error("AboutService: Error creating about content:", error);
