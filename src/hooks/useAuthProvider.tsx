@@ -23,7 +23,8 @@ export function useAuthProvider() {
     
     try {
       console.log("Checking admin role for user:", userId);
-      // Make sure we're using the correct RPC function name and parameter
+      
+      // Make the RPC call to check if the user is an admin
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
@@ -32,8 +33,7 @@ export function useAuthProvider() {
       }
       
       console.log("Admin check result:", data);
-      // Ensure we're properly interpreting the boolean result
-      return Boolean(data); // Ensure we return a boolean
+      return Boolean(data);
     } catch (err) {
       console.error("Failed to check user role:", err);
       return false;
@@ -49,21 +49,6 @@ export function useAuthProvider() {
     localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
     
     // Comment out the forced logout for now to avoid issues with OAuth
-    // if (storedVersion && storedVersion !== APP_VERSION) {
-    //   console.log("App version changed, forcing logout");
-    //   // Update version immediately to prevent loops
-    //   localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
-    //   
-    //   // Force sign out
-    //   supabase.auth.signOut().then(() => {
-    //     console.log("User signed out due to app version change");
-    //     setSession(null);
-    //   }).catch(err => {
-    //     console.error("Error during forced sign out:", err);
-    //   });
-    // } else {
-    //   localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
-    // }
   }, []);
 
   // Handle auth state changes and session management
@@ -86,7 +71,7 @@ export function useAuthProvider() {
           try {
             const adminStatus = await checkUserRole(newSession.user.id);
             if (isMounted) {
-              console.log("Setting admin status to:", adminStatus);
+              console.log("Setting admin status to:", adminStatus, "for user:", newSession.user.email);
               setIsAdmin(adminStatus);
             }
           } catch (roleError) {
@@ -134,7 +119,7 @@ export function useAuthProvider() {
         try {
           const adminStatus = await checkUserRole(currentSession.user.id);
           if (isMounted) {
-            console.log("Setting initial admin status to:", adminStatus);
+            console.log("Setting initial admin status to:", adminStatus, "for user:", currentSession.user.email);
             setIsAdmin(adminStatus);
           }
         } catch (roleError) {

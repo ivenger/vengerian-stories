@@ -21,6 +21,11 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
   
+  // Log whether this user is admin for debugging
+  useEffect(() => {
+    console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin);
+  }, [user, isAdmin]);
+  
   useEffect(() => {
     if (!user) return;
 
