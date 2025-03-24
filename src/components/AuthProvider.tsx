@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     
     try {
       console.log("Checking admin role for user:", userId);
+      // Make sure we're using the correct RPC function name and parameter
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
@@ -48,6 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       
       console.log("Admin check result:", data);
+      // Ensure we're properly interpreting the boolean result
       return Boolean(data); // Ensure we return a boolean
     } catch (err) {
       console.error("Failed to check user role:", err);
@@ -100,7 +102,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           
           try {
             const adminStatus = await checkUserRole(newSession.user.id);
-            if (isMounted) setIsAdmin(adminStatus);
+            if (isMounted) {
+              console.log("Setting admin status to:", adminStatus);
+              setIsAdmin(adminStatus);
+            }
           } catch (roleError) {
             console.error("Error checking admin status:", roleError);
             if (isMounted) setIsAdmin(false); // Default to non-admin on error
@@ -145,7 +150,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (currentSession?.user) {
         try {
           const adminStatus = await checkUserRole(currentSession.user.id);
-          if (isMounted) setIsAdmin(adminStatus);
+          if (isMounted) {
+            console.log("Setting initial admin status to:", adminStatus);
+            setIsAdmin(adminStatus);
+          }
         } catch (roleError) {
           console.error("Error checking initial admin status:", roleError);
           if (isMounted) setIsAdmin(false); // Default to non-admin on error
