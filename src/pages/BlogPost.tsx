@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { fetchPostById } from "../services/blogService";
+import { fetchPostById } from "../services/postService";
 import MarkdownPreview from "../components/MarkdownPreview";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";

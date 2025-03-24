@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Image, Save, X } from "lucide-react";
-import { fetchAboutContent, saveAboutContent } from "../services/blogService";
+import { fetchAboutContent, saveAboutContent } from "../services/aboutService";
 import { useToast } from "../hooks/use-toast";
 import { Button } from "@/components/ui/button";
 

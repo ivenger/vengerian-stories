@@ -5,7 +5,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BlogEntry } from "@/types/blogTypes";
 import { format } from "date-fns";
 import { Globe, FileText, Trash2, XCircle, Tag } from "lucide-react";
-import { fetchAllPosts, savePost, deletePost } from "@/services/blogService";
+import { fetchAllPosts, savePost, deletePost } from "@/services/postService";
 import { Spinner } from "@/components/ui/spinner";
 
 interface PostsTabProps {
