@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -29,7 +29,7 @@ export function useAuthProvider() {
       
       if (error) {
         console.error("Error checking admin role:", error);
-        return false;
+        throw error;
       }
       
       console.log("Admin check result:", data);
@@ -39,6 +39,31 @@ export function useAuthProvider() {
       return false;
     }
   };
+
+  // Refresh session helper function
+  const refreshSession = useCallback(async () => {
+    try {
+      console.log("Manually refreshing session");
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error("Error refreshing session:", error);
+        return false;
+      }
+      
+      if (data.session) {
+        console.log("Session refreshed successfully");
+        setSession(data.session);
+        return true;
+      } else {
+        console.log("No session returned from refresh");
+        return false;
+      }
+    } catch (err) {
+      console.error("Exception during session refresh:", err);
+      return false;
+    }
+  }, []);
 
   // Force sign out when app is rebuilt - disable this for OAuth debugging
   useEffect(() => {
@@ -96,6 +121,8 @@ export function useAuthProvider() {
             title: "Signed out",
             description: "You've been signed out successfully.",
           });
+        } else if (event === 'TOKEN_REFRESHED') {
+          console.log("Auth token was refreshed");
         }
       }
     );
@@ -137,12 +164,21 @@ export function useAuthProvider() {
       }
     });
 
+    // Set up session refresh interval
+    const refreshInterval = setInterval(() => {
+      if (session) {
+        console.log("Scheduled session refresh");
+        refreshSession();
+      }
+    }, 10 * 60 * 1000); // Refresh every 10 minutes
+
     return () => {
       console.log("Cleaning up auth listener");
       isMounted = false;
       subscription.unsubscribe();
+      clearInterval(refreshInterval);
     };
-  }, [toast]);
+  }, [toast, refreshSession]);
 
   const signOut = async () => {
     try {
@@ -189,5 +225,6 @@ export function useAuthProvider() {
     signOut,
     isAdmin,
     error,
+    refreshSession, // Export the refresh function so it can be called manually if needed
   };
 }
