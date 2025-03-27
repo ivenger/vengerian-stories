@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { fetchAllTags, saveTag, deleteTag } from '../services/blogService';
+import { fetchAllTags, saveTag, deleteTag } from '../services/tagService';
 import { useToast } from '../hooks/use-toast';
 import { Tag, Plus, Trash2, Save, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';

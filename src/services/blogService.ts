@@ -3,3 +3,4 @@
 export * from './postService';
 export * from './aboutService';
 export * from './imageService';
+export * from './tagService';
