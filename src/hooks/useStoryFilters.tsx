@@ -17,7 +17,7 @@ export const useStoryFilters = () => {
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
-  const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]); // Store unfiltered posts
+  const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
 
   // Load saved filters from localStorage on initial render
   useEffect(() => {
@@ -129,26 +129,8 @@ export const useStoryFilters = () => {
       console.log(`Received ${allPosts.length} total posts from API`);
       setOriginalPosts(allPosts);
       
-      // Then apply filters if needed
-      let filteredPosts = allPosts;
-      
-      if (selectedTags.length > 0) {
-        console.log("Filtering by tags:", selectedTags);
-        filteredPosts = allPosts.filter(post => {
-          if (!post.tags) return false;
-          return selectedTags.some(tag => post.tags?.includes(tag));
-        });
-        console.log(`${filteredPosts.length} posts after tag filtering`);
-      }
-      
-      // Apply read/unread filter if enabled
-      if (showUnreadOnly && user) {
-        console.log("Filtering for unread posts, read IDs:", readPostIds);
-        filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
-        console.log(`${filteredPosts.length} posts after unread filter`);
-      }
-        
-      setPosts(filteredPosts);
+      // Apply filters
+      applyFilters(allPosts);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
@@ -178,30 +160,42 @@ export const useStoryFilters = () => {
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession]);
 
-  // Apply filters locally when they change, without re-fetching
+  // Extract the filtering logic to a separate function for reuse
+  const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
+    console.log("Applying filters to posts", {
+      totalPosts: postsToFilter.length,
+      selectedTags,
+      showUnreadOnly
+    });
+    
+    let filteredPosts = [...postsToFilter];
+    
+    if (selectedTags.length > 0) {
+      console.log("Filtering by tags:", selectedTags);
+      filteredPosts = filteredPosts.filter(post => {
+        if (!post.tags) return false;
+        return selectedTags.some(tag => post.tags?.includes(tag));
+      });
+      console.log(`${filteredPosts.length} posts after tag filtering`);
+    }
+    
+    // Apply read/unread filter if enabled
+    if (showUnreadOnly && user) {
+      console.log("Filtering for unread posts, read IDs:", readPostIds);
+      filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
+      console.log(`${filteredPosts.length} posts after unread filter`);
+    }
+    
+    setPosts(filteredPosts);
+  }, [selectedTags, showUnreadOnly, user, readPostIds]);
+
+  // When filters change, apply them to the original posts
   useEffect(() => {
     if (originalPosts.length > 0 && !loading) {
-      console.log("Applying filters locally to cached posts");
-      
-      let filteredPosts = originalPosts;
-      
-      if (selectedTags.length > 0) {
-        console.log("Filtering locally by tags:", selectedTags);
-        filteredPosts = originalPosts.filter(post => {
-          if (!post.tags) return false;
-          return selectedTags.some(tag => post.tags?.includes(tag));
-        });
-      }
-      
-      if (showUnreadOnly && user) {
-        console.log("Filtering locally for unread posts");
-        filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
-      }
-      
-      console.log(`Local filtering resulted in ${filteredPosts.length} posts`);
-      setPosts(filteredPosts);
+      console.log("Filters changed, applying to cached posts");
+      applyFilters(originalPosts);
     }
-  }, [selectedTags, showUnreadOnly, originalPosts, readPostIds, user]);
+  }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading]);
 
   // Fetch posts on initial load
   useEffect(() => {
@@ -238,6 +232,12 @@ export const useStoryFilters = () => {
     console.log("Clearing all filters");
     setSelectedTags([]);
     setShowUnreadOnly(false);
+    
+    // Immediately apply empty filters to show all posts
+    if (originalPosts.length > 0) {
+      console.log("Showing all posts after clearing filters");
+      setPosts(originalPosts);
+    }
   };
 
   const hasActiveFilters = selectedTags.length > 0 || showUnreadOnly;

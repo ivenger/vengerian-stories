@@ -44,6 +44,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   
   const handleClearFilters = () => {
     clearFilters();
+    setOpen(false); // Close dialog after clearing
   };
   
   return (
