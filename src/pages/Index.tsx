@@ -2,24 +2,15 @@
 import React from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
-import FilterDialog from "../components/FilterDialog";
-import ActiveFilters from "../components/ActiveFilters";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
 
 const Index = () => {
-  // Use our custom hook to handle all filter logic
+  // Use our custom hook to handle post loading
   const {
     posts,
     loading,
     error,
-    allTags,
-    selectedTags,
-    showUnreadOnly,
-    toggleTag,
-    toggleUnreadFilter,
-    clearFilters,
-    hasActiveFilters,
     loadPosts
   } = useStoryFilters();
   
@@ -33,24 +24,7 @@ const Index = () => {
             <p className="text-gray-600">
               Короткое, длиннее и странное
             </p>
-            
-            <FilterDialog 
-              allTags={allTags}
-              selectedTags={selectedTags}
-              toggleTag={toggleTag}
-              clearFilters={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-              showUnreadOnly={showUnreadOnly}
-              toggleUnreadFilter={toggleUnreadFilter}
-            />
           </div>
-          
-          <ActiveFilters 
-            selectedTags={selectedTags}
-            toggleTag={toggleTag}
-            clearFilters={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
         </div>
 
         <div className="max-w-3xl mx-auto">
@@ -58,8 +32,6 @@ const Index = () => {
             posts={posts} 
             loading={loading} 
             error={error}
-            hasActiveFilters={hasActiveFilters} 
-            clearFilters={clearFilters}
             onRetry={loadPosts}
           />
         </div>
