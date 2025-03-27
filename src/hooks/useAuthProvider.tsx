@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -10,12 +10,14 @@ export function useAuthProvider() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const refreshTimerRef = useRef<number | null>(null);
+  const refreshingRef = useRef(false);
 
   // Version hash to force logout on application rebuilds - updated with timestamp on each build
   const APP_VERSION = Date.now().toString();
   const LAST_VERSION_KEY = 'app_version';
 
-  const checkUserRole = async (userId: string) => {
+  const checkUserRole = useCallback(async (userId: string) => {
     if (!userId) {
       console.log("No user ID provided for admin check");
       return false;
@@ -38,11 +40,17 @@ export function useAuthProvider() {
       console.error("Failed to check user role:", err);
       return false;
     }
-  };
+  }, []);
 
-  // Refresh session helper function
+  // Refresh session helper function with debounce to prevent multiple simultaneous refreshes
   const refreshSession = useCallback(async () => {
+    if (refreshingRef.current) {
+      console.log("Session refresh already in progress, skipping");
+      return false;
+    }
+
     try {
+      refreshingRef.current = true;
       console.log("Manually refreshing session");
       const { data, error } = await supabase.auth.refreshSession();
       
@@ -62,6 +70,8 @@ export function useAuthProvider() {
     } catch (err) {
       console.error("Exception during session refresh:", err);
       return false;
+    } finally {
+      refreshingRef.current = false;
     }
   }, []);
 
@@ -165,7 +175,11 @@ export function useAuthProvider() {
     });
 
     // Set up session refresh interval
-    const refreshInterval = setInterval(() => {
+    if (refreshTimerRef.current) {
+      window.clearInterval(refreshTimerRef.current);
+    }
+    
+    refreshTimerRef.current = window.setInterval(() => {
       if (session) {
         console.log("Scheduled session refresh");
         refreshSession();
@@ -176,9 +190,12 @@ export function useAuthProvider() {
       console.log("Cleaning up auth listener");
       isMounted = false;
       subscription.unsubscribe();
-      clearInterval(refreshInterval);
+      if (refreshTimerRef.current) {
+        window.clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
-  }, [toast, refreshSession]);
+  }, [toast, refreshSession, checkUserRole]);
 
   const signOut = async () => {
     try {

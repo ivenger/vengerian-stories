@@ -15,11 +15,13 @@ const BlogPost = () => {
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
   const { isRead } = useReadingTracker(id, user);
+  const [fetchAttempted, setFetchAttempted] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: number;
     
     const fetchPostData = async () => {
       if (!id) {
@@ -35,7 +37,20 @@ const BlogPost = () => {
         console.log(`BlogPost: Fetching post with ID: ${id}`);
         setLoading(true);
         setError(null);
+        
+        // Set a timeout to detect potential stalled requests
+        timeoutId = window.setTimeout(() => {
+          if (isMounted && loading && !fetchAttempted) {
+            console.log("BlogPost: Post fetch taking too long, attempting session refresh");
+            refreshSession();
+          }
+        }, 10000); // 10 seconds timeout
+        
         const postData = await fetchPostById(id);
+        setFetchAttempted(true);
+        
+        // Clear timeout since response was received
+        window.clearTimeout(timeoutId);
         
         // Only update state if component is still mounted
         if (isMounted) {
@@ -45,6 +60,11 @@ const BlogPost = () => {
         }
       } catch (err) {
         console.error("BlogPost: Error fetching post:", err);
+        setFetchAttempted(true);
+        
+        // Clear timeout since response was received (with error)
+        window.clearTimeout(timeoutId);
+        
         // Only update state if component is still mounted
         if (isMounted) {
           setError("Failed to load the post. Please try again later.");
@@ -59,8 +79,9 @@ const BlogPost = () => {
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
     };
-  }, [id]);
+  }, [id, refreshSession]);
 
   return (
     <div>
