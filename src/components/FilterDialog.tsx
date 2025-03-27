@@ -36,9 +36,18 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   toggleUnreadFilter
 }) => {
   const { user } = useAuth();
+  const [open, setOpen] = React.useState(false);
+  
+  const handleTagToggle = (tag: string) => {
+    toggleTag(tag);
+  };
+  
+  const handleClearFilters = () => {
+    clearFilters();
+  };
   
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
@@ -70,7 +79,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
                     key={tag}
                     variant={selectedTags.includes(tag) ? "default" : "outline"}
                     className="cursor-pointer"
-                    onClick={() => toggleTag(tag)}
+                    onClick={() => handleTagToggle(tag)}
                   >
                     {tag}
                   </Badge>
@@ -102,16 +111,18 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
             <Button 
               variant="ghost" 
               size="sm"
-              onClick={clearFilters}
+              onClick={handleClearFilters}
             >
               Clear All
             </Button>
           )}
-          <DialogTrigger asChild>
-            <Button type="button" size="sm">
-              Done
-            </Button>
-          </DialogTrigger>
+          <Button 
+            type="button" 
+            size="sm"
+            onClick={() => setOpen(false)}
+          >
+            Done
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
