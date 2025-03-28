@@ -175,23 +175,14 @@ export function useAuthProvider() {
       setIsAdmin(false);
       
       // Then perform the actual signout operation
-      const { error: signOutError } = await performSignOut();
+      await performSignOut();
       
-      if (signOutError) {
-        console.error("Error signing out:", signOutError);
-        toast({
-          title: "Error",
-          description: "Failed to sign out. Please try again.",
-          variant: "destructive"
-        });
-      } else {
-        console.log("Sign out successful");
-        
-        toast({
-          title: "Signed out",
-          description: "You've been signed out successfully.",
-        });
-      }
+      console.log("Sign out successful");
+      
+      toast({
+        title: "Signed out",
+        description: "You've been signed out successfully.",
+      });
     } catch (err) {
       console.error("Sign out exception:", err);
       toast({

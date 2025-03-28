@@ -115,7 +115,7 @@ export function useSessionManager() {
   /**
    * Sign out the current user
    */
-  const signOut = async (): Promise<{ error?: Error }> => {
+  const signOut = async () => {
     try {
       console.log("Attempting to sign out");
       const { error: signOutError } = await supabase.auth.signOut({
