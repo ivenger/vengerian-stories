@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts } from '../services/postService'; // Fixed import path
+import { fetchFilteredPosts } from '../services/postService';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,11 +60,16 @@ export const useStoryFilters = () => {
         await refreshSession();
       }
       
-      // Fetch all posts
-      console.log("Fetching all posts");
+      // Fetch all posts - with detailed logging to help debug
+      console.log("Fetching all posts from postService");
       const allPosts = await fetchFilteredPosts();
-      console.log(`Received ${allPosts.length} total posts from API`);
-      setPosts(allPosts);
+      console.log(`Received ${allPosts?.length || 0} total posts from API:`, allPosts);
+      
+      if (!allPosts || allPosts.length === 0) {
+        console.log("No posts returned from API - empty array or null");
+      }
+      
+      setPosts(allPosts || []);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
@@ -96,6 +101,7 @@ export const useStoryFilters = () => {
 
   // Fetch posts on initial load
   useEffect(() => {
+    console.log("Initial post loading effect triggered");
     loadPosts();
     
     // Set up a refresh timer to avoid stale data
