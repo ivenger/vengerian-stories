@@ -74,7 +74,7 @@ export function useAuthState() {
         console.log("Checking for existing session");
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
-        if (!isMounted) return;
+        if (!isMounted) return null;
         
         if (sessionError) {
           console.error("Session error:", sessionError);
@@ -124,20 +124,25 @@ export function useAuthState() {
         }
         
         // Return an empty cleanup function
-        return () => {};
+        return null;
       }
     };
     
-    // Store the cleanup function returned by initializeAuth
-    const cleanupFunction = initializeAuth();
+    // Store the cleanup function returned by initializeAuth - it might be a function or a Promise<function>
+    const cleanupPromise = initializeAuth();
     
     return () => {
       console.log("Cleaning up auth state listener");
       isMounted = false;
-      // Call the cleanup function if it exists and is a function
-      if (cleanupFunction && typeof cleanupFunction === 'function') {
-        cleanupFunction();
-      }
+      
+      // Handle the cleanup - we'll use Promise.resolve to handle both direct function returns and promises
+      Promise.resolve(cleanupPromise).then(cleanupFn => {
+        if (cleanupFn && typeof cleanupFn === 'function') {
+          cleanupFn();
+        }
+      }).catch(err => {
+        console.error("Error during auth cleanup:", err);
+      });
     };
   }, [toast]);
 
