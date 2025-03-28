@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -156,6 +157,7 @@ export function useAuthProvider() {
     };
   }, [toast, handleRefreshSession, setupRefreshTimer]);
 
+  // Fix the signOut function to properly use the SignOutResult type
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");

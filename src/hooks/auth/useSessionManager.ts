@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -59,6 +60,7 @@ export function useSessionManager() {
     return () => clearTimeout(timer);
   }, [refreshInterval]);
 
+  // Fix the signOut function to properly return a SignOutResult
   const signOut = async (): Promise<SignOutResult> => {
     try {
       const { error } = await supabase.auth.signOut();

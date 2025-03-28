@@ -5,7 +5,8 @@ import { useTagActions } from './tags/useTagActions';
 import { useTagEditing } from './tags/useTagEditing';
 import { TagData } from './tags/TagTypes';
 
-export { TagData } from './tags/TagTypes';
+// Change regular export to "export type" since we're in an isolatedModules environment
+export type { TagData } from './tags/TagTypes';
 
 export function useTagManagement() {
   const { tags, setTags, tagData, setTagData, loading } = useTagData();
