@@ -3,6 +3,11 @@ import { useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define the return type for signOut for better type checking
+type SignOutResult = {
+  error?: Error | null;
+};
+
 export function useSessionManager() {
   const refreshingRef = useRef(false);
   const refreshTimerRef = useRef<number | null>(null);
@@ -116,7 +121,7 @@ export function useSessionManager() {
   /**
    * Sign out the current user
    */
-  const signOut = async () => {
+  const signOut = async (): Promise<SignOutResult> => {
     try {
       console.log("Attempting to sign out");
       const { error: signOutError } = await supabase.auth.signOut({
