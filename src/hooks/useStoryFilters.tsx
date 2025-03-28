@@ -48,7 +48,7 @@ export const useStoryFilters = () => {
 
   // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
-    console.log("loadPosts called");
+    console.log("loadPosts called with forceRefresh:", forceRefresh);
     
     setLoading(true);
     setError(null);
@@ -57,6 +57,7 @@ export const useStoryFilters = () => {
     try {
       // If we've been loading for too long with a session, try refreshing it
       if (user && forceRefresh) {
+        console.log("Refreshing user session before loading posts");
         await refreshSession();
       }
       
@@ -67,6 +68,10 @@ export const useStoryFilters = () => {
       
       if (!allPosts || allPosts.length === 0) {
         console.log("No posts returned from API - empty array or null");
+        toast({
+          title: "No stories found",
+          description: "There are currently no published stories available.",
+        });
       }
       
       setPosts(allPosts || []);
@@ -97,7 +102,7 @@ export const useStoryFilters = () => {
       console.log("Setting loading to false");
       setLoading(false);
     }
-  }, [user, refreshSession]);
+  }, [user, refreshSession, toast]);
 
   // Fetch posts on initial load
   useEffect(() => {

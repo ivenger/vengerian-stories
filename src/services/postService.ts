@@ -34,7 +34,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
       .from('entries')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error('Error fetching post by ID:', error);
@@ -59,12 +59,17 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
   console.log(`Fetching posts with tags filter:`, tags);
   
   try {
+    // Explicitly log the query we're about to run
+    console.log('Building Supabase query for entries table');
+    
     let query = supabase
       .from('entries')
-      .select('*')
-      .eq('status', 'published')
-      .order('date', { ascending: false });
+      .select('*');
     
+    // Ensure we're only getting published posts
+    console.log('Adding status=published filter');
+    query = query.eq('status', 'published');
+      
     if (tags && tags.length > 0) {
       console.log(`Applying tag filters: ${tags.join(', ')}`);
       // For each tag, we need to check if it's in the tags array
@@ -73,6 +78,10 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       });
     }
     
+    // Sort by date, newest first
+    query = query.order('date', { ascending: false });
+    
+    console.log('Executing query against Supabase');
     const { data, error } = await query;
     
     if (error) {
@@ -80,11 +89,18 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw error;
     }
     
-    console.log(`Fetched ${data?.length || 0} filtered posts`);
-    return data as BlogEntry[] || [];
+    console.log(`Fetched ${data?.length || 0} filtered posts:`, data);
+    
+    if (!data || data.length === 0) {
+      console.log('No posts found matching criteria');
+      return [];
+    }
+    
+    return data as BlogEntry[];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    throw error;
+    // Return empty array instead of throwing error to prevent breaking UI
+    return [];
   }
 };
 

@@ -24,13 +24,15 @@ const StoriesList: React.FC<StoriesListProps> = ({
       <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
         <p className="text-gray-700 mb-4">{error}</p>
-        <Button 
-          onClick={onRetry} 
-          variant="outline"
-          className="border-red-300 hover:bg-red-50"
-        >
-          Try Again
-        </Button>
+        {onRetry && (
+          <Button 
+            onClick={onRetry} 
+            variant="outline"
+            className="border-red-300 hover:bg-red-50"
+          >
+            Try Again
+          </Button>
+        )}
       </div>
     );
   }
@@ -45,12 +47,21 @@ const StoriesList: React.FC<StoriesListProps> = ({
     );
   }
   
-  if (posts.length === 0) {
+  if (!posts || posts.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">
           No stories found. Check back later for new content.
         </p>
+        {onRetry && (
+          <Button 
+            onClick={onRetry} 
+            variant="outline"
+            className="mt-4"
+          >
+            Refresh
+          </Button>
+        )}
       </div>
     );
   }
