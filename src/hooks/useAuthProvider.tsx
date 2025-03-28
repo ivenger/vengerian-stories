@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,11 +14,9 @@ export function useAuthProvider() {
   const [authInitialized, setAuthInitialized] = useState(false);
   const { toast } = useToast();
   
-  // Use the extracted hooks
   useAppVersion();
   const { refreshSession, setupRefreshTimer, signOut: performSignOut } = useSessionManager();
 
-  // Wrapper around refreshSession that updates local state
   const handleRefreshSession = useCallback(async () => {
     try {
       const success = await refreshSession();
@@ -33,13 +30,11 @@ export function useAuthProvider() {
     }
   }, [refreshSession, session]);
 
-  // Handle auth state changes and session management
   useEffect(() => {
     let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
     
-    // Function to initialize auth with retry logic
     const initializeAuth = async () => {
       setLoading(true);
       setError(null);
@@ -47,7 +42,6 @@ export function useAuthProvider() {
       try {
         console.log("Setting up auth state listener (attempt " + (retryCount + 1) + ")");
         
-        // Set up auth state listener FIRST
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log("Auth state changed:", event, newSession?.user?.email || "no user");
@@ -65,7 +59,7 @@ export function useAuthProvider() {
                 }
               } catch (roleError) {
                 console.error("Error checking admin status:", roleError);
-                if (isMounted) setIsAdmin(false); // Default to non-admin on error
+                if (isMounted) setIsAdmin(false);
               }
             } else {
               setSession(null);
@@ -77,7 +71,6 @@ export function useAuthProvider() {
               setAuthInitialized(true);
             }
             
-            // Show toast for specific events
             if (event === 'SIGNED_IN') {
               toast({
                 title: "Welcome back!",
@@ -94,7 +87,6 @@ export function useAuthProvider() {
           }
         );
 
-        // Then check for existing session
         console.log("Checking for existing session");
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
@@ -122,7 +114,6 @@ export function useAuthProvider() {
           }
         }
         
-        // Set up session refresh interval
         const cleanupRefreshTimer = setupRefreshTimer(currentSession, handleRefreshSession);
         
         if (isMounted) {
@@ -150,11 +141,10 @@ export function useAuthProvider() {
           setAuthInitialized(true);
         }
         
-        return () => {}; // Empty cleanup if initialization failed
+        return () => {};
       }
     };
     
-    // Start auth initialization
     const cleanup = initializeAuth();
     
     return () => {
@@ -170,19 +160,26 @@ export function useAuthProvider() {
     try {
       console.log("Attempting to sign out");
       
-      // Clear local state first for better UX (feels faster)
       setSession(null);
       setIsAdmin(false);
       
-      // Then perform the actual signout operation
-      await performSignOut();
+      const result = await performSignOut();
       
-      console.log("Sign out successful");
-      
-      toast({
-        title: "Signed out",
-        description: "You've been signed out successfully.",
-      });
+      if (result.error) {
+        console.error("Error signing out:", result.error);
+        toast({
+          title: "Error",
+          description: "Failed to sign out. Please try again.",
+          variant: "destructive"
+        });
+      } else {
+        console.log("Sign out successful");
+        
+        toast({
+          title: "Signed out",
+          description: "You've been signed out successfully.",
+        });
+      }
     } catch (err) {
       console.error("Sign out exception:", err);
       toast({
