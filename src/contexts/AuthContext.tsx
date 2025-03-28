@@ -10,6 +10,7 @@ export type AuthContextType = {
   isAdmin: boolean;
   error: string | null;
   refreshSession: () => Promise<boolean>;
+  authInitialized: boolean;
 };
 
 export const AuthContext = createContext<AuthContextType>({
@@ -20,4 +21,5 @@ export const AuthContext = createContext<AuthContextType>({
   isAdmin: false,
   error: null,
   refreshSession: async () => false,
+  authInitialized: false,
 });

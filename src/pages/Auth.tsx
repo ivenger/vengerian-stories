@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +11,7 @@ import { useAuth } from "@/components/AuthProvider";
 import MultilingualTitle from "../components/MultilingualTitle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Auth = () => {
@@ -22,6 +23,7 @@ const Auth = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [oauthError, setOauthError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { session } = useAuth();
@@ -35,22 +37,45 @@ const Auth = () => {
 
   // Check for OAuth related errors in URL
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const errorDescription = url.searchParams.get("error_description");
-    const error = url.searchParams.get("error");
+    const checkForErrors = () => {
+      const url = new URL(window.location.href);
+      const errorDescription = url.searchParams.get("error_description");
+      const error = url.searchParams.get("error");
+      
+      if (errorDescription || error) {
+        console.error("OAuth error detected in URL:", { error, errorDescription });
+        setOauthError(errorDescription || error || "Authentication failed");
+        
+        toast({
+          title: "Authentication Error",
+          description: errorDescription || error || "Authentication failed",
+          variant: "destructive"
+        });
+        
+        // Clear the error from URL without triggering a full reload
+        window.history.replaceState({}, document.title, '/auth');
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately on component mount
+    const hasErrors = checkForErrors();
     
-    if (errorDescription || error) {
-      console.error("OAuth error:", { error, errorDescription });
-      setOauthError(errorDescription || error || "Authentication failed");
+    // If no errors and we have a "code" or "token" parameter, it might be a successful authentication
+    // but session might not be set yet, so we'll provide visual feedback
+    if (!hasErrors) {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const token = url.searchParams.get("access_token");
       
-      toast({
-        title: "Authentication Error",
-        description: errorDescription || error || "Authentication failed",
-        variant: "destructive"
-      });
-      
-      // Clear the error from URL
-      navigate('/auth', { replace: true });
+      if (code || token) {
+        console.log("Auth code/token detected, waiting for session...");
+        toast({
+          title: "Authentication in progress",
+          description: "Finalizing your sign-in...",
+        });
+      }
     }
   }, [navigate, toast]);
 
@@ -144,7 +169,7 @@ const Auth = () => {
       setGoogleAuthLoading(true);
       setOauthError(null);
       
-      console.log("Starting Google OAuth signin, redirecting to:", window.location.origin);
+      console.log(`Starting Google OAuth signin (attempt ${retryCount + 1}), redirecting to:`, window.location.origin);
       
       const { error, data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -160,26 +185,60 @@ const Auth = () => {
       if (error) {
         console.error("Google OAuth Error:", error);
         setOauthError(error.message);
-        
         throw error;
       }
       
-      console.log("OAuth session data:", data);
-      // No need for success toast as we're redirecting away
+      console.log("OAuth flow initiated successfully:", data);
+      toast({
+        title: "Redirecting to Google",
+        description: "You'll be redirected to Google to continue sign-in",
+      });
     } catch (error: any) {
       console.error("Google OAuth Error:", error);
       
+      let errorMessage = error.message || "Failed to sign in with Google";
+      
+      // Check for specific network errors
+      if (error.message?.includes("network") || error.message?.includes("fetch")) {
+        errorMessage = "Network error connecting to authentication service. Please check your internet connection and try again.";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to sign in with Google",
+        description: errorMessage,
         variant: "destructive",
       });
       
-      setOauthError(error.message || "Failed to sign in with Google");
+      setOauthError(errorMessage);
+      setRetryCount(prev => prev + 1);
     } finally {
       setGoogleAuthLoading(false);
     }
   };
+
+  const handleRetry = () => {
+    setOauthError(null);
+    // Small delay before retry
+    setTimeout(() => {
+      handleGoogleSignIn();
+    }, 500);
+  };
+
+  // Check local storage for session issues
+  useEffect(() => {
+    if (oauthError?.includes("network")) {
+      // Check if we can access localStorage - could be a cookie/storage issue
+      try {
+        const testKey = "auth_test_" + Date.now();
+        localStorage.setItem(testKey, "test");
+        localStorage.removeItem(testKey);
+        console.log("LocalStorage check: OK");
+      } catch (err) {
+        console.error("LocalStorage check failed:", err);
+        setOauthError(prev => (prev || "") + " Browser storage access issues detected. Try enabling cookies or using private browsing mode.");
+      }
+    }
+  }, [oauthError]);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -203,9 +262,24 @@ const Auth = () => {
             <Alert variant="destructive" className="mb-4">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>
-                {oauthError}
+                <div>{oauthError}</div>
                 <div className="mt-2 text-xs">
-                  If you're seeing network errors, please check that the redirect URLs are properly configured in Google Console.
+                  If you're seeing network errors, please:
+                  <ul className="list-disc pl-5 mt-1">
+                    <li>Check your internet connection</li>
+                    <li>Verify redirect URLs are correctly configured in Google Console</li>
+                    <li>Ensure cookies are enabled in your browser</li>
+                  </ul>
+                </div>
+                <div className="mt-3">
+                  <Button
+                    onClick={handleRetry}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center gap-1"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Retry Sign In
+                  </Button>
                 </div>
               </AlertDescription>
             </Alert>
