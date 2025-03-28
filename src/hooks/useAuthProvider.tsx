@@ -1,10 +1,9 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { checkUserRole } from "./auth/useAuthUtils";
-import { useSessionManager } from "./auth/useSessionManager";
+import { useSessionManager, SignOutResult } from "./auth/useSessionManager";
 import { useAppVersion } from "./auth/useAppVersion";
 
 export function useAuthProvider() {
@@ -164,10 +163,10 @@ export function useAuthProvider() {
       setSession(null);
       setIsAdmin(false);
       
-      const { error } = await performSignOut();
+      const result: SignOutResult = await performSignOut();
       
-      if (error) {
-        console.error("Error signing out:", error);
+      if (result.error) {
+        console.error("Error signing out:", result.error);
         toast({
           title: "Error",
           description: "Failed to sign out. Please try again.",

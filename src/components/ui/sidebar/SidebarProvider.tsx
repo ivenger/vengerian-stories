@@ -1,3 +1,4 @@
+
 import * as React from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -78,9 +79,9 @@ export const SidebarProvider = React.forwardRef<
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? "expanded" : "collapsed";
+    const state = open ? "expanded" : "collapsed" as "expanded" | "collapsed";
 
-    const contextValue = React.useMemo(
+    const contextValue: SidebarContext = React.useMemo(
       () => ({
         state,
         open,
