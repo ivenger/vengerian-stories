@@ -104,6 +104,7 @@ export function useAuthState() {
           setError(null);
         }
         
+        // Return the cleanup function for the subscription
         return () => {
           subscription.unsubscribe();
         };
@@ -122,17 +123,20 @@ export function useAuthState() {
           setAuthInitialized(true);
         }
         
+        // Return an empty cleanup function
         return () => {};
       }
     };
     
-    const cleanup = initializeAuth();
+    // Store the cleanup function returned by initializeAuth
+    const cleanupFunction = initializeAuth();
     
     return () => {
       console.log("Cleaning up auth state listener");
       isMounted = false;
-      if (typeof cleanup === 'function') {
-        cleanup();
+      // Call the cleanup function if it exists and is a function
+      if (cleanupFunction && typeof cleanupFunction === 'function') {
+        cleanupFunction();
       }
     };
   }, [toast]);
