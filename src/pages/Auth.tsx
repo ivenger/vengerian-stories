@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +10,8 @@ import { useAuth } from "@/components/AuthProvider";
 import MultilingualTitle from "../components/MultilingualTitle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -21,6 +21,7 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
+  const [oauthError, setOauthError] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { session } = useAuth();
@@ -36,11 +37,15 @@ const Auth = () => {
   useEffect(() => {
     const url = new URL(window.location.href);
     const errorDescription = url.searchParams.get("error_description");
+    const error = url.searchParams.get("error");
     
-    if (errorDescription) {
+    if (errorDescription || error) {
+      console.error("OAuth error:", { error, errorDescription });
+      setOauthError(errorDescription || error || "Authentication failed");
+      
       toast({
         title: "Authentication Error",
-        description: errorDescription,
+        description: errorDescription || error || "Authentication failed",
         variant: "destructive"
       });
       
@@ -137,10 +142,11 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     try {
       setGoogleAuthLoading(true);
+      setOauthError(null);
       
       console.log("Starting Google OAuth signin, redirecting to:", window.location.origin);
       
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error, data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/auth`,
@@ -151,8 +157,14 @@ const Auth = () => {
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Google OAuth Error:", error);
+        setOauthError(error.message);
+        
+        throw error;
+      }
       
+      console.log("OAuth session data:", data);
       // No need for success toast as we're redirecting away
     } catch (error: any) {
       console.error("Google OAuth Error:", error);
@@ -163,6 +175,8 @@ const Auth = () => {
         variant: "destructive",
       });
       
+      setOauthError(error.message || "Failed to sign in with Google");
+    } finally {
       setGoogleAuthLoading(false);
     }
   };
@@ -184,6 +198,18 @@ const Auth = () => {
                 : "Sign up to start using Vengerian Stories"}
             </p>
           </div>
+
+          {oauthError && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {oauthError}
+                <div className="mt-2 text-xs">
+                  If you're seeing network errors, please check that the redirect URLs are properly configured in Google Console.
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="mt-6">
             <Button 
