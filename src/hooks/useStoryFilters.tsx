@@ -1,8 +1,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts } from '../services/blogService';
-import { useToast } from "@/components/ui/use-toast";
+import { fetchFilteredPosts } from '../services/postService'; // Fixed import path
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
