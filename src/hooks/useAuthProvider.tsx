@@ -163,10 +163,10 @@ export function useAuthProvider() {
       setSession(null);
       setIsAdmin(false);
       
-      const result = await performSignOut();
+      const { error } = await performSignOut();
       
-      if (result.error) {
-        console.error("Error signing out:", result.error);
+      if (error) {
+        console.error("Error signing out:", error);
         toast({
           title: "Error",
           description: "Failed to sign out. Please try again.",

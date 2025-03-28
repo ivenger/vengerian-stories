@@ -1,4 +1,3 @@
-
 import { useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -133,7 +132,7 @@ export function useSessionManager() {
         return { error: signOutError };
       } else {
         console.log("Sign out successful");
-        return { error: undefined };
+        return { error: null };
       }
     } catch (err) {
       console.error("Sign out exception:", err);
