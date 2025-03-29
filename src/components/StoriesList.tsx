@@ -40,9 +40,9 @@ const StoriesList: React.FC<StoriesListProps> = ({
   if (loading) {
     console.log("StoriesList is in loading state");
     return (
-      <div className="flex flex-col justify-center items-center h-64">
+      <div className="flex justify-center items-center h-64">
         <Spinner size="lg" />
-        <span className="ml-3 mt-4 text-gray-500">Loading stories...</span>
+        <span className="ml-3 text-gray-500">Loading stories...</span>
       </div>
     );
   }
