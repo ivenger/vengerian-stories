@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { BlogEntry } from "@/types/blogTypes";
 import { format } from "date-fns";
-import { fetchAllPosts, savePost, deletePost } from "@/services/postService";
+import { fetchAllPosts, savePost, deletePost } from "@/services/blogService";
 
 export const usePostsManagement = (editId: string | null, setIsEditing: (isEditing: boolean) => void, setSelectedPost: (post: BlogEntry | null) => void) => {
   const { toast } = useToast();
