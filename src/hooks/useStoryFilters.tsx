@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts } from '../services/postService';
+import { fetchFilteredPosts } from '../services/blogService';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,7 @@ export const useStoryFilters = () => {
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
+  const [sessionRefreshAttempted, setSessionRefreshAttempted] = useState<boolean>(false);
 
   // Fetch reading history if user is logged in
   useEffect(() => {
@@ -48,7 +49,7 @@ export const useStoryFilters = () => {
 
   // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
-    console.log("loadPosts called with forceRefresh:", forceRefresh);
+    console.log("loadPosts called with forceRefresh:", forceRefresh, "sessionRefreshAttempted:", sessionRefreshAttempted);
     
     setLoading(true);
     setError(null);
@@ -56,9 +57,10 @@ export const useStoryFilters = () => {
     
     try {
       // If we've been loading for too long with a session, try refreshing it
-      if (user && forceRefresh) {
+      if (user && (forceRefresh || !sessionRefreshAttempted)) {
         console.log("Refreshing user session before loading posts");
         await refreshSession();
+        setSessionRefreshAttempted(true);
       }
       
       // Fetch all posts - with detailed logging to help debug
@@ -82,7 +84,8 @@ export const useStoryFilters = () => {
       if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
           error?.message?.includes('auth') || error?.message?.includes('authentication')) {
         console.log("Detected potential auth error, attempting session refresh");
-        if (user) {
+        if (user && !sessionRefreshAttempted) {
+          setSessionRefreshAttempted(true);
           const refreshed = await refreshSession();
           if (refreshed) {
             // If refresh successful, try loading posts again
@@ -102,7 +105,12 @@ export const useStoryFilters = () => {
       console.log("Setting loading to false");
       setLoading(false);
     }
-  }, [user, refreshSession, toast]);
+  }, [user, refreshSession, toast, sessionRefreshAttempted]);
+
+  // Reset session refresh attempted flag when user changes
+  useEffect(() => {
+    setSessionRefreshAttempted(false);
+  }, [user]);
 
   // Fetch posts on initial load
   useEffect(() => {
