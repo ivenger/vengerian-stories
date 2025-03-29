@@ -43,7 +43,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
     
     if (error) {
       console.error('Error fetching post by ID:', error);
-      return null;
+      throw error;
     }
     
     if (!data) {
@@ -55,7 +55,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
     return data as BlogEntry;
   } catch (error) {
     console.error(`Failed to fetch post with ID ${id}:`, error);
-    return null;
+    throw error; // Let the caller handle the error
   }
 };
 
@@ -91,13 +91,13 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     
     if (error) {
       console.error('Error fetching filtered posts:', error);
-      return [];
+      throw error;
     }
     
     console.log(`Fetched ${data?.length || 0} published posts`);
     return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    return []; // Return empty array instead of throwing
+    throw error; // Let the caller handle the error
   }
 };

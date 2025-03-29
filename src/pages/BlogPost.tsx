@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchPostById } from "../services/post";
+import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "../components/AuthProvider";
@@ -59,7 +59,7 @@ const BlogPost = () => {
             setError("Post not found");
             setPost(null);
           } else {
-            console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
+            console.log(`BlogPost: Successfully fetched post with title: ${postData.title}`);
             setPost(postData);
           }
           setLoading(false);
@@ -87,7 +87,7 @@ const BlogPost = () => {
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [id, refreshSession, loading, fetchAttempted]);
+  }, [id, refreshSession]); // Removed loading and fetchAttempted from dependencies array to prevent re-fetching
 
   return (
     <div>
