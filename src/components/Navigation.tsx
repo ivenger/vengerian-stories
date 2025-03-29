@@ -63,7 +63,7 @@ const Navigation = () => {
             </Link>
             <Link to="/about" className={`ml-4 flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/about") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
               <InfoIcon size={18} className="mr-2" />
-              <span className="font-semibold">About the Author</span>
+              <span className="font-semibold">Author</span>
             </Link>
           </div>
           
