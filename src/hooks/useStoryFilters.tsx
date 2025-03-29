@@ -55,18 +55,18 @@ export const useStoryFilters = () => {
     setError(null);
     setLastLoad(Date.now());
     
-    // Always try to refresh session at the beginning regardless of user state
-    if (!sessionRefreshAttempted || forceRefresh) {
-      console.log("Attempting to refresh session before loading posts");
-      await refreshSession();
-      setSessionRefreshAttempted(true);
-    }
-    
     try {
+      // If we've been loading for too long with a session, try refreshing it
+      if (user && (forceRefresh || !sessionRefreshAttempted)) {
+        console.log("Refreshing user session before loading posts");
+        await refreshSession();
+        setSessionRefreshAttempted(true);
+      }
+      
       // Fetch all posts - with detailed logging to help debug
       console.log("Fetching all posts from postService");
       const allPosts = await fetchFilteredPosts();
-      console.log(`Received ${allPosts?.length || 0} total posts from API`);
+      console.log(`Received ${allPosts?.length || 0} total posts from API:`, allPosts);
       
       if (!allPosts || allPosts.length === 0) {
         console.log("No posts returned from API - empty array or null");
@@ -80,12 +80,23 @@ export const useStoryFilters = () => {
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
-      // Handle specific error types more gracefully
-      const errorMessage = error?.message || "Unknown error";
-      console.log("Error message:", errorMessage);
+      // Handle potential auth errors
+      if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
+          error?.message?.includes('auth') || error?.message?.includes('authentication')) {
+        console.log("Detected potential auth error, attempting session refresh");
+        if (user && !sessionRefreshAttempted) {
+          setSessionRefreshAttempted(true);
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            // If refresh successful, try loading posts again
+            console.log("Session refreshed, retrying post load");
+            return loadPosts(false);
+          }
+        }
+      }
       
       setError(
-        errorMessage === "TypeError: Failed to fetch" 
+        error?.message === "TypeError: Failed to fetch" 
           ? "Network error. Please check your connection and try again." 
           : "Failed to load stories. Please try again later."
       );
@@ -94,7 +105,7 @@ export const useStoryFilters = () => {
       console.log("Setting loading to false");
       setLoading(false);
     }
-  }, [refreshSession, toast, sessionRefreshAttempted]);
+  }, [user, refreshSession, toast, sessionRefreshAttempted]);
 
   // Reset session refresh attempted flag when user changes
   useEffect(() => {

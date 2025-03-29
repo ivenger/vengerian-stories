@@ -15,7 +15,7 @@ import {
   Image
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { fetchAllPosts } from "../services/blogService";
+import { fetchAllPosts } from "../services/postService";
 import { fetchAllTags, fetchTagsByLanguage } from "../services/tagService";
 import { fetchBucketImages } from "../services/imageService";
 import { useToast } from "../hooks/use-toast";

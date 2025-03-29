@@ -2,7 +2,7 @@ import { BlogEntry } from "@/types/blogTypes";
 import MarkdownEditor from "../MarkdownEditor";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { savePost } from "@/services/blogService";
+import { savePost } from "@/services/postService";
 
 interface PostEditorProps {
   selectedPost: BlogEntry;
