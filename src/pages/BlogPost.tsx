@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { fetchPostById } from "../services/postService";
+import { useParams, useNavigate } from "react-router-dom";
+import { fetchPostById } from "../services/post";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "../components/AuthProvider";
@@ -12,6 +12,7 @@ import PostLoading from "@/components/blog/PostLoading";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -54,8 +55,13 @@ const BlogPost = () => {
         
         // Only update state if component is still mounted
         if (isMounted) {
-          console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
-          setPost(postData);
+          if (!postData) {
+            setError("Post not found");
+            setPost(null);
+          } else {
+            console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
+            setPost(postData);
+          }
           setLoading(false);
         }
       } catch (err) {
@@ -81,7 +87,7 @@ const BlogPost = () => {
       isMounted = false;
       window.clearTimeout(timeoutId);
     };
-  }, [id, refreshSession]);
+  }, [id, refreshSession, loading, fetchAttempted]);
 
   return (
     <div>

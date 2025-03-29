@@ -1,50 +1,17 @@
 
-import { useState, useEffect, useCallback } from 'react';
-import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts } from '../services/postService';
+import { useState, useCallback } from 'react';
+import { BlogEntry } from '../../types/blogTypes';
+import { fetchFilteredPosts } from '../../services/post';
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "../components/AuthProvider";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "../../components/AuthProvider";
 
-export const useStoryFilters = () => {
+export const usePostsLoader = () => {
   const { user, refreshSession } = useAuth();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
-
-  // Fetch reading history if user is logged in
-  useEffect(() => {
-    if (!user) {
-      setReadPostIds([]);
-      return;
-    }
-    
-    const fetchReadPosts = async () => {
-      try {
-        console.log("Fetching reading history for user:", user.id);
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('*')
-          .eq('user_id', user.id);
-          
-        if (error) {
-          console.error("Error fetching reading history:", error);
-          return; // Don't throw, just return
-        }
-        
-        console.log("Reading history fetched:", data?.length || 0, "items");
-        setReadPostIds((data || []).map(item => item.post_id));
-      } catch (err) {
-        console.error("Error fetching reading history:", err);
-        // Non-critical, don't set error state
-      }
-    };
-    
-    fetchReadPosts();
-  }, [user]);
 
   // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
@@ -110,27 +77,11 @@ export const useStoryFilters = () => {
     }
   }, [user, refreshSession, toast]);
 
-  // Fetch posts on initial load
-  useEffect(() => {
-    console.log("Initial post loading effect triggered");
-    loadPosts();
-    
-    // Set up a refresh timer to avoid stale data
-    const refreshTimer = setInterval(() => {
-      const now = Date.now();
-      if (now - lastLoad > 5 * 60 * 1000) {  // 5 minutes
-        console.log("It's been a while since posts were loaded, refreshing");
-        loadPosts(true);
-      }
-    }, 60 * 1000);  // Check every minute
-    
-    return () => clearInterval(refreshTimer);
-  }, [loadPosts, lastLoad]);
-
   return {
     posts,
     loading,
     error,
-    loadPosts // Expose reload function
+    loadPosts,
+    lastLoad
   };
 };

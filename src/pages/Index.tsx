@@ -3,7 +3,7 @@ import React from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
 import StoriesList from "../components/StoriesList";
-import { useStoryFilters } from "../hooks/useStoryFilters";
+import { useStoryFilters } from "../hooks/posts/useStoryFilters";
 
 const Index = () => {
   // Use our custom hook to handle post loading
