@@ -60,17 +60,13 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw error;
     }
     
-    console.log(`Fetched ${data?.length || 0} filtered posts:`, data);
+    console.log(`Fetched ${data?.length || 0} filtered posts`);
     
-    if (!data || data.length === 0) {
-      console.log('No posts found matching criteria');
-      return [];
-    }
-    
-    return data as BlogEntry[];
+    // Added defensive check to ensure we always return an array
+    return Array.isArray(data) ? data : [];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    // Return empty array instead of throwing error to prevent breaking UI
+    // Return empty array instead of throwing to prevent UI breaking
     return [];
   }
 };
