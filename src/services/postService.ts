@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -56,7 +55,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
 
 // Fetch all posts with optional tag filtering
 export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> => {
-  console.log(`Fetching posts with tags filter:`, tags);
+  console.log(`Fetching published posts with tags filter:`, tags);
   
   try {
     // Explicitly log the query we're about to run
@@ -89,18 +88,11 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw error;
     }
     
-    console.log(`Fetched ${data?.length || 0} filtered posts:`, data);
-    
-    if (!data || data.length === 0) {
-      console.log('No posts found matching criteria');
-      return [];
-    }
-    
-    return data as BlogEntry[];
+    console.log(`Fetched ${data?.length || 0} published posts`);
+    return data as BlogEntry[] || [];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    // Return empty array instead of throwing error to prevent breaking UI
-    return [];
+    return []; // Return empty array instead of throwing
   }
 };
 

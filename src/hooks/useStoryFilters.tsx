@@ -32,7 +32,7 @@ export const useStoryFilters = () => {
           
         if (error) {
           console.error("Error fetching reading history:", error);
-          throw error;
+          return; // Don't throw, just return
         }
         
         console.log("Reading history fetched:", data?.length || 0, "items");
@@ -61,20 +61,26 @@ export const useStoryFilters = () => {
         await refreshSession();
       }
       
-      // Fetch all posts - with detailed logging to help debug
-      console.log("Fetching all posts from postService");
+      // Fetch all published posts
+      console.log("Fetching published posts from postService");
       const allPosts = await fetchFilteredPosts();
-      console.log(`Received ${allPosts?.length || 0} total posts from API:`, allPosts);
       
-      if (!allPosts || allPosts.length === 0) {
-        console.log("No posts returned from API - empty array or null");
-        toast({
-          title: "No stories found",
-          description: "There are currently no published stories available.",
-        });
+      if (Array.isArray(allPosts)) {
+        console.log(`Received ${allPosts.length} total posts from API`);
+        setPosts(allPosts);
+        
+        if (allPosts.length === 0) {
+          console.log("No posts returned from API - empty array");
+          toast({
+            title: "No stories found",
+            description: "There are currently no published stories available.",
+          });
+        }
+      } else {
+        console.error("Invalid response format from fetchFilteredPosts:", allPosts);
+        setPosts([]);
+        setError("Failed to load stories. Unexpected data format.");
       }
-      
-      setPosts(allPosts || []);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
