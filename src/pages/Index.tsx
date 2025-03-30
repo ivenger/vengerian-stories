@@ -1,18 +1,24 @@
-
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/posts/useStoryFilters";
 
 const Index = () => {
-  // Use our custom hook to handle post loading
   const {
     posts,
     loading,
     error,
     loadPosts
   } = useStoryFilters();
+  
+  const isMountedRef = useRef(true);
+  
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -32,7 +38,11 @@ const Index = () => {
             posts={posts} 
             loading={loading} 
             error={error}
-            onRetry={loadPosts}
+            onRetry={() => {
+              if (isMountedRef.current) {
+                loadPosts(true);
+              }
+            }}
           />
         </div>
       </main>

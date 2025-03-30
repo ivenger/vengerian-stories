@@ -13,9 +13,12 @@ export const useReadPosts = () => {
   
   // Cleanup on unmount
   useEffect(() => {
+    console.log("useReadPosts mounted");
     mountedRef.current = true;
+    fetchInProgressRef.current = false;
     
     return () => {
+      console.log("useReadPosts unmounted - cleaning up");
       mountedRef.current = false;
       
       // Cancel any in-progress fetch
@@ -23,6 +26,8 @@ export const useReadPosts = () => {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
+      
+      fetchInProgressRef.current = false;
     };
   }, []);
 
@@ -33,9 +38,9 @@ export const useReadPosts = () => {
       return;
     }
     
-    // Skip if a fetch is already in progress
-    if (fetchInProgressRef.current) {
-      console.log("Reading history fetch already in progress, skipping duplicate request");
+    // Skip if a fetch is already in progress or component is unmounting
+    if (fetchInProgressRef.current || !mountedRef.current) {
+      console.log("Reading history fetch skipped - already in progress or component unmounting");
       return;
     }
     
@@ -65,7 +70,10 @@ export const useReadPosts = () => {
           return; // Don't throw, just return
         }
         
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) {
+          console.log("Component unmounted during reading history fetch");
+          return;
+        }
         
         console.log("Reading history fetched:", data?.length || 0, "items");
         setReadPostIds((data || []).map(item => item.post_id));
@@ -87,6 +95,7 @@ export const useReadPosts = () => {
     // Cleanup function to cancel fetch when user changes or component unmounts
     return () => {
       if (abortControllerRef.current) {
+        console.log("Cancelling in-progress reading history fetch due to user change");
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
@@ -96,6 +105,7 @@ export const useReadPosts = () => {
   return {
     readPostIds,
     isReadPostsLoading: loading,
-    hasReadPost: (postId: string) => readPostIds.includes(postId)
+    hasReadPost: (postId: string) => readPostIds.includes(postId),
+    clearReadPosts: () => setReadPostIds([])
   };
 };

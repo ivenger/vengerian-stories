@@ -20,6 +20,8 @@ export const usePostsLoader = () => {
   useEffect(() => {
     console.log("usePostsLoader mounted");
     mountedRef.current = true;
+    loadingRef.current = false; // Reset loading ref on mount
+    
     return () => {
       console.log("usePostsLoader unmounted - cleaning up");
       mountedRef.current = false;
@@ -31,8 +33,24 @@ export const usePostsLoader = () => {
         requestInProgressRef.current.abort();
         requestInProgressRef.current = null;
       }
+      
+      // Reset state on unmount
+      setPosts([]);
+      setError(null);
+      setLoading(false);
     };
   }, []);
+  
+  // Reset certain states when user changes
+  useEffect(() => {
+    if (!mountedRef.current) return;
+    
+    // Reset any user-specific states when the user changes
+    setError(null);
+    
+    // We don't reset the posts here as that would cause flickering
+    // The posts will be updated when loadPosts is called anyway
+  }, [user]);
   
   // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
@@ -60,7 +78,7 @@ export const usePostsLoader = () => {
         setError(null);
       }
       
-      // If we've been loading for too long with a session, try refreshing it
+      // If we're doing a forced refresh with a session, try refreshing it
       if (user && forceRefresh) {
         console.log("Refreshing user session before loading posts");
         await refreshSession();
@@ -121,12 +139,16 @@ export const usePostsLoader = () => {
           error?.message?.includes('auth') || error?.message?.includes('authentication')) {
         console.log("Detected potential auth error, attempting session refresh");
         if (user) {
-          const refreshed = await refreshSession();
-          if (refreshed) {
-            // If refresh successful, try loading posts again
-            console.log("Session refreshed, retrying post load");
-            loadingRef.current = false;
-            return loadPosts(false);
+          try {
+            const refreshed = await refreshSession();
+            if (refreshed) {
+              // If refresh successful, try loading posts again
+              console.log("Session refreshed, retrying post load");
+              loadingRef.current = false;
+              return loadPosts(false);
+            }
+          } catch (refreshError) {
+            console.error("Session refresh failed:", refreshError);
           }
         }
       }
@@ -150,7 +172,7 @@ export const usePostsLoader = () => {
       
       loadingRef.current = false;
       
-      // Clear the abort controller reference
+      // Clear the abort controller reference if it matches the current request
       if (requestInProgressRef.current && requestInProgressRef.current.signal === signal) {
         requestInProgressRef.current = null;
       }

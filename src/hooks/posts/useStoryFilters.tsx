@@ -5,7 +5,7 @@ import { usePostsLoader } from './usePostsLoader';
 
 export const useStoryFilters = () => {
   const { posts, loading, error, loadPosts, lastLoad } = usePostsLoader();
-  const { readPostIds } = useReadPosts();
+  const { readPostIds, clearReadPosts } = useReadPosts();
   
   // Use refs to track loading states
   const initialLoadDoneRef = useRef(false);
@@ -30,6 +30,8 @@ export const useStoryFilters = () => {
     }
     
     visibilityChangeSetupDoneRef.current = false;
+    initialLoadDoneRef.current = false;
+    loadingInProgressRef.current = false;
   }, []);
   
   // Reset state on mount/unmount
@@ -68,9 +70,10 @@ export const useStoryFilters = () => {
       mountedRef.current = false;
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
+      clearReadPosts(); // Clear read posts state on unmount
       cleanupAll();
     };
-  }, [loadPosts, cleanupAll]);
+  }, [loadPosts, cleanupAll, clearReadPosts]);
   
   // Handle visibility change to refresh posts when needed
   useEffect(() => {
@@ -92,7 +95,9 @@ export const useStoryFilters = () => {
         console.log("Page became visible - refreshing posts");
         loadingInProgressRef.current = true;
         
-        loadPosts(true).finally(() => {
+        loadPosts(true).catch(err => {
+          console.error("Error refreshing posts on visibility change:", err);
+        }).finally(() => {
           if (mountedRef.current) {
             loadingInProgressRef.current = false;
           }
@@ -113,9 +118,6 @@ export const useStoryFilters = () => {
       visibilityChangeSetupDoneRef.current = false;
     };
   }, [loadPosts]);
-  
-  // Skip setting up a refresh timer - we'll rely on the visibility change listener
-  // to refresh data when needed instead of a periodic timer that might cause issues
   
   return {
     posts,
