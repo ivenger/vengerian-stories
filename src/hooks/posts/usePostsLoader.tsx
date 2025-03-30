@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { BlogEntry } from '../../types/blogTypes';
 import { fetchFilteredPosts } from '../../services/post';
 import { useToast } from "@/hooks/use-toast";
@@ -12,16 +12,23 @@ export const usePostsLoader = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
-
+  const loadingRef = useRef(false); // Use ref to track actual loading state across renders
+  
   // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
     console.log("loadPosts called with forceRefresh:", forceRefresh);
     
-    setLoading(true);
-    setError(null);
-    setLastLoad(Date.now());
+    // Prevent multiple simultaneous loads
+    if (loadingRef.current) {
+      console.log("Already loading posts, ignoring duplicate request");
+      return;
+    }
     
     try {
+      loadingRef.current = true;
+      setLoading(true);
+      setError(null);
+      
       // If we've been loading for too long with a session, try refreshing it
       if (user && forceRefresh) {
         console.log("Refreshing user session before loading posts");
@@ -60,6 +67,7 @@ export const usePostsLoader = () => {
           if (refreshed) {
             // If refresh successful, try loading posts again
             console.log("Session refreshed, retrying post load");
+            loadingRef.current = false;
             return loadPosts(false);
           }
         }
@@ -74,6 +82,8 @@ export const usePostsLoader = () => {
     } finally {
       console.log("Setting loading to false");
       setLoading(false);
+      loadingRef.current = false;
+      setLastLoad(Date.now());
     }
   }, [user, refreshSession, toast]);
 

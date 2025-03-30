@@ -55,7 +55,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
     return data as BlogEntry;
   } catch (error) {
     console.error(`Failed to fetch post with ID ${id}:`, error);
-    throw error; // Let the caller handle the error
+    return null; // Return null instead of throwing to prevent cascading errors
   }
 };
 
@@ -94,10 +94,16 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw error;
     }
     
+    if (!Array.isArray(data)) {
+      console.error('Unexpected response format from Supabase:', data);
+      return [];
+    }
+    
     console.log(`Fetched ${data?.length || 0} published posts`);
-    return Array.isArray(data) ? data : [];
+    return data as BlogEntry[];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    throw error; // Let the caller handle the error
+    // Return empty array to allow graceful degradation
+    return [];
   }
 };
