@@ -7,9 +7,17 @@ export interface SignOutResult {
 }
 
 export function useSessionManager() {
-  const [refreshInterval, setRefreshInterval] = useState<NodeJS.Timeout | null>(null);
   const [refreshInProgress, setRefreshInProgress] = useState(false);
   const timerIdRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clean up any existing timers
+  const clearAllTimers = useCallback(() => {
+    if (timerIdRef.current) {
+      console.log("Clearing existing refresh timer");
+      clearTimeout(timerIdRef.current);
+      timerIdRef.current = null;
+    }
+  }, []);
 
   const refreshSession = useCallback(async () => {
     if (refreshInProgress) {
@@ -39,20 +47,9 @@ export function useSessionManager() {
   }, [refreshInProgress]);
 
   const setupRefreshTimer = useCallback((initialSession: any, refreshFn: () => Promise<boolean>) => {
-    // Clear any existing timers first
-    if (timerIdRef.current) {
-      console.log("Clearing existing refresh timer");
-      clearTimeout(timerIdRef.current);
-      timerIdRef.current = null;
-    }
+    // Always clear existing timers first
+    clearAllTimers();
     
-    if (refreshInterval) {
-      console.log("Clearing old refresh interval");
-      clearInterval(refreshInterval);
-      clearTimeout(refreshInterval);
-      setRefreshInterval(null);
-    }
-
     if (!initialSession?.expires_at) {
       console.warn("Session does not have an expiry time. Session refresh will not be set up.");
       return () => {};
@@ -81,28 +78,18 @@ export function useSessionManager() {
           console.warn("Session refresh failed, setting up a retry");
           // Try again in 30 seconds
           const retryTimer = setTimeout(() => refreshFn(), 30 * 1000);
-          setRefreshInterval(retryTimer);
           timerIdRef.current = retryTimer;
         }
       });
     }, adjustedRefreshTime);
 
     timerIdRef.current = timer;
-    setRefreshInterval(timer);
 
     return () => {
       console.log("Clearing session refresh timer in cleanup function");
-      if (timerIdRef.current) {
-        clearTimeout(timerIdRef.current);
-        timerIdRef.current = null;
-      }
-      if (refreshInterval) {
-        clearTimeout(refreshInterval);
-        clearInterval(refreshInterval);
-        setRefreshInterval(null);
-      }
+      clearAllTimers();
     };
-  }, [refreshInterval]);
+  }, [clearAllTimers]);
 
   // Fix the signOut function to properly return a SignOutResult
   const signOut = async (): Promise<SignOutResult> => {
@@ -116,15 +103,7 @@ export function useSessionManager() {
         console.log("Sign out successful");
         
         // Clear any refresh timers
-        if (timerIdRef.current) {
-          clearTimeout(timerIdRef.current);
-          timerIdRef.current = null;
-        }
-        if (refreshInterval) {
-          clearTimeout(refreshInterval);
-          clearInterval(refreshInterval);
-          setRefreshInterval(null);
-        }
+        clearAllTimers();
       }
       
       return { error };
@@ -133,6 +112,14 @@ export function useSessionManager() {
       return { error: error as Error };
     }
   };
+
+  // Add cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      console.log("Cleaning up timers on unmount (useSessionManager)");
+      clearAllTimers();
+    };
+  }, [clearAllTimers]);
 
   return {
     refreshSession,

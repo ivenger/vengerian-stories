@@ -36,7 +36,6 @@ export function useAuthProvider() {
       const success = await refreshSession();
       if (success && session) {
         console.log("Session refresh successful");
-        // No need to manually setSession as the auth state listener will handle it
       } else if (!success) {
         console.warn("Session refresh failed");
       }
@@ -47,17 +46,20 @@ export function useAuthProvider() {
     }
   }, [refreshSession, session]);
   
-  // Set up refresh timer whenever session changes
+  // Set up refresh timer whenever session changes, but ONLY ONCE
   useEffect(() => {
-    if (!session || refreshTimerSetupRef.current) return;
+    // Only set up the timer if we have a session AND haven't set it up already
+    if (!session || refreshTimerSetupRef.current) {
+      return;
+    }
     
-    console.log("Setting up session refresh timer");
+    console.log("Setting up session refresh timer (initial setup)");
     refreshTimerSetupRef.current = true;
     
     const cleanup = setupRefreshTimer(session, handleRefreshSession);
     
     return () => {
-      console.log("Cleaning up refresh timer in useAuthProvider");
+      console.log("Cleaning up refresh timer in useAuthProvider (unmounting)");
       cleanup();
       refreshTimerSetupRef.current = false;
     };
