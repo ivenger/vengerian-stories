@@ -8,34 +8,39 @@ export const useStoryFilters = () => {
   const { readPostIds } = useReadPosts();
   const [navigationCount, setNavigationCount] = useState(0);
   
-  // Use a ref to track whether initial load has happened
+  // Use refs to track loading states and prevent recursive calls
   const initialLoadDoneRef = useRef(false);
   const loadingInProgressRef = useRef(false);
+  const visibilityListenerSetRef = useRef(false);
   
   // Reset counter when page becomes visible after navigation
   useEffect(() => {
-    console.log("Navigation effect - checking if page is visible after navigation");
+    // Only set up visibility change listener once
+    if (visibilityListenerSetRef.current) return;
     
-    // Only set up visibility change listener if we've already done initial load
-    if (initialLoadDoneRef.current) {
-      const handleVisibilityChange = () => {
-        if (document.visibilityState === 'visible') {
-          console.log("Page became visible - triggering posts refresh");
-          
-          // Only increment navigation counter if we're not already loading
-          if (!loadingInProgressRef.current) {
-            setNavigationCount(prev => prev + 1);
-          }
+    console.log("Setting up visibility change listener");
+    visibilityListenerSetRef.current = true;
+    
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("Page became visible - checking if refresh needed");
+        
+        // Only increment navigation counter if we've already done initial load
+        // and we're not already loading
+        if (initialLoadDoneRef.current && !loadingInProgressRef.current) {
+          console.log("Triggering posts refresh after tab visibility change");
+          setNavigationCount(prev => prev + 1);
         }
-      };
-      
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      
-      return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
-      };
-    }
-  }, [initialLoadDoneRef.current]);
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      visibilityListenerSetRef.current = false;
+    };
+  }, []);
   
   // Secondary effect that responds to navigation counter changes
   useEffect(() => {
@@ -51,35 +56,43 @@ export const useStoryFilters = () => {
   
   // Initial fetch - only runs once
   useEffect(() => {
-    console.log("Initial post loading effect triggered");
-    
-    if (!initialLoadDoneRef.current && !loadingInProgressRef.current) {
-      loadingInProgressRef.current = true;
-      
-      loadPosts().finally(() => {
-        initialLoadDoneRef.current = true;
-        loadingInProgressRef.current = false;
-      });
-      
-      // Set up a refresh timer to avoid stale data
-      const refreshTimer = setInterval(() => {
-        const now = Date.now();
-        if (now - lastLoad > 5 * 60 * 1000) {  // 5 minutes
-          console.log("It's been a while since posts were loaded, refreshing");
-          if (!loadingInProgressRef.current) {
-            loadingInProgressRef.current = true;
-            loadPosts(true).finally(() => {
-              loadingInProgressRef.current = false;
-            });
-          }
-        }
-      }, 60 * 1000);  // Check every minute
-      
-      return () => {
-        console.log("Cleaning up refresh timer");
-        clearInterval(refreshTimer);
-      };
+    if (initialLoadDoneRef.current || loadingInProgressRef.current) {
+      console.log("Initial load already done or in progress, skipping");
+      return;
     }
+    
+    console.log("Initial post loading effect triggered");
+    loadingInProgressRef.current = true;
+    
+    loadPosts().finally(() => {
+      initialLoadDoneRef.current = true;
+      loadingInProgressRef.current = false;
+      console.log("Initial load completed and marked as done");
+    });
+    
+    // Set up a refresh timer to avoid stale data
+    const refreshTimer = setInterval(() => {
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (now - lastLoad > fiveMinutes) {
+        console.log("It's been a while since posts were loaded, refreshing");
+        
+        if (!loadingInProgressRef.current) {
+          loadingInProgressRef.current = true;
+          loadPosts(true).finally(() => {
+            loadingInProgressRef.current = false;
+          });
+        }
+      } else {
+        console.log("Recent data found, not refreshing immediately");
+      }
+    }, 60 * 1000);  // Check every minute
+    
+    return () => {
+      console.log("Cleaning up refresh timer in useStoryFilters");
+      clearInterval(refreshTimer);
+    };
   }, [loadPosts, lastLoad]);
 
   return {

@@ -1,5 +1,5 @@
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useAppVersion } from "./auth/useAppVersion";
 import { useAuthState } from "./auth/useAuthState";
 import { useAuthActions } from "./auth/useAuthActions";
@@ -8,6 +8,9 @@ import { useSessionManager } from "./auth/useSessionManager";
 export function useAuthProvider() {
   // Initialize app version check
   useAppVersion();
+  
+  // Track if we already set up a refresh timer
+  const refreshTimerSetupRef = useRef(false);
   
   // Get auth state
   const { 
@@ -46,14 +49,17 @@ export function useAuthProvider() {
   
   // Set up refresh timer whenever session changes
   useEffect(() => {
-    if (!session) return;
+    if (!session || refreshTimerSetupRef.current) return;
     
     console.log("Setting up session refresh timer");
+    refreshTimerSetupRef.current = true;
+    
     const cleanup = setupRefreshTimer(session, handleRefreshSession);
     
     return () => {
-      console.log("Cleaning up refresh timer");
+      console.log("Cleaning up refresh timer in useAuthProvider");
       cleanup();
+      refreshTimerSetupRef.current = false;
     };
   }, [session, setupRefreshTimer, handleRefreshSession]);
 
