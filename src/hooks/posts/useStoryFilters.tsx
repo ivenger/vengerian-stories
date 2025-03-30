@@ -11,9 +11,28 @@ export const useStoryFilters = () => {
   const initialLoadDoneRef = useRef(false);
   const loadingInProgressRef = useRef(false);
   const visibilityChangeSetupDoneRef = useRef(false);
+  const mountedRef = useRef(true);
+  
+  // Reset state on mount/unmount
+  useEffect(() => {
+    console.log("useStoryFilters mounted");
+    mountedRef.current = true;
+    initialLoadDoneRef.current = false;
+    loadingInProgressRef.current = false;
+    
+    return () => {
+      console.log("useStoryFilters unmounted - cleaning up state refs");
+      mountedRef.current = false;
+      visibilityChangeSetupDoneRef.current = false;
+      initialLoadDoneRef.current = false;
+      loadingInProgressRef.current = false;
+    };
+  }, []);
   
   // Handle visibility change to refresh posts when needed
   useEffect(() => {
+    if (!mountedRef.current) return;
+    
     // Skip if we've already set this up
     if (visibilityChangeSetupDoneRef.current) {
       console.log("Visibility change listener already set up, skipping");
@@ -24,12 +43,16 @@ export const useStoryFilters = () => {
     console.log("Setting up visibility change listener (once)");
     
     const handleVisibilityChange = () => {
+      if (!mountedRef.current) return;
+      
       if (document.visibilityState === 'visible' && initialLoadDoneRef.current && !loadingInProgressRef.current) {
         console.log("Page became visible - refreshing posts");
         loadingInProgressRef.current = true;
         
         loadPosts(true).finally(() => {
-          loadingInProgressRef.current = false;
+          if (mountedRef.current) {
+            loadingInProgressRef.current = false;
+          }
         });
       }
     };
@@ -45,6 +68,8 @@ export const useStoryFilters = () => {
   
   // Initial load effect - only runs once
   useEffect(() => {
+    if (!mountedRef.current) return;
+    
     if (initialLoadDoneRef.current || loadingInProgressRef.current) {
       console.log("Initial load already done or in progress, skipping duplicate load");
       return;
@@ -54,19 +79,29 @@ export const useStoryFilters = () => {
     loadingInProgressRef.current = true;
     
     loadPosts()
-      .then(() => {
-        console.log("Initial load completed successfully");
-        initialLoadDoneRef.current = true;
+      .then((success) => {
+        if (mountedRef.current) {
+          console.log("Initial load completed successfully:", success);
+          initialLoadDoneRef.current = true;
+        }
       })
       .catch((err) => {
-        console.error("Error during initial load:", err);
+        if (mountedRef.current) {
+          console.error("Error during initial load:", err);
+        }
       })
       .finally(() => {
-        loadingInProgressRef.current = false;
+        if (mountedRef.current) {
+          loadingInProgressRef.current = false;
+        }
       });
     
     // Set up a simple refresh timer to avoid stale data
     const refreshIntervalId = setInterval(() => {
+      if (!mountedRef.current) {
+        return;
+      }
+      
       if (loadingInProgressRef.current) {
         console.log("Load already in progress, skipping scheduled refresh");
         return;
@@ -81,7 +116,9 @@ export const useStoryFilters = () => {
         
         loadPosts(true)
           .finally(() => {
-            loadingInProgressRef.current = false;
+            if (mountedRef.current) {
+              loadingInProgressRef.current = false;
+            }
           });
       }
     }, 60 * 1000);

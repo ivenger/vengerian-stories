@@ -17,9 +17,12 @@ export const usePostsLoader = () => {
   
   // Ensure clean unmounting
   useEffect(() => {
+    console.log("usePostsLoader mounted");
     mountedRef.current = true;
     return () => {
+      console.log("usePostsLoader unmounted - cleaning up");
       mountedRef.current = false;
+      loadingRef.current = false; // Reset loading ref on unmount
     };
   }, []);
   
