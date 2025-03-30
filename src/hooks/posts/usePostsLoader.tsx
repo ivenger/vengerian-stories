@@ -14,6 +14,7 @@ export const usePostsLoader = () => {
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
   const loadingRef = useRef(false); // Use ref to track actual loading state across renders
   const mountedRef = useRef(true);
+  const requestInProgressRef = useRef<AbortController | null>(null);
   
   // Ensure clean unmounting
   useEffect(() => {
@@ -23,6 +24,13 @@ export const usePostsLoader = () => {
       console.log("usePostsLoader unmounted - cleaning up");
       mountedRef.current = false;
       loadingRef.current = false; // Reset loading ref on unmount
+      
+      // Abort any in-progress requests
+      if (requestInProgressRef.current) {
+        console.log("Aborting in-progress fetch requests");
+        requestInProgressRef.current.abort();
+        requestInProgressRef.current = null;
+      }
     };
   }, []);
   
@@ -35,6 +43,15 @@ export const usePostsLoader = () => {
       console.log("Already loading posts, ignoring duplicate request");
       return Promise.resolve(false);
     }
+    
+    // Abort any previous request
+    if (requestInProgressRef.current) {
+      requestInProgressRef.current.abort();
+    }
+    
+    // Create a new abort controller for this request
+    requestInProgressRef.current = new AbortController();
+    const signal = requestInProgressRef.current.signal;
     
     try {
       loadingRef.current = true;
@@ -60,6 +77,11 @@ export const usePostsLoader = () => {
         return false;
       }
       
+      if (signal.aborted) {
+        console.log("Request was aborted, abandoning updates");
+        return false;
+      }
+      
       if (Array.isArray(allPosts)) {
         console.log(`Received ${allPosts.length} total posts from API`);
         setPosts(allPosts);
@@ -80,13 +102,13 @@ export const usePostsLoader = () => {
         return false;
       }
     } catch (error: any) {
-      console.error("Failed to load posts:", error);
-      
-      // Only update state if still mounted
-      if (!mountedRef.current) {
+      // Only handle errors if we're still mounted and the request wasn't aborted
+      if (!mountedRef.current || signal.aborted) {
         loadingRef.current = false;
         return false;
       }
+      
+      console.error("Failed to load posts:", error);
       
       // Handle potential auth errors
       if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
@@ -112,12 +134,18 @@ export const usePostsLoader = () => {
       return false;
     } finally {
       // Only update state if still mounted
-      if (mountedRef.current) {
+      if (mountedRef.current && !signal.aborted) {
         console.log("Setting loading to false");
         setLoading(false);
         setLastLoad(Date.now());
       }
+      
       loadingRef.current = false;
+      
+      // Clear the abort controller reference
+      if (requestInProgressRef.current && requestInProgressRef.current.signal === signal) {
+        requestInProgressRef.current = null;
+      }
     }
   }, [user, refreshSession, toast]);
 

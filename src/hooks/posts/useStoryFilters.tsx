@@ -20,6 +20,29 @@ export const useStoryFilters = () => {
     initialLoadDoneRef.current = false;
     loadingInProgressRef.current = false;
     
+    // Initial load on mount
+    const doInitialLoad = async () => {
+      if (loadingInProgressRef.current) return;
+      
+      console.log("Performing initial load on mount");
+      loadingInProgressRef.current = true;
+      
+      try {
+        await loadPosts(false);
+        if (mountedRef.current) {
+          initialLoadDoneRef.current = true;
+        }
+      } catch (err) {
+        console.error("Error during initial mount load:", err);
+      } finally {
+        if (mountedRef.current) {
+          loadingInProgressRef.current = false;
+        }
+      }
+    };
+    
+    doInitialLoad();
+    
     return () => {
       console.log("useStoryFilters unmounted - cleaning up state refs");
       mountedRef.current = false;
@@ -27,7 +50,7 @@ export const useStoryFilters = () => {
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
     };
-  }, []);
+  }, [loadPosts]);
   
   // Handle visibility change to refresh posts when needed
   useEffect(() => {
@@ -66,35 +89,11 @@ export const useStoryFilters = () => {
     };
   }, [loadPosts]);
   
-  // Initial load effect - only runs once
+  // Set up a refresh timer to periodically refresh data
   useEffect(() => {
-    if (!mountedRef.current) return;
+    if (!mountedRef.current || !initialLoadDoneRef.current) return;
     
-    if (initialLoadDoneRef.current || loadingInProgressRef.current) {
-      console.log("Initial load already done or in progress, skipping duplicate load");
-      return;
-    }
-    
-    console.log("Initial post loading effect triggered (first time)");
-    loadingInProgressRef.current = true;
-    
-    loadPosts()
-      .then((success) => {
-        if (mountedRef.current) {
-          console.log("Initial load completed successfully:", success);
-          initialLoadDoneRef.current = true;
-        }
-      })
-      .catch((err) => {
-        if (mountedRef.current) {
-          console.error("Error during initial load:", err);
-        }
-      })
-      .finally(() => {
-        if (mountedRef.current) {
-          loadingInProgressRef.current = false;
-        }
-      });
+    console.log("Setting up periodic refresh timer");
     
     // Set up a simple refresh timer to avoid stale data
     const refreshIntervalId = setInterval(() => {
@@ -127,7 +126,7 @@ export const useStoryFilters = () => {
       console.log("Cleaning up refresh timer");
       clearInterval(refreshIntervalId);
     };
-  }, [loadPosts, lastLoad]);
+  }, [loadPosts, lastLoad, initialLoadDoneRef.current]);
 
   return {
     posts,
