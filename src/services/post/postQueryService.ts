@@ -35,6 +35,9 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
   console.log(`Fetching post with ID: ${id}`);
   
   try {
+    // Add a small delay to prevent race conditions with auth state
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     const { data, error } = await supabase
       .from('entries')
       .select('*')
@@ -42,6 +45,12 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
       .maybeSingle();
     
     if (error) {
+      if (error.code === 'PGRST301') {
+        console.log('JWT token is invalid or expired, authentication required');
+        // Let the calling component handle auth issues
+        throw new Error('Authentication required to fetch this post');
+      }
+      
       console.error('Error fetching post by ID:', error);
       throw error;
     }
@@ -55,7 +64,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
     return data as BlogEntry;
   } catch (error) {
     console.error(`Failed to fetch post with ID ${id}:`, error);
-    return null; // Return null instead of throwing to prevent cascading errors
+    throw error; // Re-throw to allow proper error handling up the chain
   }
 };
 
@@ -64,6 +73,9 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
   console.log(`Fetching published posts with tags filter:`, tags);
   
   try {
+    // Add a small delay to prevent race conditions with auth state
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Explicitly log the query we're about to run
     console.log('Building Supabase query for entries table');
     
@@ -90,6 +102,12 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     const { data, error } = await query;
     
     if (error) {
+      if (error.code === 'PGRST301') {
+        console.log('JWT token is invalid or expired, authentication required');
+        // Let the calling component handle auth issues
+        throw new Error('Authentication required to fetch posts');
+      }
+      
       console.error('Error fetching filtered posts:', error);
       throw error;
     }
@@ -103,7 +121,7 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     return data as BlogEntry[];
   } catch (error) {
     console.error('Failed to fetch filtered posts:', error);
-    // Return empty array to allow graceful degradation
-    return [];
+    // Re-throw the error to allow proper error handling up the chain
+    throw error;
   }
 };

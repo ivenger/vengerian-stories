@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { checkUserRole } from "./useAuthUtils";
@@ -11,6 +11,7 @@ export function useAuthState() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const initializingRef = useRef(false);
   const { toast } = useToast();
 
   // Set up auth state listener
@@ -20,12 +21,20 @@ export function useAuthState() {
     const maxRetries = 3;
     
     const initializeAuth = async () => {
+      // Prevent duplicate initialization
+      if (initializingRef.current) {
+        console.log("Auth initialization already in progress, skipping");
+        return null;
+      }
+      
+      initializingRef.current = true;
       setLoading(true);
       setError(null);
       
       try {
         console.log("Setting up auth state listener (attempt " + (retryCount + 1) + ")");
         
+        // Set up the auth state change listener first
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
           async (event, newSession) => {
             console.log("Auth state changed:", event, newSession?.user?.email || "no user");
@@ -71,10 +80,15 @@ export function useAuthState() {
           }
         );
 
+        // Then check for existing session
         console.log("Checking for existing session");
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
-        if (!isMounted) return null;
+        if (!isMounted) {
+          subscription.unsubscribe();
+          initializingRef.current = false;
+          return null;
+        }
         
         if (sessionError) {
           console.error("Session error:", sessionError);
@@ -104,6 +118,8 @@ export function useAuthState() {
           setError(null);
         }
         
+        initializingRef.current = false;
+        
         // Return the cleanup function for the subscription
         return () => {
           subscription.unsubscribe();
@@ -115,6 +131,7 @@ export function useAuthState() {
           if (retryCount < maxRetries) {
             retryCount++;
             console.log(`Retrying auth initialization (${retryCount}/${maxRetries})...`);
+            initializingRef.current = false;
             return setTimeout(() => initializeAuth(), 1000 * retryCount);
           }
           
@@ -123,6 +140,7 @@ export function useAuthState() {
           setAuthInitialized(true);
         }
         
+        initializingRef.current = false;
         // Return an empty cleanup function
         return null;
       }
@@ -145,6 +163,50 @@ export function useAuthState() {
       });
     };
   }, [toast]);
+
+  // Add tab visibility change handler to verify session
+  useEffect(() => {
+    if (!authInitialized) return;
+    
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log("Tab became visible, verifying session");
+        if (session && !loading) {
+          try {
+            // Verify the session is still valid
+            const { data, error } = await supabase.auth.getSession();
+            
+            if (error) {
+              console.error("Session verification error:", error);
+              setError("Session verification failed. Please sign in again.");
+              setSession(null);
+              return;
+            }
+            
+            if (data.session) {
+              console.log("Session verified on tab focus");
+              if (JSON.stringify(data.session) !== JSON.stringify(session)) {
+                console.log("Session data changed, updating state");
+                setSession(data.session);
+              }
+            } else if (session) {
+              console.log("No valid session found on tab focus, but we had one before");
+              setSession(null);
+              setIsAdmin(false);
+            }
+          } catch (err) {
+            console.error("Error verifying session:", err);
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authInitialized, session, loading]);
 
   return {
     session,
