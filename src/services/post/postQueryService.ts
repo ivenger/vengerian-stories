@@ -35,9 +35,6 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
   console.log(`Fetching post with ID: ${id}`);
   
   try {
-    // Add a small delay to prevent race conditions with auth state
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     const { data, error } = await supabase
       .from('entries')
       .select('*')
@@ -45,7 +42,10 @@ export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
       .maybeSingle();
     
     if (error) {
-      if (error.code === 'PGRST301') {
+      if (error.code === 'PGRST301' || 
+          error.message?.includes('JWT') || 
+          error.message?.includes('token') ||
+          error.message?.includes('auth')) {
         console.log('JWT token is invalid or expired, authentication required');
         // Let the calling component handle auth issues
         throw new Error('Authentication required to fetch this post');
@@ -73,9 +73,6 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
   console.log(`Fetching published posts with tags filter:`, tags);
   
   try {
-    // Add a small delay to prevent race conditions with auth state
-    await new Promise(resolve => setTimeout(resolve, 100));
-    
     // Explicitly log the query we're about to run
     console.log('Building Supabase query for entries table');
     
@@ -102,7 +99,10 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     const { data, error } = await query;
     
     if (error) {
-      if (error.code === 'PGRST301') {
+      if (error.code === 'PGRST301' || 
+          error.message?.includes('JWT') || 
+          error.message?.includes('token') ||
+          error.message?.includes('auth')) {
         console.log('JWT token is invalid or expired, authentication required');
         // Let the calling component handle auth issues
         throw new Error('Authentication required to fetch posts');

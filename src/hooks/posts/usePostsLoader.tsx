@@ -30,7 +30,7 @@ export const usePostsLoader = () => {
     // Prevent multiple simultaneous loads
     if (loadingRef.current) {
       console.log("Already loading posts, ignoring duplicate request");
-      return;
+      return Promise.resolve(false);
     }
     
     try {
@@ -54,7 +54,7 @@ export const usePostsLoader = () => {
       if (!mountedRef.current) {
         console.log("Component unmounted during post load, abandoning updates");
         loadingRef.current = false;
-        return;
+        return false;
       }
       
       if (Array.isArray(allPosts)) {
@@ -68,10 +68,13 @@ export const usePostsLoader = () => {
             description: "There are currently no published stories available.",
           });
         }
+        
+        return true;
       } else {
         console.error("Invalid response format from fetchFilteredPosts:", allPosts);
         setPosts([]);
         setError("Failed to load stories. Unexpected data format.");
+        return false;
       }
     } catch (error: any) {
       console.error("Failed to load posts:", error);
@@ -79,7 +82,7 @@ export const usePostsLoader = () => {
       // Only update state if still mounted
       if (!mountedRef.current) {
         loadingRef.current = false;
-        return;
+        return false;
       }
       
       // Handle potential auth errors
@@ -103,6 +106,7 @@ export const usePostsLoader = () => {
           : "Failed to load stories. Please try again later."
       );
       setPosts([]);
+      return false;
     } finally {
       // Only update state if still mounted
       if (mountedRef.current) {
