@@ -9,12 +9,20 @@ export const useReadPosts = () => {
   const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
+    
     return () => {
       mountedRef.current = false;
+      
+      // Cancel any in-progress fetch
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, []);
 
@@ -33,6 +41,14 @@ export const useReadPosts = () => {
     
     const fetchReadPosts = async () => {
       if (!mountedRef.current) return;
+      
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
       
       fetchInProgressRef.current = true;
       setLoading(true);
@@ -67,6 +83,14 @@ export const useReadPosts = () => {
     };
     
     fetchReadPosts();
+    
+    // Cleanup function to cancel fetch when user changes or component unmounts
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [user]);
 
   return {

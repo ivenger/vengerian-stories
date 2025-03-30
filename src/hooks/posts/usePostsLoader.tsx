@@ -84,21 +84,27 @@ export const usePostsLoader = () => {
       
       if (Array.isArray(allPosts)) {
         console.log(`Received ${allPosts.length} total posts from API`);
-        setPosts(allPosts);
+        if (mountedRef.current) {
+          setPosts(allPosts);
+        }
         
         if (allPosts.length === 0) {
           console.log("No posts returned from API - empty array");
-          toast({
-            title: "No stories found",
-            description: "There are currently no published stories available.",
-          });
+          if (mountedRef.current) {
+            toast({
+              title: "No stories found",
+              description: "There are currently no published stories available.",
+            });
+          }
         }
         
         return true;
       } else {
         console.error("Invalid response format from fetchFilteredPosts:", allPosts);
-        setPosts([]);
-        setError("Failed to load stories. Unexpected data format.");
+        if (mountedRef.current) {
+          setPosts([]);
+          setError("Failed to load stories. Unexpected data format.");
+        }
         return false;
       }
     } catch (error: any) {
@@ -125,12 +131,14 @@ export const usePostsLoader = () => {
         }
       }
       
-      setError(
-        error?.message === "TypeError: Failed to fetch" 
-          ? "Network error. Please check your connection and try again." 
-          : "Failed to load stories. Please try again later."
-      );
-      setPosts([]);
+      if (mountedRef.current) {
+        setError(
+          error?.message === "TypeError: Failed to fetch" 
+            ? "Network error. Please check your connection and try again." 
+            : "Failed to load stories. Please try again later."
+        );
+        setPosts([]);
+      }
       return false;
     } finally {
       // Only update state if still mounted

@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useReadPosts } from './useReadPosts';
 import { usePostsLoader } from './usePostsLoader';
 
@@ -12,6 +12,25 @@ export const useStoryFilters = () => {
   const loadingInProgressRef = useRef(false);
   const visibilityChangeSetupDoneRef = useRef(false);
   const mountedRef = useRef(true);
+  const visibilityListenerRef = useRef<null | (() => void)>(null);
+  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Clear all timers and listeners
+  const cleanupAll = useCallback(() => {
+    if (refreshTimerRef.current) {
+      console.log("Cleaning up refresh timer");
+      clearInterval(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    
+    if (visibilityListenerRef.current) {
+      console.log("Removing visibility change listener");
+      document.removeEventListener('visibilitychange', visibilityListenerRef.current);
+      visibilityListenerRef.current = null;
+    }
+    
+    visibilityChangeSetupDoneRef.current = false;
+  }, []);
   
   // Reset state on mount/unmount
   useEffect(() => {
@@ -30,6 +49,7 @@ export const useStoryFilters = () => {
       try {
         await loadPosts(false);
         if (mountedRef.current) {
+          console.log("Initial load completed successfully");
           initialLoadDoneRef.current = true;
         }
       } catch (err) {
@@ -46,11 +66,11 @@ export const useStoryFilters = () => {
     return () => {
       console.log("useStoryFilters unmounted - cleaning up state refs");
       mountedRef.current = false;
-      visibilityChangeSetupDoneRef.current = false;
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
+      cleanupAll();
     };
-  }, [loadPosts]);
+  }, [loadPosts, cleanupAll]);
   
   // Handle visibility change to refresh posts when needed
   useEffect(() => {
@@ -80,54 +100,23 @@ export const useStoryFilters = () => {
       }
     };
     
+    // Store the handler reference so we can clean it up properly
+    visibilityListenerRef.current = handleVisibilityChange;
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      console.log("Removing visibility change listener");
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (visibilityListenerRef.current) {
+        console.log("Removing visibility change listener");
+        document.removeEventListener('visibilitychange', visibilityListenerRef.current);
+        visibilityListenerRef.current = null;
+      }
       visibilityChangeSetupDoneRef.current = false;
     };
   }, [loadPosts]);
   
-  // Set up a refresh timer to periodically refresh data
-  useEffect(() => {
-    if (!mountedRef.current || !initialLoadDoneRef.current) return;
-    
-    console.log("Setting up periodic refresh timer");
-    
-    // Set up a simple refresh timer to avoid stale data
-    const refreshIntervalId = setInterval(() => {
-      if (!mountedRef.current) {
-        return;
-      }
-      
-      if (loadingInProgressRef.current) {
-        console.log("Load already in progress, skipping scheduled refresh");
-        return;
-      }
-      
-      const now = Date.now();
-      const fiveMinutes = 5 * 60 * 1000;
-      
-      if (now - lastLoad > fiveMinutes && !loadingInProgressRef.current) {
-        console.log("Scheduled refresh: It's been over 5 minutes since last load");
-        loadingInProgressRef.current = true;
-        
-        loadPosts(true)
-          .finally(() => {
-            if (mountedRef.current) {
-              loadingInProgressRef.current = false;
-            }
-          });
-      }
-    }, 60 * 1000);
-    
-    return () => {
-      console.log("Cleaning up refresh timer");
-      clearInterval(refreshIntervalId);
-    };
-  }, [loadPosts, lastLoad, initialLoadDoneRef.current]);
-
+  // Skip setting up a refresh timer - we'll rely on the visibility change listener
+  // to refresh data when needed instead of a periodic timer that might cause issues
+  
   return {
     posts,
     loading,

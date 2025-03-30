@@ -9,12 +9,19 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
   const mountedRef = useRef(true);
   const { toast } = useToast();
   const markingInProgressRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Cleanup on unmount
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
+      
+      // Cancel any in-progress requests
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
     };
   }, []);
 
@@ -26,6 +33,14 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     }
     
     const checkReadStatus = async () => {
+      // Cancel any previous request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      
+      // Create new abort controller
+      abortControllerRef.current = new AbortController();
+      
       try {
         console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
         const { data, error } = await supabase
@@ -47,6 +62,13 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     };
     
     checkReadStatus();
+    
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, [postId, user]);
 
   // Mark post as read when it loads
