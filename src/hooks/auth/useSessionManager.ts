@@ -9,7 +9,6 @@ export interface SignOutResult {
 export function useSessionManager() {
   const [refreshInProgress, setRefreshInProgress] = useState(false);
   const timerIdRef = useRef<NodeJS.Timeout | null>(null);
-  const refreshInProgressRef = useRef(false); // Ref-based flag to prevent race conditions
 
   // Clean up any existing timers
   const clearAllTimers = useCallback(() => {
@@ -21,47 +20,42 @@ export function useSessionManager() {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    // Use ref-based flag instead of state to prevent race conditions
-    if (refreshInProgressRef.current) {
+    if (refreshInProgress) {
       console.log("Session refresh already in progress, skipping");
       return false;
     }
     
     try {
-      refreshInProgressRef.current = true;
       setRefreshInProgress(true);
       console.log("Attempting to refresh session...");
       const { data, error } = await supabase.auth.refreshSession();
 
       if (error) {
         console.error("Session refresh failed:", error);
-        refreshInProgressRef.current = false;
         setRefreshInProgress(false);
         return false;
       }
 
       console.log("Session refreshed successfully:", data?.session?.expires_at);
-      refreshInProgressRef.current = false;
       setRefreshInProgress(false);
       return true;
     } catch (err) {
       console.error("Unexpected error during session refresh:", err);
-      refreshInProgressRef.current = false;
       setRefreshInProgress(false);
       return false;
     }
-  }, []);
+  }, [refreshInProgress]);
 
-  const setupRefreshTimer = useCallback((currentSession: any, refreshFn: () => Promise<boolean>) => {
+  const setupRefreshTimer = useCallback((initialSession: any, refreshFn: () => Promise<boolean>) => {
     // Always clear existing timers first
     clearAllTimers();
     
-    if (!currentSession?.expires_at) {
+    if (!initialSession?.expires_at) {
       console.warn("Session does not have an expiry time. Session refresh will not be set up.");
       return () => {};
     }
 
-    const expiresAtMs = currentSession.expires_at * 1000;
+    const expiresAtMs = initialSession.expires_at * 1000;
     const timeUntilExpiry = expiresAtMs - Date.now();
     const refreshBuffer = 60 * 1000; // 1 minute before expiry
     const adjustedRefreshTime = Math.max(timeUntilExpiry - refreshBuffer, 0);
@@ -101,15 +95,15 @@ export function useSessionManager() {
   const signOut = async (): Promise<SignOutResult> => {
     try {
       console.log("Executing signOut in useSessionManager");
-      // Clear any refresh timers before signout
-      clearAllTimers();
-      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error("Error signing out:", error);
       } else {
         console.log("Sign out successful");
+        
+        // Clear any refresh timers
+        clearAllTimers();
       }
       
       return { error };

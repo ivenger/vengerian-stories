@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef } from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
@@ -16,8 +15,6 @@ const Index = () => {
   const isMountedRef = useRef(true);
   
   useEffect(() => {
-    isMountedRef.current = true;
-    
     return () => {
       isMountedRef.current = false;
     };

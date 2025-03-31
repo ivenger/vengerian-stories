@@ -9,8 +9,8 @@ export function useAuthProvider() {
   // Initialize app version check
   useAppVersion();
   
-  // Track component mount state
-  const isMountedRef = useRef(true);
+  // Track if we already set up a refresh timer
+  const refreshTimerSetupRef = useRef(false);
   
   // Get auth state
   const { 
@@ -31,11 +31,6 @@ export function useAuthProvider() {
   
   // Handle session refreshing
   const handleRefreshSession = useCallback(async () => {
-    if (!isMountedRef.current) {
-      console.log("Component unmounted, cancelling refresh session");
-      return false;
-    }
-    
     try {
       console.log("Attempting to refresh session in useAuthProvider");
       const success = await refreshSession();
@@ -49,36 +44,26 @@ export function useAuthProvider() {
       console.error("Error in handleRefreshSession:", err);
       return false;
     }
-  }, [refreshSession]);
+  }, [refreshSession, session]);
   
-  // Set up refresh timer whenever session changes
+  // Set up refresh timer whenever session changes, but ONLY ONCE
   useEffect(() => {
-    // Skip if not mounted or no session
-    if (!isMountedRef.current || !session) {
+    // Only set up the timer if we have a session AND haven't set it up already
+    if (!session || refreshTimerSetupRef.current) {
       return;
     }
     
-    console.log("Setting up session refresh timer for session:", session.expires_at);
+    console.log("Setting up session refresh timer (initial setup)");
+    refreshTimerSetupRef.current = true;
     
     const cleanup = setupRefreshTimer(session, handleRefreshSession);
     
     return () => {
-      if (isMountedRef.current) {
-        console.log("Cleaning up refresh timer in useAuthProvider (session changed)");
-      }
+      console.log("Cleaning up refresh timer in useAuthProvider (unmounting)");
       cleanup();
+      refreshTimerSetupRef.current = false;
     };
   }, [session, setupRefreshTimer, handleRefreshSession]);
-
-  // Track component lifecycle
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    return () => {
-      console.log("useAuthProvider unmounting");
-      isMountedRef.current = false;
-    };
-  }, []);
 
   return {
     session,
