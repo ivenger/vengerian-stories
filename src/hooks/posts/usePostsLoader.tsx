@@ -1,73 +1,60 @@
-
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { BlogEntry } from '../../types/blogTypes';
 import { fetchFilteredPosts } from '../../services/post';
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "../../components/AuthProvider";
+import { useAuthContext } from "../../components/AuthProvider";
 
 export const usePostsLoader = () => {
-  const { user, refreshSession } = useAuth();
+  const { user, refreshSession } = useAuthContext();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
-  const loadingRef = useRef(false); // Use ref to track actual loading state across renders
+  const loadingRef = useRef(false);
   const mountedRef = useRef(true);
   const requestInProgressRef = useRef<AbortController | null>(null);
   
-  // Ensure clean unmounting
   useEffect(() => {
     console.log("usePostsLoader mounted");
     mountedRef.current = true;
-    loadingRef.current = false; // Reset loading ref on mount
+    loadingRef.current = false;
     
     return () => {
       console.log("usePostsLoader unmounted - cleaning up");
       mountedRef.current = false;
-      loadingRef.current = false; // Reset loading ref on unmount
+      loadingRef.current = false;
       
-      // Abort any in-progress requests
       if (requestInProgressRef.current) {
         console.log("Aborting in-progress fetch requests");
         requestInProgressRef.current.abort();
         requestInProgressRef.current = null;
       }
       
-      // Reset state on unmount
       setPosts([]);
       setError(null);
       setLoading(false);
     };
   }, []);
   
-  // Reset certain states when user changes
   useEffect(() => {
     if (!mountedRef.current) return;
     
-    // Reset any user-specific states when the user changes
     setError(null);
-    
-    // We don't reset the posts here as that would cause flickering
-    // The posts will be updated when loadPosts is called anyway
   }, [user]);
   
-  // Fetch posts
   const loadPosts = useCallback(async (forceRefresh = false) => {
     console.log("loadPosts called with forceRefresh:", forceRefresh);
     
-    // Prevent multiple simultaneous loads
     if (loadingRef.current) {
       console.log("Already loading posts, ignoring duplicate request");
       return Promise.resolve(false);
     }
     
-    // Abort any previous request
     if (requestInProgressRef.current) {
       requestInProgressRef.current.abort();
     }
     
-    // Create a new abort controller for this request
     requestInProgressRef.current = new AbortController();
     const signal = requestInProgressRef.current.signal;
     
@@ -78,17 +65,14 @@ export const usePostsLoader = () => {
         setError(null);
       }
       
-      // If we're doing a forced refresh with a session, try refreshing it
       if (user && forceRefresh) {
         console.log("Refreshing user session before loading posts");
         await refreshSession();
       }
       
-      // Fetch all published posts
       console.log("Fetching published posts from postService");
       const allPosts = await fetchFilteredPosts();
       
-      // Check if component is still mounted before updating state
       if (!mountedRef.current) {
         console.log("Component unmounted during post load, abandoning updates");
         loadingRef.current = false;
@@ -126,7 +110,6 @@ export const usePostsLoader = () => {
         return false;
       }
     } catch (error: any) {
-      // Only handle errors if we're still mounted and the request wasn't aborted
       if (!mountedRef.current || signal.aborted) {
         loadingRef.current = false;
         return false;
@@ -134,7 +117,6 @@ export const usePostsLoader = () => {
       
       console.error("Failed to load posts:", error);
       
-      // Handle potential auth errors
       if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
           error?.message?.includes('auth') || error?.message?.includes('authentication')) {
         console.log("Detected potential auth error, attempting session refresh");
@@ -142,7 +124,6 @@ export const usePostsLoader = () => {
           try {
             const refreshed = await refreshSession();
             if (refreshed) {
-              // If refresh successful, try loading posts again
               console.log("Session refreshed, retrying post load");
               loadingRef.current = false;
               return loadPosts(false);
@@ -163,7 +144,6 @@ export const usePostsLoader = () => {
       }
       return false;
     } finally {
-      // Only update state if still mounted
       if (mountedRef.current && !signal.aborted) {
         console.log("Setting loading to false");
         setLoading(false);
@@ -172,13 +152,12 @@ export const usePostsLoader = () => {
       
       loadingRef.current = false;
       
-      // Clear the abort controller reference if it matches the current request
       if (requestInProgressRef.current && requestInProgressRef.current.signal === signal) {
         requestInProgressRef.current = null;
       }
     }
   }, [user, refreshSession, toast]);
-
+  
   return {
     posts,
     loading,

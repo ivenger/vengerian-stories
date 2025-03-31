@@ -1,17 +1,15 @@
-
 import { useState, useEffect, useRef } from 'react';
-import { useAuth } from "../../components/AuthProvider";
+import { useAuthContext } from "../../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useReadPosts = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const mountedRef = useRef(true);
   const fetchInProgressRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   
-  // Cleanup on unmount
   useEffect(() => {
     console.log("useReadPosts mounted");
     mountedRef.current = true;
@@ -21,7 +19,6 @@ export const useReadPosts = () => {
       console.log("useReadPosts unmounted - cleaning up");
       mountedRef.current = false;
       
-      // Cancel any in-progress fetch
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
@@ -31,14 +28,12 @@ export const useReadPosts = () => {
     };
   }, []);
 
-  // Fetch reading history if user is logged in
   useEffect(() => {
     if (!user) {
       setReadPostIds([]);
       return;
     }
     
-    // Skip if a fetch is already in progress or component is unmounting
     if (fetchInProgressRef.current || !mountedRef.current) {
       console.log("Reading history fetch skipped - already in progress or component unmounting");
       return;
@@ -47,12 +42,10 @@ export const useReadPosts = () => {
     const fetchReadPosts = async () => {
       if (!mountedRef.current) return;
       
-      // Cancel any previous request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
       
-      // Create new abort controller
       abortControllerRef.current = new AbortController();
       
       fetchInProgressRef.current = true;
@@ -67,7 +60,7 @@ export const useReadPosts = () => {
           
         if (error) {
           console.error("Error fetching reading history:", error);
-          return; // Don't throw, just return
+          return;
         }
         
         if (!mountedRef.current) {
@@ -81,7 +74,6 @@ export const useReadPosts = () => {
         if (!mountedRef.current) return;
         
         console.error("Error fetching reading history:", err);
-        // Non-critical, don't set error state
       } finally {
         if (mountedRef.current) {
           setLoading(false);
@@ -92,7 +84,6 @@ export const useReadPosts = () => {
     
     fetchReadPosts();
     
-    // Cleanup function to cancel fetch when user changes or component unmounts
     return () => {
       if (abortControllerRef.current) {
         console.log("Cancelling in-progress reading history fetch due to user change");

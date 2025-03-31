@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, Globe } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
-import { useAuth } from './AuthProvider';
+import { useAuthContext } from './AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from './ui/badge';
 
@@ -32,7 +32,7 @@ const getLanguageAbbreviation = (language: string): string => {
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const [isRead, setIsRead] = useState(false);
   
   // Check if the post has been read by the user

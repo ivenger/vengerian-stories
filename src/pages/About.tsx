@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
-import { useAuth } from "../components/AuthProvider";
+import { useAuthContext } from "../components/AuthProvider";
 import { Spinner } from "@/components/ui/spinner";
 import Navigation from "../components/Navigation";
 
@@ -14,7 +13,7 @@ const About: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuthContext();
 
   useEffect(() => {
     let isMounted = true;
