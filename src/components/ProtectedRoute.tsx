@@ -1,6 +1,5 @@
-
 import { Navigate } from "react-router-dom";
-import { useAuth } from "./AuthProvider";
+import { useAuthContext } from "./AuthProvider";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 
@@ -15,7 +14,7 @@ const ProtectedRoute = ({
   redirectTo = "/auth",
   adminOnly = false
 }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin, error } = useAuth();
+  const { user, loading, isAdmin, error } = useAuthContext();
 
   // If there's an authentication error, show error message with retry option
   if (error) {

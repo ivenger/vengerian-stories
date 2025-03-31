@@ -1,16 +1,17 @@
 
 import { ReactNode } from "react";
 import { AuthContext } from "../contexts/AuthContext";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth as useAuthHook } from "../hooks/useAuth";
 import React from "react";  // Required for the useContext call
 
-export const useAuth = () => {
+// Rename this function to useAuthContext to avoid naming conflicts
+export const useAuthContext = () => {
   // Import the context here so component consumers don't need to import it
   return React.useContext(AuthContext);
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const auth = useAuth();
+  const auth = useAuthHook();
 
   // Add log to see what the current admin status is
   console.log("AuthProvider - auth state:", { 
