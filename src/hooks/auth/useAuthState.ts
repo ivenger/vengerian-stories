@@ -11,12 +11,12 @@ export function useAuthState() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
+  const isMountedRef = useRef(true);
   const initializingRef = useRef(false);
   const { toast } = useToast();
 
   // Set up auth state listener
   useEffect(() => {
-    let isMounted = true;
     let retryCount = 0;
     const maxRetries = 3;
     
@@ -24,6 +24,10 @@ export function useAuthState() {
       // Prevent duplicate initialization
       if (initializingRef.current) {
         console.log("Auth initialization already in progress, skipping");
+        return null;
+      }
+      
+      if (!isMountedRef.current) {
         return null;
       }
       
@@ -39,27 +43,27 @@ export function useAuthState() {
           async (event, newSession) => {
             console.log("Auth state changed:", event, newSession?.user?.email || "no user");
             
-            if (!isMounted) return;
+            if (!isMountedRef.current) return;
             
             if (newSession?.user) {
               setSession(newSession);
               
               try {
                 const adminStatus = await checkUserRole(newSession.user.id);
-                if (isMounted) {
+                if (isMountedRef.current) {
                   console.log("Setting admin status to:", adminStatus, "for user:", newSession.user.email);
                   setIsAdmin(adminStatus);
                 }
               } catch (roleError) {
                 console.error("Error checking admin status:", roleError);
-                if (isMounted) setIsAdmin(false);
+                if (isMountedRef.current) setIsAdmin(false);
               }
             } else {
               setSession(null);
               setIsAdmin(false);
             }
             
-            if (isMounted) {
+            if (isMountedRef.current) {
               setLoading(false);
               setAuthInitialized(true);
             }
@@ -84,7 +88,7 @@ export function useAuthState() {
         console.log("Checking for existing session");
         const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
           
-        if (!isMounted) {
+        if (!isMountedRef.current) {
           subscription.unsubscribe();
           initializingRef.current = false;
           return null;
@@ -102,17 +106,17 @@ export function useAuthState() {
           
           try {
             const adminStatus = await checkUserRole(currentSession.user.id);
-            if (isMounted) {
+            if (isMountedRef.current) {
               console.log("Setting initial admin status to:", adminStatus, "for user:", currentSession.user.email);
               setIsAdmin(adminStatus);
             }
           } catch (roleError) {
             console.error("Error checking initial admin status:", roleError);
-            if (isMounted) setIsAdmin(false);
+            if (isMountedRef.current) setIsAdmin(false);
           }
         }
         
-        if (isMounted) {
+        if (isMountedRef.current) {
           setLoading(false);
           setAuthInitialized(true);
           setError(null);
@@ -127,12 +131,21 @@ export function useAuthState() {
       } catch (err: any) {
         console.error("Auth initialization error:", err);
         
-        if (isMounted) {
+        if (isMountedRef.current) {
           if (retryCount < maxRetries) {
             retryCount++;
             console.log(`Retrying auth initialization (${retryCount}/${maxRetries})...`);
             initializingRef.current = false;
-            return setTimeout(() => initializeAuth(), 1000 * retryCount);
+            
+            // Use setTimeout to allow a retry, but make sure it doesn't get cleaned up
+            // accidentally by returning a function instead of the setTimeout result
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                initializeAuth();
+              }
+            }, 1000 * retryCount);
+            
+            return () => {}; // Return empty cleanup for this case
           }
           
           setError("Failed to initialize authentication. Please refresh the page and try again.");
@@ -141,17 +154,16 @@ export function useAuthState() {
         }
         
         initializingRef.current = false;
-        // Return an empty cleanup function
-        return null;
+        return () => {}; // Return empty cleanup for error case
       }
     };
     
-    // Store the cleanup function returned by initializeAuth - it might be a function or a Promise<function>
+    // Store the cleanup function returned by initializeAuth
     const cleanupPromise = initializeAuth();
     
     return () => {
       console.log("Cleaning up auth state listener");
-      isMounted = false;
+      isMountedRef.current = false;
       
       // Handle the cleanup - we'll use Promise.resolve to handle both direct function returns and promises
       Promise.resolve(cleanupPromise).then(cleanupFn => {
@@ -166,15 +178,17 @@ export function useAuthState() {
 
   // Add tab visibility change handler to verify session
   useEffect(() => {
-    if (!authInitialized) return;
+    if (!authInitialized || !isMountedRef.current) return;
     
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && isMountedRef.current) {
         console.log("Tab became visible, verifying session");
         if (session && !loading) {
           try {
             // Verify the session is still valid
             const { data, error } = await supabase.auth.getSession();
+            
+            if (!isMountedRef.current) return;
             
             if (error) {
               console.error("Session verification error:", error);
@@ -207,6 +221,15 @@ export function useAuthState() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [authInitialized, session, loading]);
+
+  // Track component lifecycle
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   return {
     session,

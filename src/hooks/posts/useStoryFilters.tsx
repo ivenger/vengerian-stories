@@ -12,7 +12,7 @@ export const useStoryFilters = () => {
   const loadingInProgressRef = useRef(false);
   const visibilityChangeSetupDoneRef = useRef(false);
   const mountedRef = useRef(true);
-  const visibilityListenerRef = useRef<null | (() => void)>(null);
+  const visibilityListenerRef = useRef<null | ((e: Event) => void)>(null);
   const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Clear all timers and listeners
@@ -43,7 +43,7 @@ export const useStoryFilters = () => {
     
     // Initial load on mount
     const doInitialLoad = async () => {
-      if (loadingInProgressRef.current) return;
+      if (loadingInProgressRef.current || !mountedRef.current) return;
       
       console.log("Performing initial load on mount");
       loadingInProgressRef.current = true;
@@ -63,14 +63,23 @@ export const useStoryFilters = () => {
       }
     };
     
-    doInitialLoad();
+    // Use a small timeout to ensure all setup is complete before initial load
+    const initialLoadTimeout = setTimeout(() => {
+      if (mountedRef.current) {
+        doInitialLoad();
+      }
+    }, 50);
     
     return () => {
       console.log("useStoryFilters unmounted - cleaning up state refs");
+      clearTimeout(initialLoadTimeout);
       mountedRef.current = false;
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
-      clearReadPosts(); // Clear read posts state on unmount
+      
+      // Only clear read posts if needed
+      // clearReadPosts(); // May cause flicker, so commented out
+      
       cleanupAll();
     };
   }, [loadPosts, cleanupAll, clearReadPosts]);
@@ -88,20 +97,25 @@ export const useStoryFilters = () => {
     visibilityChangeSetupDoneRef.current = true;
     console.log("Setting up visibility change listener (once)");
     
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = (e: Event) => {
       if (!mountedRef.current) return;
       
       if (document.visibilityState === 'visible' && initialLoadDoneRef.current && !loadingInProgressRef.current) {
         console.log("Page became visible - refreshing posts");
         loadingInProgressRef.current = true;
         
-        loadPosts(true).catch(err => {
-          console.error("Error refreshing posts on visibility change:", err);
-        }).finally(() => {
-          if (mountedRef.current) {
-            loadingInProgressRef.current = false;
+        // Use a small timeout to avoid race conditions with other visibility handlers
+        setTimeout(() => {
+          if (mountedRef.current && !loadingInProgressRef.current) {
+            loadPosts(true).catch(err => {
+              console.error("Error refreshing posts on visibility change:", err);
+            }).finally(() => {
+              if (mountedRef.current) {
+                loadingInProgressRef.current = false;
+              }
+            });
           }
-        });
+        }, 100);
       }
     };
     

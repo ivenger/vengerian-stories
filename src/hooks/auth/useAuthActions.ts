@@ -26,8 +26,6 @@ export function useAuthActions(setSession: (session: any) => void): AuthActions 
     try {
       console.log("Attempting to sign out");
       
-      setSession(null);
-      
       const result: SignOutResult = await performSignOut();
       
       if (result.error) {
@@ -39,6 +37,8 @@ export function useAuthActions(setSession: (session: any) => void): AuthActions 
         });
       } else {
         console.log("Sign out successful");
+        // Only set session to null AFTER a successful sign out
+        setSession(null);
         
         toast({
           title: "Signed out",
