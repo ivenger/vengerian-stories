@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
-import { useAuthContext } from "../components/AuthProvider";
+import { useAuth } from "../components/AuthProvider";
 import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
@@ -15,10 +16,11 @@ const BlogPost = () => {
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, refreshSession } = useAuthContext();
+  const { user, refreshSession } = useAuth();
   const { isRead } = useReadingTracker(id, user);
   const [fetchAttempted, setFetchAttempted] = useState(false);
 
+  // Use useCallback to prevent recreating this function on every render
   const fetchPostData = useCallback(async () => {
     if (!id) {
       console.log("BlogPost: No post ID found in URL parameters");
@@ -53,6 +55,7 @@ const BlogPost = () => {
     }
   }, [id]);
 
+  // Fetch post when component mounts or ID changes
   useEffect(() => {
     console.log("BlogPost: Post fetch effect triggered");
     let isMounted = true;
@@ -70,6 +73,7 @@ const BlogPost = () => {
       }
     };
     
+    // Set a timeout to detect potential stalled requests
     timeoutId = window.setTimeout(() => {
       if (isMounted && loading && !fetchAttempted) {
         console.log("BlogPost: Post fetch taking too long, attempting session refresh");
@@ -79,16 +83,17 @@ const BlogPost = () => {
           }
         });
       }
-    }, 10000);
+    }, 10000); // 10 seconds timeout
     
     fetchWithTimeout();
     
+    // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMounted = false;
       window.clearTimeout(timeoutId);
       console.log("BlogPost: Cleaning up fetch effect");
     };
-  }, [id, refreshSession, fetchPostData]);
+  }, [id, refreshSession, fetchPostData]); // Added fetchPostData to dependencies
 
   return (
     <div>

@@ -1,38 +1,17 @@
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useReadPosts } from './useReadPosts';
 import { usePostsLoader } from './usePostsLoader';
 
 export const useStoryFilters = () => {
   const { posts, loading, error, loadPosts, lastLoad } = usePostsLoader();
-  const { readPostIds, clearReadPosts } = useReadPosts();
+  const { readPostIds } = useReadPosts();
   
   // Use refs to track loading states
   const initialLoadDoneRef = useRef(false);
   const loadingInProgressRef = useRef(false);
   const visibilityChangeSetupDoneRef = useRef(false);
   const mountedRef = useRef(true);
-  const visibilityListenerRef = useRef<null | (() => void)>(null);
-  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
-  // Clear all timers and listeners
-  const cleanupAll = useCallback(() => {
-    if (refreshTimerRef.current) {
-      console.log("Cleaning up refresh timer");
-      clearInterval(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    
-    if (visibilityListenerRef.current) {
-      console.log("Removing visibility change listener");
-      document.removeEventListener('visibilitychange', visibilityListenerRef.current);
-      visibilityListenerRef.current = null;
-    }
-    
-    visibilityChangeSetupDoneRef.current = false;
-    initialLoadDoneRef.current = false;
-    loadingInProgressRef.current = false;
-  }, []);
   
   // Reset state on mount/unmount
   useEffect(() => {
@@ -41,39 +20,14 @@ export const useStoryFilters = () => {
     initialLoadDoneRef.current = false;
     loadingInProgressRef.current = false;
     
-    // Initial load on mount
-    const doInitialLoad = async () => {
-      if (loadingInProgressRef.current) return;
-      
-      console.log("Performing initial load on mount");
-      loadingInProgressRef.current = true;
-      
-      try {
-        await loadPosts(false);
-        if (mountedRef.current) {
-          console.log("Initial load completed successfully");
-          initialLoadDoneRef.current = true;
-        }
-      } catch (err) {
-        console.error("Error during initial mount load:", err);
-      } finally {
-        if (mountedRef.current) {
-          loadingInProgressRef.current = false;
-        }
-      }
-    };
-    
-    doInitialLoad();
-    
     return () => {
       console.log("useStoryFilters unmounted - cleaning up state refs");
       mountedRef.current = false;
+      visibilityChangeSetupDoneRef.current = false;
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
-      clearReadPosts(); // Clear read posts state on unmount
-      cleanupAll();
     };
-  }, [loadPosts, cleanupAll, clearReadPosts]);
+  }, []);
   
   // Handle visibility change to refresh posts when needed
   useEffect(() => {
@@ -95,9 +49,7 @@ export const useStoryFilters = () => {
         console.log("Page became visible - refreshing posts");
         loadingInProgressRef.current = true;
         
-        loadPosts(true).catch(err => {
-          console.error("Error refreshing posts on visibility change:", err);
-        }).finally(() => {
+        loadPosts(true).finally(() => {
           if (mountedRef.current) {
             loadingInProgressRef.current = false;
           }
@@ -105,20 +57,78 @@ export const useStoryFilters = () => {
       }
     };
     
-    // Store the handler reference so we can clean it up properly
-    visibilityListenerRef.current = handleVisibilityChange;
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
-      if (visibilityListenerRef.current) {
-        console.log("Removing visibility change listener");
-        document.removeEventListener('visibilitychange', visibilityListenerRef.current);
-        visibilityListenerRef.current = null;
-      }
+      console.log("Removing visibility change listener");
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       visibilityChangeSetupDoneRef.current = false;
     };
   }, [loadPosts]);
   
+  // Initial load effect - only runs once
+  useEffect(() => {
+    if (!mountedRef.current) return;
+    
+    if (initialLoadDoneRef.current || loadingInProgressRef.current) {
+      console.log("Initial load already done or in progress, skipping duplicate load");
+      return;
+    }
+    
+    console.log("Initial post loading effect triggered (first time)");
+    loadingInProgressRef.current = true;
+    
+    loadPosts()
+      .then((success) => {
+        if (mountedRef.current) {
+          console.log("Initial load completed successfully:", success);
+          initialLoadDoneRef.current = true;
+        }
+      })
+      .catch((err) => {
+        if (mountedRef.current) {
+          console.error("Error during initial load:", err);
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) {
+          loadingInProgressRef.current = false;
+        }
+      });
+    
+    // Set up a simple refresh timer to avoid stale data
+    const refreshIntervalId = setInterval(() => {
+      if (!mountedRef.current) {
+        return;
+      }
+      
+      if (loadingInProgressRef.current) {
+        console.log("Load already in progress, skipping scheduled refresh");
+        return;
+      }
+      
+      const now = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+      
+      if (now - lastLoad > fiveMinutes && !loadingInProgressRef.current) {
+        console.log("Scheduled refresh: It's been over 5 minutes since last load");
+        loadingInProgressRef.current = true;
+        
+        loadPosts(true)
+          .finally(() => {
+            if (mountedRef.current) {
+              loadingInProgressRef.current = false;
+            }
+          });
+      }
+    }, 60 * 1000);
+    
+    return () => {
+      console.log("Cleaning up refresh timer");
+      clearInterval(refreshIntervalId);
+    };
+  }, [loadPosts, lastLoad]);
+
   return {
     posts,
     loading,

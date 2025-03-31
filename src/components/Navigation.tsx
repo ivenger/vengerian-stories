@@ -1,12 +1,13 @@
+
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User, Menu, X } from "lucide-react";
-import { useAuthContext } from "./AuthProvider";
+import { useAuth } from "./AuthProvider";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const Navigation = () => {
-  const { user, signOut, isAdmin } = useAuthContext();
+  const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -28,6 +29,7 @@ const Navigation = () => {
     }
   };
 
+  // Get display name based on auth method
   const getDisplayName = () => {
     if (!user) return null;
     

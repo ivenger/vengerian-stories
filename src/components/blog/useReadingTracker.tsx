@@ -1,58 +1,33 @@
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { User } from '@supabase/supabase-js';
-import { useToast } from "@/hooks/use-toast";
 
 export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
-  const mountedRef = useRef(true);
-  const { toast } = useToast();
-  const markingInProgressRef = useRef(false);
-  const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      
-      // Cancel any in-progress requests
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
-  }, []);
 
   // Check if post is already marked as read
   useEffect(() => {
-    if (!user || !postId) {
-      console.log("ReadingTracker: Not checking read status because user or postId is missing");
-      return;
-    }
+    let isMounted = true;
     
     const checkReadStatus = async () => {
-      // Cancel any previous request
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      if (!user || !postId) {
+        console.log("ReadingTracker: Not checking read status because user or postId is missing");
+        return;
       }
       
-      // Create new abort controller
-      abortControllerRef.current = new AbortController();
-      
+      console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
-        console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
         const { data, error } = await supabase
           .from('reading_history')
           .select('*')
           .eq('user_id', user.id)
           .eq('post_id', postId)
-          .maybeSingle();
+          .single();
           
         if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
           console.error("ReadingTracker: Error checking read status:", error);
-        } else if (mountedRef.current) {
+        } else if (isMounted) {
           console.log(`ReadingTracker: Read status is ${!!data}`);
           setIsRead(!!data);
         }
@@ -64,24 +39,20 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     checkReadStatus();
     
     return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
+      isMounted = false;
     };
   }, [postId, user]);
 
   // Mark post as read when it loads
   useEffect(() => {
-    if (!user || !postId || isRead || markingInProgressRef.current) {
-      console.log("ReadingTracker: Not marking as read because:", 
-        !user ? "no user" : !postId ? "no postId" : isRead ? "already read" : "marking in progress");
-      return;
-    }
+    let isMounted = true;
     
     const markAsRead = async () => {
-      if (markingInProgressRef.current) return;
-      markingInProgressRef.current = true;
+      if (!user || !postId || isRead) {
+        console.log("ReadingTracker: Not marking as read because:", 
+          !user ? "no user" : !postId ? "no postId" : "already read");
+        return;
+      }
       
       try {
         console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
@@ -98,32 +69,25 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           
         if (error) {
           console.error("ReadingTracker: Error marking post as read:", error);
-          
-          // Only show toast for client-visible errors
-          if (error.code !== '406' && mountedRef.current) {
-            toast({
-              title: "Note",
-              description: "Unable to update reading history. This won't affect your reading experience.",
-              variant: "default"
-            });
-          }
           return;
         }
         
-        if (mountedRef.current) {
+        if (isMounted) {
           console.log("ReadingTracker: Successfully marked post as read");
           setIsRead(true);
         }
       } catch (err) {
         console.error("ReadingTracker: Error in markAsRead:", err);
-      } finally {
-        markingInProgressRef.current = false;
       }
     };
     
     // Only try to mark as read if we have all required data
     markAsRead();
-  }, [postId, user, isRead, toast]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [postId, user, isRead]);
 
   return { isRead };
 };
