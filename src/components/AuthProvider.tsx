@@ -1,7 +1,7 @@
 
 import { ReactNode } from "react";
 import { AuthContext } from "../contexts/AuthContext";
-import { useAuthProvider } from "../hooks/useAuthProvider";
+import { useAuth } from "../hooks/useAuth";
 import React from "react";  // Required for the useContext call
 
 export const useAuth = () => {
@@ -10,7 +10,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const auth = useAuthProvider();
+  const auth = useAuth();
 
   // Add log to see what the current admin status is
   console.log("AuthProvider - auth state:", { 
