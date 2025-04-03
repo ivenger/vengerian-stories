@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Separator } from "@/components/ui/separator";
 import Navigation from "../components/Navigation";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuthContext } from "@/components/AuthProvider";
 import MultilingualTitle from "../components/MultilingualTitle";
 import GoogleSignInButton from "./auth/GoogleSignInButton";
 import EmailAuthForm from "./auth/EmailAuthForm";
@@ -18,16 +17,14 @@ const Auth = () => {
   const [retryCount, setRetryCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { session } = useAuth();
+  const { session } = useAuthContext();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (session) {
       navigate("/");
     }
   }, [session, navigate]);
 
-  // Check for OAuth related errors in URL
   useEffect(() => {
     const checkForErrors = () => {
       const url = new URL(window.location.href);
@@ -44,18 +41,14 @@ const Auth = () => {
           variant: "destructive"
         });
         
-        // Clear the error from URL without triggering a full reload
         window.history.replaceState({}, document.title, '/auth');
         return true;
       }
       return false;
     };
 
-    // Check immediately on component mount
     const hasErrors = checkForErrors();
     
-    // If no errors and we have a "code" or "token" parameter, it might be a successful authentication
-    // but session might not be set yet, so we'll provide visual feedback
     if (!hasErrors) {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
@@ -71,10 +64,8 @@ const Auth = () => {
     }
   }, [navigate, toast]);
 
-  // Check local storage for session issues
   useEffect(() => {
     if (oauthError?.includes("network")) {
-      // Check if we can access localStorage - could be a cookie/storage issue
       try {
         const testKey = "auth_test_" + Date.now();
         localStorage.setItem(testKey, "test");
@@ -89,7 +80,6 @@ const Auth = () => {
 
   const handleRetry = () => {
     setOauthError(null);
-    // Small delay before retry
     setTimeout(() => {
       setRetryCount(prev => prev + 1);
     }, 500);

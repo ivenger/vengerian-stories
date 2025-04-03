@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "./AuthProvider";
+import { useAuthContext } from "./AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { BlogEntry } from "../types/blogTypes";
 import { ReadingHistoryItem } from "../types/readingHistory";
 
 const ReadingHistory = () => {
-  const { user } = useAuth();
+  const { user } = useAuthContext();
   const { toast } = useToast();
   const [allPosts, setAllPosts] = useState<BlogEntry[]>([]);
   const [readPosts, setReadPosts] = useState<string[]>([]);

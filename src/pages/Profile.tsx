@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
-import { useAuth } from "../components/AuthProvider";
+import { useAuthContext } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,13 +14,12 @@ import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 const Profile = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuthContext();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
   
-  // Log whether this user is admin for debugging
   useEffect(() => {
     console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin);
   }, [user, isAdmin]);
@@ -32,7 +30,6 @@ const Profile = () => {
     const loadUserDetails = async () => {
       try {
         setLoading(true);
-        // Get user metadata
         const { data, error } = await supabase.auth.getUser();
         
         if (error) {
@@ -54,7 +51,6 @@ const Profile = () => {
     loadUserDetails();
   }, [user, toast]);
 
-  // Get display name based on auth method
   const getDisplayName = () => {
     if (!userDetails) return '';
     
