@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Session, User } from '@supabase/supabase-js';
+import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { checkUserRole } from './auth/useAuthUtils';
@@ -11,7 +11,6 @@ export type SignOutResult = {
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +19,7 @@ export function useAuth() {
   const isMountedRef = useRef(true);
   const { toast } = useToast();
   
-  // Clear any refresh timers
+  // Clear refresh timer on unmount
   const clearRefreshTimer = useCallback(() => {
     if (refreshTimerRef.current) {
       clearTimeout(refreshTimerRef.current);
@@ -28,61 +27,41 @@ export function useAuth() {
     }
   }, []);
 
-  // Refresh the session token
-  const refreshSession = useCallback(async () => {
+  // Refresh session token
+  const refreshSession = useCallback(async (): Promise<boolean> => {
     if (!isMountedRef.current) return false;
     
     try {
-      console.log("Attempting to refresh session");
       const { data, error } = await supabase.auth.refreshSession();
-      
-      if (error) {
-        console.error("Session refresh error:", error);
-        return false;
-      }
-      
-      if (data.session) {
-        console.log("Session refresh successful");
-        return true;
-      } else {
-        console.log("Session refresh returned no session");
-        return false;
-      }
+      if (error) return false;
+      return !!data.session;
     } catch (err) {
       console.error('Session refresh failed:', err);
       return false;
     }
   }, []);
 
-  // Schedule the next token refresh
+  // Schedule next token refresh
   const scheduleRefresh = useCallback((currentSession: Session | null) => {
     clearRefreshTimer();
     
-    if (!currentSession?.expires_at) {
-      console.log("No expiry time in session, not scheduling refresh");
-      return;
-    }
+    if (!currentSession?.expires_at) return;
     
-    const expiresAt = currentSession.expires_at * 1000;
+    const expiresAt = currentSession.expires_at * 1000; // Convert to milliseconds
     const refreshBuffer = 5 * 60 * 1000; // 5 minutes before expiry
     const refreshTime = Math.max(expiresAt - refreshBuffer - Date.now(), 0);
     
-    console.log(`Scheduling refresh in ${Math.floor(refreshTime / 1000)}s, token expires in ${Math.floor((expiresAt - Date.now()) / 1000)}s`);
-    
     if (refreshTime <= 0) {
       // Refresh immediately if token is expired or about to expire
-      console.log("Token expired or about to expire, refreshing immediately");
       refreshSession();
       return;
     }
     
     refreshTimerRef.current = window.setTimeout(async () => {
-      console.log("Executing scheduled token refresh");
       const success = await refreshSession();
       
       // If refresh failed, try again soon
       if (!success && isMountedRef.current) {
-        console.log("Scheduled refresh failed, retrying in 30s");
         refreshTimerRef.current = window.setTimeout(() => refreshSession(), 30 * 1000);
       }
     }, refreshTime);
@@ -91,23 +70,9 @@ export function useAuth() {
   // Sign out the user
   const signOut = useCallback(async () => {
     try {
-      console.log("Attempting to sign out");
-      
-      // Clear session state first
-      if (isMountedRef.current) {
-        setSession(null);
-        setUser(null);
-        setIsAdmin(false);
-      }
-      
-      // Clear refresh timer
-      clearRefreshTimer();
-      
-      // Call Supabase sign out
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Error signing out:", error);
         toast({
           title: "Error",
           description: "Failed to sign out. Please try again.",
@@ -116,7 +81,6 @@ export function useAuth() {
         return;
       }
       
-      console.log("Sign out successful");
       toast({
         title: "Signed out",
         description: "You've been signed out successfully."
@@ -129,40 +93,21 @@ export function useAuth() {
         variant: "destructive"
       });
     }
-  }, [clearRefreshTimer, toast]);
-
-  // Check admin status
-  const checkAdminStatus = useCallback(async (userId: string) => {
-    if (!userId || !isMountedRef.current) return false;
-    
-    try {
-      console.log("Checking admin status for user:", userId);
-      const isUserAdmin = await checkUserRole(userId);
-      console.log("Admin check result:", isUserAdmin);
-      return isUserAdmin;
-    } catch (err) {
-      console.error("Admin role check failed:", err);
-      return false;
-    }
-  }, []);
+  }, [toast]);
 
   // Initialize authentication
   useEffect(() => {
     isMountedRef.current = true;
-    console.log("Auth hook mounted");
     
     const initAuth = async () => {
       if (!isMountedRef.current) return;
       setLoading(true);
       
       try {
-        console.log("Initializing auth...");
-        
-        // Check for existing session first
+        // Get existing session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
-          console.error("Error getting session:", sessionError);
           if (isMountedRef.current) {
             setError("Failed to retrieve session");
             setLoading(false);
@@ -173,23 +118,17 @@ export function useAuth() {
         const currentSession = sessionData?.session;
         
         if (currentSession?.user && isMountedRef.current) {
-          console.log("Found existing session");
           setSession(currentSession);
-          setUser(currentSession.user);
           
           // Check admin status
-          const adminStatus = await checkAdminStatus(currentSession.user.id);
+          const adminStatus = await checkUserRole(currentSession.user.id);
           if (isMountedRef.current) {
             setIsAdmin(adminStatus);
             scheduleRefresh(currentSession);
           }
-        } else {
-          console.log("No existing session found");
-          if (isMountedRef.current) {
-            setSession(null);
-            setUser(null);
-            setIsAdmin(false);
-          }
+        } else if (isMountedRef.current) {
+          setSession(null);
+          setIsAdmin(false);
         }
         
         // Set up auth state change listener
@@ -197,16 +136,11 @@ export function useAuth() {
           async (event, newSession) => {
             if (!isMountedRef.current) return;
             
-            console.log('Auth state changed:', event);
-            
             if (newSession?.user) {
-              if (isMountedRef.current) {
-                setSession(newSession);
-                setUser(newSession.user);
-              }
+              setSession(newSession);
               
               // Check admin status
-              const adminStatus = await checkAdminStatus(newSession.user.id);
+              const adminStatus = await checkUserRole(newSession.user.id);
               if (isMountedRef.current) {
                 setIsAdmin(adminStatus);
                 scheduleRefresh(newSession);
@@ -223,7 +157,6 @@ export function useAuth() {
               
               if (isMountedRef.current) {
                 setSession(null);
-                setUser(null);
                 setIsAdmin(false);
               }
             }
@@ -240,9 +173,7 @@ export function useAuth() {
           if (!isMountedRef.current) return;
           
           if (document.visibilityState === 'visible' && session) {
-            console.log("Tab became visible, verifying session");
             try {
-              // Try to refresh the session proactively
               await refreshSession();
             } catch (err) {
               console.error('Session verification failed:', err);
@@ -252,11 +183,10 @@ export function useAuth() {
         
         document.addEventListener('visibilitychange', handleVisibilityChange);
         
-        // Handle online status
+        // Handle online status changes
         const handleOnline = () => {
           if (!isMountedRef.current) return;
           
-          console.log('Network connection restored');
           if (session) refreshSession();
         };
         
@@ -284,15 +214,14 @@ export function useAuth() {
     initAuth();
     
     return () => {
-      console.log("Auth hook unmounting, cleaning up");
       isMountedRef.current = false;
       clearRefreshTimer();
     };
-  }, [checkAdminStatus, clearRefreshTimer, refreshSession, scheduleRefresh, session, toast]);
+  }, [clearRefreshTimer, refreshSession, scheduleRefresh, session, toast]);
 
   return {
     session,
-    user,
+    user: session?.user || null,
     loading,
     isAdmin,
     error,
