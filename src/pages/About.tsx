@@ -19,7 +19,8 @@ const About: React.FC = () => {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const fetchAttempts = useRef(0);
-  const maxRetries = 2;
+  const maxRetries = 3;
+  const fetchControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     // Set mounted flag
@@ -30,6 +31,15 @@ const About: React.FC = () => {
     setError(null);
     
     const loadAboutContent = async () => {
+      // If there's an existing fetch, abort it
+      if (fetchControllerRef.current) {
+        console.log("About: Aborting previous fetch");
+        fetchControllerRef.current.abort();
+      }
+      
+      // Create a new AbortController for this fetch
+      fetchControllerRef.current = new AbortController();
+      
       try {
         if (fetchAttempts.current > 0) {
           console.log(`About: Retry attempt ${fetchAttempts.current} of ${maxRetries}`);
@@ -37,7 +47,7 @@ const About: React.FC = () => {
           console.log("About: Fetching about content...");
         }
         
-        const data = await fetchAboutContent();
+        const data = await fetchAboutContent(fetchControllerRef.current.signal);
         
         // Only update state if component is still mounted
         if (isMountedRef.current) {
@@ -45,11 +55,18 @@ const About: React.FC = () => {
           setContent(data.content || "");
           setImageUrl(data.image_url);
           setIsLoading(false);
+          setError(null);
           // Reset retry counter on success
           fetchAttempts.current = 0;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("About: Error loading about content:", error);
+        
+        // Don't update state if aborted or component unmounted
+        if (error.name === 'AbortError') {
+          console.log("About: Fetch aborted");
+          return;
+        }
         
         // Only update state if component is still mounted
         if (isMountedRef.current) {
@@ -69,7 +86,6 @@ const About: React.FC = () => {
           } else {
             // Max retries reached
             setError("Content could not be loaded. Please try again later.");
-            setContent("");
             setIsLoading(false);
             
             // Show toast for user feedback
@@ -80,6 +96,11 @@ const About: React.FC = () => {
             });
           }
         }
+      } finally {
+        // Clear the controller reference if this is the current fetch
+        if (isMountedRef.current && fetchControllerRef.current) {
+          fetchControllerRef.current = null;
+        }
       }
     };
 
@@ -88,8 +109,52 @@ const About: React.FC = () => {
     // Cleanup function to prevent state updates on unmounted component
     return () => {
       isMountedRef.current = false;
+      
+      // Abort any in-progress fetch when component unmounts
+      if (fetchControllerRef.current) {
+        console.log("About: Aborting fetch on unmount");
+        fetchControllerRef.current.abort();
+        fetchControllerRef.current = null;
+      }
     };
   }, [toast]);
+
+  const handleRetry = () => {
+    console.log("About: Manual retry requested");
+    setIsLoading(true);
+    setError(null);
+    fetchAttempts.current = 0;
+    
+    // Create a new AbortController for the retry
+    if (fetchControllerRef.current) {
+      fetchControllerRef.current.abort();
+    }
+    fetchControllerRef.current = new AbortController();
+    
+    // Fetch the content again
+    fetchAboutContent(fetchControllerRef.current.signal)
+      .then(data => {
+        if (isMountedRef.current) {
+          console.log("About: Content fetched successfully on retry:", data);
+          setContent(data.content || "");
+          setImageUrl(data.image_url);
+          setIsLoading(false);
+        }
+      })
+      .catch(error => {
+        if (isMountedRef.current && error.name !== 'AbortError') {
+          console.error("About: Error on retry:", error);
+          setError("Failed to load content. Please try again later.");
+          setIsLoading(false);
+          
+          toast({
+            title: "Loading Error",
+            description: "Failed to load about content. Please try again.",
+            variant: "destructive"
+          });
+        }
+      });
+  };
 
   const formatContent = (text: string) => {
     if (!text) return "";
@@ -116,12 +181,7 @@ const About: React.FC = () => {
             <div className="text-center py-8">
               <p className="text-red-500 mb-4">{error}</p>
               <Button 
-                onClick={() => {
-                  setIsLoading(true);
-                  setError(null);
-                  fetchAttempts.current = 0;
-                  window.location.reload();
-                }} 
+                onClick={handleRetry} 
                 variant="outline"
                 className="flex items-center gap-2"
               >

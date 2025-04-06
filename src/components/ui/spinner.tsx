@@ -28,7 +28,7 @@ const Spinner = ({
   return (
     <div 
       className={cn(
-        "relative flex items-center justify-center", 
+        "relative flex flex-col items-center justify-center", 
         className
       )}
     >
