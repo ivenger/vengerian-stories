@@ -15,6 +15,7 @@ export function useAuthProvider() {
   const LAST_VERSION_KEY = 'app_version';
 
   const checkUserRole = async (userId: string) => {
+    console.log("checkUserRole function invoked with userId:", userId);
     if (!userId) {
       console.log("No user ID provided for admin check");
       return false;
