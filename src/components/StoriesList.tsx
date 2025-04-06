@@ -2,7 +2,7 @@
 import React from 'react';
 import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 
@@ -23,6 +23,8 @@ const StoriesList: React.FC<StoriesListProps> = ({
   clearFilters,
   onRetry
 }) => {
+  const isRetrying = error?.includes('Retrying');
+
   if (error) {
     return (
       <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
@@ -32,9 +34,20 @@ const StoriesList: React.FC<StoriesListProps> = ({
           <Button 
             onClick={onRetry} 
             variant="outline"
-            className="border-red-300 hover:bg-red-50"
+            className="border-red-300 hover:bg-red-50 flex items-center gap-2"
+            disabled={isRetrying}
           >
-            Try Again
+            {isRetrying ? (
+              <>
+                <Spinner size="sm" />
+                <span>Retrying...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                <span>Try Again</span>
+              </>
+            )}
           </Button>
           {hasActiveFilters && (
             <Button 
@@ -53,9 +66,9 @@ const StoriesList: React.FC<StoriesListProps> = ({
   if (loading) {
     console.log("StoriesList is in loading state");
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex flex-col justify-center items-center h-64">
         <Spinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading stories...</span>
+        <span className="ml-3 text-gray-500 mt-4">Loading stories...</span>
       </div>
     );
   }
