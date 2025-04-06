@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import StoriesList from "../components/StoriesList";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "@/components/MultilingualTitle";
@@ -56,6 +56,7 @@ const Index: React.FC = () => {
             showUnreadOnly={showUnreadOnly}
             toggleUnreadFilter={onToggleUnreadFilter}
             clearFilters={onClearFilters}
+            hasActiveFilters={hasActiveFilters}
           />
         </div>
 

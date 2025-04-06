@@ -1,137 +1,126 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '../integrations/supabase/client';
+import { ReadingHistoryItem } from '../types/readingHistory';
 
 /**
- * Checks if a post has been read by the current user
- * Handles 406 Not Acceptable errors gracefully
+ * Check if a user has read a specific post
+ * @param userId - The ID of the user
+ * @param postId - The ID of the post to check
+ * @returns True if the user has read the post, false otherwise
  */
-export const hasReadPost = async (postId: string, userId: string): Promise<boolean> => {
+export const hasUserReadPost = async (userId: string, postId: string): Promise<boolean> => {
   try {
-    // Use maybeSingle instead of single to avoid errors when no record is found
     const { data, error } = await supabase
       .from('reading_history')
-      .select('*')
+      .select('id')
       .eq('user_id', userId as any)
       .eq('post_id', postId as any)
-      .maybeSingle();
+      .single();
       
-    if (error) {
-      // Handle 406 errors specifically - these are non-critical
-      if (error.code === '406') {
-        console.warn("hasReadPost: 406 Not Acceptable error - continuing with false result");
-        return false;
-      }
-      
-      console.error("Error checking post read status:", error);
-      return false;
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error checking reading history:', error);
     }
     
     return !!data;
-  } catch (err) {
-    console.error("Exception checking post read status:", err);
+  } catch (error) {
+    console.error('Error checking if post was read:', error);
     return false;
   }
 };
 
 /**
- * Marks a post as read by the current user
- * Handles 406 Not Acceptable errors gracefully
+ * Mark a post as read by a user
+ * @param userId - The ID of the user
+ * @param postId - The ID of the post to mark as read
  */
-export const markPostAsRead = async (postId: string, userId: string): Promise<boolean> => {
+export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
   try {
-    // First check if it's already marked as read to avoid duplicates
-    const alreadyRead = await hasReadPost(postId, userId);
-    
-    if (alreadyRead) {
-      console.log("Post already marked as read");
-      return true;
+    // Check if a reading history record already exists
+    const existing = await hasUserReadPost(userId, postId);
+    if (existing) {
+      console.log(`Post ${postId} already marked as read by user ${userId}`);
+      return;
     }
     
-    // If not already read, insert a new reading history record
+    const now = new Date().toISOString();
     const { error } = await supabase
       .from('reading_history')
       .insert({
         user_id: userId as any,
         post_id: postId as any,
-        read_at: new Date().toISOString()
+        read_at: now as any
       } as any);
       
     if (error) {
-      console.error("Error marking post as read:", error);
-      return false;
+      throw error;
     }
     
-    console.log("Successfully marked post as read");
-    return true;
-  } catch (err) {
-    console.error("Exception marking post as read:", err);
-    return false;
+    console.log(`Post ${postId} marked as read by user ${userId}`);
+  } catch (error) {
+    console.error('Error marking post as read:', error);
+    throw error;
   }
 };
 
 /**
- * Gets all read post IDs for a user
+ * Get all posts that a user has read
+ * @param userId - The ID of the user
+ * @returns An array of reading history items
  */
-export const getReadPostIds = async (userId: string): Promise<string[]> => {
+export const getUserReadingHistory = async (userId: string): Promise<ReadingHistoryItem[]> => {
   try {
-    if (!userId) return [];
+    const { data, error } = await supabase
+      .from('reading_history')
+      .select('*')
+      .eq('user_id', userId as any)
+      .order('read_at', { ascending: false });
+      
+    if (error) {
+      throw error;
+    }
     
+    // Convert the data to ReadingHistoryItem type
+    const readingHistory: ReadingHistoryItem[] = data.map(item => ({
+      id: item.id,
+      user_id: item.user_id,
+      post_id: item.post_id,
+      read_at: item.read_at
+    }));
+    
+    return readingHistory;
+  } catch (error) {
+    console.error('Error retrieving reading history:', error);
+    return [];
+  }
+};
+
+/**
+ * Get the IDs of all posts read by a user
+ * @param userId - The ID of the user
+ * @returns An array of post IDs
+ */
+export const getUserReadPostIds = async (userId: string): Promise<string[]> => {
+  try {
     const { data, error } = await supabase
       .from('reading_history')
       .select('post_id')
       .eq('user_id', userId as any);
       
     if (error) {
-      // Handle 406 errors specifically - these are non-critical
-      if (error.code === '406') {
-        console.warn("getReadPostIds: 406 Not Acceptable error - returning empty array");
-        return [];
-      }
-      
-      console.error("Error fetching reading history:", error);
-      return [];
+      throw error;
     }
     
-    // Safely extract post_id values
-    const postIds = (data || []).map(item => {
-      // Type guard to avoid TypeScript errors with post_id access
-      if (item && typeof item === 'object' && 'post_id' in item) {
-        return item.post_id as string;
-      }
-      return '';
-    }).filter(id => id !== '');
-    
-    return postIds;
-  } catch (err) {
-    console.error("Exception fetching reading history:", err);
+    return data.map(item => item.post_id);
+  } catch (error) {
+    console.error('Error retrieving read post IDs:', error);
     return [];
   }
 };
 
-/**
- * Gets full reading history records for a user
- */
-export const getUserReadingHistory = async (userId: string): Promise<Array<{post_id: string, read_at: string}>> => {
-  try {
-    if (!userId) return [];
-    
-    const { data, error } = await supabase
-      .from('reading_history')
-      .select('post_id, read_at')
-      .eq('user_id', userId as any);
-      
-    if (error) {
-      console.error("Error fetching user reading history:", error);
-      return [];
-    }
-    
-    return (data || []).map(item => ({
-      post_id: item.post_id as string,
-      read_at: item.read_at as string
-    }));
-  } catch (err) {
-    console.error("Exception fetching user reading history:", err);
-    return [];
-  }
+// Export all functions
+export default {
+  hasUserReadPost,
+  markPostAsRead,
+  getUserReadingHistory,
+  getUserReadPostIds
 };
-

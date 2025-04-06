@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import BlogCard from './BlogCard';
-import { BlogEntry } from '../types/blogTypes';
+import { Post } from '../types';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 
 interface StoriesListProps {
-  posts: BlogEntry[];
+  posts: Post[];
   loading: boolean;
   error?: string | null;
   reload: () => void;

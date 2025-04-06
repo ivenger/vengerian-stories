@@ -21,9 +21,11 @@ interface FilterDialogProps {
   selectedTags: string[];
   toggleTag: (tag: string) => void;
   clearFilters: () => void;
-  hasActiveFilters: boolean;
+  hasActiveFilters?: boolean;
   showUnreadOnly?: boolean;
   toggleUnreadFilter?: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
@@ -31,12 +33,18 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   selectedTags,
   toggleTag,
   clearFilters,
-  hasActiveFilters,
+  hasActiveFilters = false,
   showUnreadOnly = false,
-  toggleUnreadFilter
+  toggleUnreadFilter,
+  open,
+  onOpenChange
 }) => {
   const { user } = useAuth();
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  
+  // Use controlled or uncontrolled open state based on what's provided
+  const isOpen = open !== undefined ? open : internalOpen;
+  const setIsOpen = onOpenChange || setInternalOpen;
   
   const handleTagToggle = (tag: string) => {
     toggleTag(tag);
@@ -44,11 +52,11 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   
   const handleClearFilters = () => {
     clearFilters();
-    setOpen(false); // Close dialog after clearing
+    setIsOpen(false); // Close dialog after clearing
   };
   
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button 
           variant="outline" 
@@ -120,7 +128,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
           <Button 
             type="button" 
             size="sm"
-            onClick={() => setOpen(false)}
+            onClick={() => setIsOpen(false)}
           >
             Done
           </Button>

@@ -8,13 +8,19 @@ interface ActiveFiltersProps {
   toggleTag: (tag: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
+  showUnreadOnly?: boolean;
+  toggleUnreadFilter?: () => void;
+  openFiltersDialog?: () => void;
 }
 
 const ActiveFilters: React.FC<ActiveFiltersProps> = ({
   selectedTags,
   toggleTag,
   clearFilters,
-  hasActiveFilters
+  hasActiveFilters,
+  showUnreadOnly,
+  toggleUnreadFilter,
+  openFiltersDialog
 }) => {
   if (!hasActiveFilters) return null;
   
@@ -41,6 +47,22 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
             </button>
           </span>
         ))}
+        {showUnreadOnly && toggleUnreadFilter && (
+          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center mr-1">
+            Unread Only
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleUnreadFilter();
+              }} 
+              className="ml-1 text-blue-600 hover:text-blue-800 p-0.5"
+              aria-label="Remove unread filter"
+            >
+              <X size={12} />
+            </button>
+          </span>
+        )}
         <Button 
           variant="ghost" 
           size="sm" 

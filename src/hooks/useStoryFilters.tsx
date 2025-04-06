@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { Post } from '../types'; // Using the newly created types index
+import { Post } from '../types'; 
 import { useAuth } from '../components/AuthProvider';
 
 const useStoryFilters = () => {
@@ -89,7 +89,7 @@ const useStoryFilters = () => {
 
     if (selectedTags.length > 0) {
       newFilteredPosts = newFilteredPosts.filter((post) =>
-        post.tags.some((tag) => selectedTags.includes(tag))
+        post.tags?.some((tag) => selectedTags.includes(tag))
       );
     }
 
@@ -107,8 +107,8 @@ const useStoryFilters = () => {
           return;
         }
 
-        const { readingHistoryService } = await import('../services/blogService');
-        const readPosts = await readingHistoryService.getUserReadingHistory(userId);
+        const { getUserReadingHistory } = await import('../services/readingHistoryService');
+        const readPosts = await getUserReadingHistory(userId);
         
         console.log("useStoryFilters: Reading history fetched", { count: readPosts.length });
 
@@ -150,7 +150,7 @@ const useStoryFilters = () => {
 
         if (selectedTags.length > 0) {
           newFilteredPosts = newFilteredPosts.filter((post) =>
-            post.tags.some((tag) => selectedTags.includes(tag))
+            post.tags?.some((tag) => selectedTags.includes(tag))
           );
         }
         
