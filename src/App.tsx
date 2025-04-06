@@ -1,11 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
 import NotFound from "./pages/NotFound";
-import { Toaster } from "@/components/ui/toaster"
+import AuthPage from "./pages/AuthPage";
+import Admin from "./pages/Admin";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { Toaster } from "@/components/ui/toaster";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function App() {
@@ -48,16 +52,30 @@ function App() {
       element: <About />
     },
     {
+      path: "/login",
+      element: <AuthPage />
+    },
+    {
+      path: "/admin",
+      element: (
+        <ProtectedRoute>
+          <Admin />
+        </ProtectedRoute>
+      )
+    },
+    {
       path: "*",
       element: <NotFound />
     }
   ]);
 
   return (
-    <ErrorBoundary>
-      <RouterProvider router={router} />
-      <Toaster />
-    </ErrorBoundary>
+    <AuthProvider>
+      <ErrorBoundary>
+        <RouterProvider router={router} />
+        <Toaster />
+      </ErrorBoundary>
+    </AuthProvider>
   );
 }
 
