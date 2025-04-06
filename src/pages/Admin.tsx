@@ -4,7 +4,6 @@ import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import PostsTab from "../components/admin/PostsTab";
 import TagManagement from "../components/TagManagement";
-import UserManagement from "../components/UserManagement";
 import AboutEditor from "../components/AboutEditor";
 import PostEditor from "../components/admin/PostEditor";
 import { BlogEntry } from "../types/blogTypes";
@@ -37,7 +36,6 @@ const Admin = () => {
               <TabsTrigger value="posts">Posts</TabsTrigger>
               <TabsTrigger value="about">About</TabsTrigger>
               <TabsTrigger value="tags">Tags</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
             </TabsList>
             
             <TabsContent value="posts">
@@ -54,10 +52,6 @@ const Admin = () => {
             
             <TabsContent value="tags">
               <TagManagement />
-            </TabsContent>
-            
-            <TabsContent value="users">
-              <UserManagement />
             </TabsContent>
           </Tabs>
         ) : (

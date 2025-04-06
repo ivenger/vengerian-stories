@@ -4,13 +4,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import Index from "./pages/Index";
 import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
-import Auth from "./pages/Auth";
-import Admin from "./pages/Admin";
-import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import AboutEditor from "./components/AboutEditor";
-import { AuthProvider } from "./components/AuthProvider";
-import ProtectedRoute from "./components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster"
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -54,34 +48,6 @@ function App() {
       element: <About />
     },
     {
-      path: "/auth",
-      element: <Auth />
-    },
-    {
-      path: "/profile",
-      element: (
-        <ProtectedRoute>
-          <Profile />
-        </ProtectedRoute>
-      )
-    },
-    {
-      path: "/admin",
-      element: (
-        <ProtectedRoute adminOnly={true} redirectTo="/">
-          <Admin />
-        </ProtectedRoute>
-      )
-    },
-    {
-      path: "/admin/about",
-      element: (
-        <ProtectedRoute adminOnly={true} redirectTo="/">
-          <AboutEditor />
-        </ProtectedRoute>
-      )
-    },
-    {
       path: "*",
       element: <NotFound />
     }
@@ -89,10 +55,8 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <RouterProvider router={router} />
-        <Toaster />
-      </AuthProvider>
+      <RouterProvider router={router} />
+      <Toaster />
     </ErrorBoundary>
   );
 }
