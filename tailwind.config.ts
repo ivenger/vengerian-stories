@@ -21,7 +21,6 @@ const config = {
       fontFamily: {
         cursive: ['Dancing Script', 'Great Vibes', 'cursive'],
         'cursive-cyrillic': ['Great Vibes', 'Dancing Script', 'cursive'],
-        'caraterre': ['Caraterre', 'sans-serif'],
         'carattere': ['Carattere', 'cursive'],
         'raleway': ['Raleway', 'sans-serif'],
         'pacifico': ['Pacifico', 'cursive'],
