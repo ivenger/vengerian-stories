@@ -9,3 +9,10 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Wrap the Supabase client to log headers for debugging
+const originalFetch = supabase.auth.fetch;
+supabase.auth.fetch = async (input, init) => {
+  console.log('Supabase Request Headers:', init?.headers);
+  return originalFetch(input, init);
+};
