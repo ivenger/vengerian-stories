@@ -1,135 +1,63 @@
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { BlogEntry } from '../../types/blogTypes';
-import { fetchFilteredPosts } from '../../services/post';
-import { useToast } from "@/hooks/use-toast";
+import { fetchFilteredPosts } from '../../services/post/postQueryService';
 
 export const usePostsLoader = () => {
-  const [posts, setPosts] = useState<BlogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
-  const [lastLoad, setLastLoad] = useState<number>(Date.now());
-  const loadingRef = useRef(false);
-  const mountedRef = useRef(true);
-  const requestInProgressRef = useRef<AbortController | null>(null);
-  
-  useEffect(() => {
-    console.log("usePostsLoader mounted");
-    mountedRef.current = true;
-    loadingRef.current = false;
+  const [posts, setPosts] = useState<BlogEntry[] | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+  const lastLoad = useRef<Date | null>(null);
+  const isLoadingRef = useRef<boolean>(false);
+
+  const loadPosts = useCallback(async (forceRefresh: boolean = false, tags?: string[]) => {
+    // Don't re-fetch if we already have posts, it's not a forced refresh, and it's been less than 5 minutes
+    const now = new Date();
+    const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
     
-    return () => {
-      console.log("usePostsLoader unmounted - cleaning up");
-      mountedRef.current = false;
-      loadingRef.current = false;
-      
-      if (requestInProgressRef.current) {
-        console.log("Aborting in-progress fetch requests");
-        requestInProgressRef.current.abort();
-        requestInProgressRef.current = null;
-      }
-    };
-  }, []);
-  
-  const loadPosts = useCallback(async (forceRefresh = false) => {
-    console.log("loadPosts called with forceRefresh:", forceRefresh);
-    
-    if (loadingRef.current) {
-      console.log("Already loading posts, ignoring duplicate request");
-      return Promise.resolve(false);
+    if (!forceRefresh && 
+        posts && 
+        posts.length > 0 && 
+        lastLoad.current && 
+        lastLoad.current > fiveMinutesAgo &&
+        !tags?.length) {
+      console.log("Using cached posts - last load was recent");
+      return posts;
     }
-    
-    if (requestInProgressRef.current) {
-      requestInProgressRef.current.abort();
+
+    // Skip if already loading
+    if (isLoadingRef.current) {
+      console.log("Already loading posts, skipping");
+      return null;
     }
+
+    isLoadingRef.current = true;
+    setLoading(true);
+    setError(null);
     
-    requestInProgressRef.current = new AbortController();
-    const signal = requestInProgressRef.current.signal;
+    console.log(`Loading posts with tags:`, tags);
     
     try {
-      loadingRef.current = true;
-      if (mountedRef.current) {
-        setLoading(true);
-        setError(null);
-      }
-      
-      console.log("Fetching published posts from postService");
-      const allPosts = await fetchFilteredPosts();
-      
-      if (!mountedRef.current) {
-        console.log("Component unmounted during post load, abandoning updates");
-        loadingRef.current = false;
-        return false;
-      }
-      
-      if (signal.aborted) {
-        console.log("Request was aborted, abandoning updates");
-        return false;
-      }
-      
-      if (Array.isArray(allPosts)) {
-        console.log(`Received ${allPosts.length} total posts from API`);
-        if (mountedRef.current) {
-          setPosts(allPosts);
-        }
-        
-        if (allPosts.length === 0) {
-          console.log("No posts returned from API - empty array");
-          if (mountedRef.current) {
-            toast({
-              title: "No stories found",
-              description: "There are currently no published stories available.",
-            });
-          }
-        }
-        
-        return true;
-      } else {
-        console.error("Invalid response format from fetchFilteredPosts:", allPosts);
-        if (mountedRef.current) {
-          setPosts([]);
-          setError("Failed to load stories. Unexpected data format.");
-        }
-        return false;
-      }
-    } catch (error: any) {
-      if (!mountedRef.current || signal.aborted) {
-        loadingRef.current = false;
-        return false;
-      }
-      
-      console.error("Failed to load posts:", error);
-      
-      if (mountedRef.current) {
-        setError(
-          error?.message === "TypeError: Failed to fetch" 
-            ? "Network error. Please check your connection and try again." 
-            : "Failed to load stories. Please try again later."
-        );
-        setPosts([]);
-      }
-      return false;
+      const fetchedPosts = await fetchFilteredPosts(tags);
+      setPosts(fetchedPosts);
+      lastLoad.current = new Date();
+      console.log(`Loaded ${fetchedPosts.length} posts`);
+      return fetchedPosts;
+    } catch (err) {
+      console.error("Error loading posts:", err);
+      setError(err as Error);
+      return null;
     } finally {
-      if (mountedRef.current && !signal.aborted) {
-        console.log("Setting loading to false");
-        setLoading(false);
-        setLastLoad(Date.now());
-      }
-      
-      loadingRef.current = false;
-      
-      if (requestInProgressRef.current && requestInProgressRef.current.signal === signal) {
-        requestInProgressRef.current = null;
-      }
+      setLoading(false);
+      isLoadingRef.current = false;
     }
-  }, [toast]);
-  
+  }, [posts]);
+
   return {
     posts,
     loading,
     error,
     loadPosts,
-    lastLoad
+    lastLoad: lastLoad.current
   };
 };

@@ -116,6 +116,21 @@ export type Database = {
           },
         ]
       }
+      roles: {
+        Row: {
+          description: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          description?: string | null
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          description?: string | null
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           created_at: string
@@ -177,6 +192,14 @@ export type Database = {
           user_id: string
         }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_roles: {
+        Args: {
+          user_id: string
+        }
+        Returns: {
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
       }
       is_admin: {
         Args: {

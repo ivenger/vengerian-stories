@@ -3,6 +3,7 @@ import React, { useEffect, useRef } from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
 import StoriesList from "../components/StoriesList";
+import TagFilter from "../components/TagFilter";
 import { useStoryFilters } from "../hooks/posts/useStoryFilters";
 
 const Index = () => {
@@ -11,7 +12,10 @@ const Index = () => {
     loading,
     error,
     loadPosts,
-    readPostIds
+    readPostIds,
+    selectedTags,
+    handleTagSelect,
+    clearTags
   } = useStoryFilters();
   
   const isMountedRef = useRef(true);
@@ -39,6 +43,12 @@ const Index = () => {
         </div>
 
         <div className="max-w-3xl mx-auto">
+          <TagFilter 
+            selectedTags={selectedTags} 
+            onSelectTag={handleTagSelect}
+            onClearTags={clearTags}
+          />
+          
           <StoriesList 
             posts={posts} 
             loading={loading} 

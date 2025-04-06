@@ -4,6 +4,7 @@ import { useReadPosts } from './useReadPosts';
 import { usePostsLoader } from './usePostsLoader';
 
 export const useStoryFilters = () => {
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const { posts, loading, error, loadPosts, lastLoad } = usePostsLoader();
   const { readPostIds, markPostAsRead } = useReadPosts();
   
@@ -27,7 +28,7 @@ export const useStoryFilters = () => {
       loadingInProgressRef.current = true;
       
       try {
-        await loadPosts(false);
+        await loadPosts(false, selectedTags);
         if (mountedRef.current) {
           console.log("Initial load completed successfully");
           initialLoadDoneRef.current = true;
@@ -49,14 +50,37 @@ export const useStoryFilters = () => {
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
     };
-  }, [loadPosts]);
+  }, [loadPosts, selectedTags]);
+  
+  const handleTagSelect = useCallback((tag: string) => {
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
+  }, []);
+  
+  const clearTags = useCallback(() => {
+    setSelectedTags([]);
+  }, []);
+
+  const refreshPosts = useCallback((forceRefresh: boolean = true) => {
+    if (mountedRef.current) {
+      loadPosts(forceRefresh, selectedTags);
+    }
+  }, [loadPosts, selectedTags]);
   
   return {
     posts,
     loading,
     error,
-    loadPosts,
+    loadPosts: refreshPosts,
     readPostIds,
-    markPostAsRead
+    markPostAsRead,
+    selectedTags,
+    handleTagSelect,
+    clearTags
   };
 };
