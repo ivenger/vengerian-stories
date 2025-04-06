@@ -10,23 +10,25 @@ interface StoriesListProps {
   posts: BlogEntry[];
   loading: boolean;
   error?: string | null;
+  hasActiveFilters: boolean;
+  clearFilters: () => void;
   onRetry?: () => void;
-  readPostIds?: string[];
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
   posts, 
   loading, 
   error,
-  onRetry,
-  readPostIds = []
+  hasActiveFilters,
+  clearFilters,
+  onRetry
 }) => {
   if (error) {
     return (
       <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
         <p className="text-gray-700 mb-4">{error}</p>
-        {onRetry && (
+        <div className="flex justify-center gap-3">
           <Button 
             onClick={onRetry} 
             variant="outline"
@@ -34,34 +36,43 @@ const StoriesList: React.FC<StoriesListProps> = ({
           >
             Try Again
           </Button>
-        )}
+          {hasActiveFilters && (
+            <Button 
+              onClick={clearFilters}
+              variant="outline" 
+              className="border-gray-300"
+            >
+              Clear Filters
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
 
   if (loading) {
-    console.log("StoriesList is in loading state");
     return (
       <div className="flex justify-center items-center h-64">
         <Spinner size="lg" />
-        <span className="ml-3 text-gray-500">Loading stories...</span>
       </div>
     );
   }
   
-  if (!posts || posts.length === 0) {
+  if (posts.length === 0) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-600">
-          No stories found. Check back later for new content.
+          {hasActiveFilters 
+            ? "No stories found with the current selection. Try different options or clear them." 
+            : "No stories found. Check back later for new content."}
         </p>
-        {onRetry && (
+        {hasActiveFilters && (
           <Button 
-            onClick={onRetry} 
+            onClick={clearFilters} 
             variant="outline"
             className="mt-4"
           >
-            Refresh
+            Clear Selection
           </Button>
         )}
       </div>
@@ -70,13 +81,7 @@ const StoriesList: React.FC<StoriesListProps> = ({
   
   return (
     <div className="grid gap-8">
-      {posts.map(post => (
-        <BlogCard 
-          key={post.id} 
-          post={post} 
-          isRead={readPostIds.includes(post.id)} 
-        />
-      ))}
+      {posts.map(post => <BlogCard key={post.id} post={post} />)}
     </div>
   );
 };

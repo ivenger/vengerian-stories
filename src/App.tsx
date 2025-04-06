@@ -1,15 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
-import { AuthProvider } from "./contexts/AuthContext";
 import Index from "./pages/Index";
 import BlogPost from "./pages/BlogPost";
 import About from "./pages/About";
-import NotFound from "./pages/NotFound";
-import AuthPage from "./pages/AuthPage";
+import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
-import { ProtectedRoute } from "./components/auth/ProtectedRoute";
-import { Toaster } from "@/components/ui/toaster";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
+import { AuthProvider } from "./components/AuthProvider";
+import ProtectedRoute from "./components/ProtectedRoute";
+import { Toaster } from "@/components/ui/toaster"
 import ErrorBoundary from "./components/ErrorBoundary";
 
 function App() {
@@ -38,44 +39,48 @@ function App() {
     }
   }, [isDarkMode]);
 
-  const router = createBrowserRouter([
-    {
-      path: "/",
-      element: <Index />
-    },
-    {
-      path: "/blog/:id",
-      element: <BlogPost />
-    },
-    {
-      path: "/about",
-      element: <About />
-    },
-    {
-      path: "/login",
-      element: <AuthPage />
-    },
-    {
-      path: "/admin",
-      element: (
-        <ProtectedRoute>
-          <Admin />
-        </ProtectedRoute>
-      )
-    },
-    {
-      path: "*",
-      element: <NotFound />
-    }
-  ]);
-
   return (
-    <AuthProvider>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <RouterProvider router={
+          createBrowserRouter([
+            {
+              path: "/",
+              element: <Index />
+            },
+            {
+              path: "/blog/:id",
+              element: <BlogPost />
+            },
+            {
+              path: "/about",
+              element: <About />
+            },
+            {
+              path: "/auth",
+              element: <Auth />
+            },
+            {
+              path: "/profile",
+              element: <Profile />
+            },
+            {
+              path: "/admin",
+              element: (
+                <ProtectedRoute adminOnly={true}>
+                  <Admin />
+                </ProtectedRoute>
+              )
+            },
+            {
+              path: "*",
+              element: <NotFound />
+            }
+          ])
+        } />
         <Toaster />
-      </ErrorBoundary>
-    </AuthProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 
