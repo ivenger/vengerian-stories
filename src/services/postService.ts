@@ -176,21 +176,29 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
   console.log(`Marking post ${postId} as read for user ${userId}`);
   
   try {
-    // First check if the record already exists to avoid 406 errors
-    const { data: existingRecord } = await supabase
+    // First check if the record already exists
+    const { data: existingRecord, error: checkError } = await supabase
       .from('reading_history')
-      .select('user_id, post_id') // Specify columns explicitly
+      .select('user_id, post_id')
       .eq('user_id', userId)
       .eq('post_id', postId)
       .maybeSingle();
       
+    if (checkError) {
+      if (checkError.code === '406') {
+        console.warn("406 Not Acceptable error when checking read status - skipping operation");
+        return;
+      }
+      throw checkError;
+    }
+    
     // If record already exists, no need to insert again
     if (existingRecord) {
       console.log(`Post ${postId} already marked as read`);
       return;
     }
     
-    const { error } = await supabase
+    const { error: insertError } = await supabase
       .from('reading_history')
       .insert({ 
         user_id: userId, 
@@ -198,9 +206,12 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
         read_at: new Date().toISOString()
       });
       
-    if (error) {
-      console.error("Error marking post as read:", error);
-      throw new Error(`Failed to mark post as read: ${error.message} (${error.code})`);
+    if (insertError) {
+      if (insertError.code === '406') {
+        console.warn("406 Not Acceptable error when marking post as read - skipping operation");
+        return;
+      }
+      throw insertError;
     }
     
     console.log(`Post ${postId} marked as read successfully`);
@@ -225,10 +236,9 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
       
     if (error) {
       if (error.code === '406') {
-        console.warn("406 Not Acceptable error when checking read status - this may be a permission issue");
-        return false; // Assume not read in case of permission errors
+        console.warn("406 Not Acceptable error when checking read status - assuming not read");
+        return false;
       }
-      
       console.error("Error checking if post was read:", error);
       return false; // Assume not read in case of error
     }

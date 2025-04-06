@@ -41,10 +41,17 @@ const ReadingHistory = () => {
           .select("*")
           .eq("user_id", user.id);
           
-        if (historyError) throw historyError;
-        
-        setAllPosts(posts || []);
-        setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
+        if (historyError) {
+          if (historyError.code === '406') {
+            console.warn("406 Not Acceptable error when fetching reading history - continuing without reading history");
+            setReadPosts([]);
+          } else {
+            throw historyError;
+          }
+        } else {
+          setAllPosts(posts || []);
+          setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
+        }
       } catch (err: any) {
         console.error("ReadingHistory: Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");

@@ -136,8 +136,14 @@ export const useStoryFilters = () => {
           .eq('user_id', user.id);
           
         if (error) {
-          console.error("useStoryFilters: Error fetching reading history:", error);
-          // Don't set error state as this is non-critical
+          if (error.code === '406') {
+            console.warn("useStoryFilters: 406 Not Acceptable error when fetching reading history - continuing without reading history");
+            if (isMountedRef.current) {
+              setReadPostIds([]);
+            }
+          } else {
+            console.error("useStoryFilters: Error fetching reading history:", error);
+          }
           return;
         }
         
