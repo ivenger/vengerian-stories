@@ -12,27 +12,14 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     signalAborted: signal?.aborted
   });
   
-  // Immediately check for aborted signal
-  if (signal?.aborted) {
-    console.log("AboutService: Request aborted before fetch");
-    throw new DOMException("Request aborted", "AbortError");
-  }
-
   try {
-    // Create AbortController for the timeout
-    const timeoutController = new AbortController();
-    const timeout = setTimeout(() => {
-      timeoutController.abort();
-    }, 10000);
-
     console.log("AboutService: Making Supabase request");
     const { data, error } = await supabase
       .from('about_content')
       .select('*')
       .eq('language', 'en')
-      .maybeSingle();
-
-    clearTimeout(timeout);
+      .maybeSingle()
+      .abortSignal(signal);
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
@@ -45,11 +32,6 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
         message: error.message,
         details: error.details
       });
-      
-      // Handle auth errors by throwing a specific error
-      if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
-        throw new Error('AuthError');
-      }
       throw error;
     }
 
@@ -69,17 +51,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     });
 
     return data as AboutContent;
-  } catch (error: any) {
+  } catch (error) {
     console.log("AboutService: Error in fetch", {
       name: error.name,
       message: error.message,
       isAbortError: error instanceof DOMException && error.name === "AbortError"
     });
-
-    if (error.message === 'AuthError') {
-      // Give the auth system a chance to refresh the token
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
 
     throw error;
   }

@@ -11,19 +11,5 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     detectSessionInUrl: true,
     storageKey: 'vengerian-stories-auth',
     storage: window.localStorage
-  },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    fetch: (url: RequestInfo, options: RequestInit = {}) => {
-      const headers = new Headers(options.headers || {});
-      headers.set('x-client-info', 'vengerian-stories@1.0.0');
-      return fetch(url, {
-        ...options,
-        headers,
-        credentials: 'include'
-      });
-    }
   }
 });
