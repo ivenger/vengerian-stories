@@ -32,6 +32,7 @@ export function useAuthProvider() {
 
       // Make the RPC call to check if the user is an admin
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      console.log("RPC call response:", { data, error });
       if (error) {
         // Log error but don't throw - prevent authentication from breaking
         console.error("Error checking admin role:", error);
