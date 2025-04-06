@@ -6,6 +6,42 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper function to apply filters - defined outside the hook to avoid circular dependencies
+const applyFiltersToData = (
+  postsToFilter: BlogEntry[],
+  selectedTags: string[],
+  showUnreadOnly: boolean,
+  readPostIds: string[],
+  user: any | null
+) => {
+  console.log("Applying filters to posts", {
+    totalPosts: postsToFilter.length,
+    selectedTags,
+    showUnreadOnly,
+    readIdsCount: readPostIds.length
+  });
+  
+  let filteredPosts = [...postsToFilter];
+  
+  if (selectedTags.length > 0) {
+    console.log("Filtering by tags:", selectedTags);
+    filteredPosts = filteredPosts.filter(post => {
+      if (!post.tags) return false;
+      return selectedTags.some(tag => post.tags?.includes(tag));
+    });
+    console.log(`${filteredPosts.length} posts after tag filtering`);
+  }
+  
+  // Apply read/unread filter if enabled
+  if (showUnreadOnly && user) {
+    console.log("Filtering for unread posts, read IDs count:", readPostIds.length);
+    filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
+    console.log(`${filteredPosts.length} posts after unread filter`);
+  }
+  
+  return filteredPosts;
+};
+
 export const useStoryFilters = () => {
   const { user, refreshSession } = useAuth();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
@@ -26,14 +62,20 @@ export const useStoryFilters = () => {
   const filtersRef = useRef({ tags: selectedTags, unreadOnly: showUnreadOnly });
   const fetchInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
+  const pageKey = useRef(Math.random().toString(36).substring(7));
   
   // Max number of retries
   const MAX_RETRIES = 3;
   
   // Reset mounted state on unmount
   useEffect(() => {
+    console.log("StoryFilters: Component mounted with key", pageKey.current);
     isMountedRef.current = true;
+    // Reset loading state on mount to ensure we're showing loading state when navigating back
+    setLoading(true);
+    
     return () => {
+      console.log("StoryFilters: Component unmounting");
       isMountedRef.current = false;
     };
   }, []);
@@ -141,31 +183,15 @@ export const useStoryFilters = () => {
     return delay + (Math.random() * 1000);
   };
 
-  // Extract the filtering logic to a separate function for reuse
+  // Use the pre-defined helper function through a callback
   const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
-    console.log("Applying filters to posts", {
-      totalPosts: postsToFilter.length,
+    const filteredPosts = applyFiltersToData(
+      postsToFilter,
       selectedTags,
-      showUnreadOnly
-    });
-    
-    let filteredPosts = [...postsToFilter];
-    
-    if (selectedTags.length > 0) {
-      console.log("Filtering by tags:", selectedTags);
-      filteredPosts = filteredPosts.filter(post => {
-        if (!post.tags) return false;
-        return selectedTags.some(tag => post.tags?.includes(tag));
-      });
-      console.log(`${filteredPosts.length} posts after tag filtering`);
-    }
-    
-    // Apply read/unread filter if enabled
-    if (showUnreadOnly && user) {
-      console.log("Filtering for unread posts, read IDs:", readPostIds);
-      filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
-      console.log(`${filteredPosts.length} posts after unread filter`);
-    }
+      showUnreadOnly,
+      readPostIds,
+      user
+    );
     
     if (isMountedRef.current) {
       setPosts(filteredPosts);
@@ -174,6 +200,12 @@ export const useStoryFilters = () => {
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
+    // Reset loading state on force refresh
+    if (forceRefresh) {
+      setLoading(true);
+      setError(null);
+    }
+    
     // Prevent multiple simultaneous fetch attempts
     if (fetchInProgressRef.current && !forceRefresh) {
       console.log("Fetch already in progress, skipping");
@@ -190,7 +222,9 @@ export const useStoryFilters = () => {
       showUnreadOnly, 
       userLoggedIn: !!user,
       forceRefresh,
-      retryCount
+      retryCount,
+      loadedRef: loadedRef.current,
+      pageKey: pageKey.current
     });
     
     fetchInProgressRef.current = true;
@@ -222,10 +256,14 @@ export const useStoryFilters = () => {
       
       // Reset retry count on success
       setRetryCount(0);
+      setLoading(false);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.log("Component unmounted during error handling, skipping state updates");
+        return;
+      }
       
       // Handle potential auth errors
       if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
@@ -249,7 +287,10 @@ export const useStoryFilters = () => {
         }
       }
       
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.log("Component unmounted during auth error handling, skipping state updates");
+        return;
+      }
       
       // Check if we should retry
       if (retryCount < MAX_RETRIES && error?.message?.includes('Failed to fetch')) {
@@ -265,9 +306,12 @@ export const useStoryFilters = () => {
         // Schedule retry with backoff
         setTimeout(() => {
           if (isMountedRef.current) {
+            console.log(`Executing retry ${nextRetryCount}/${MAX_RETRIES}`);
             setIsRetrying(false);
             fetchInProgressRef.current = false;
             loadPosts(false);
+          } else {
+            console.log("Component unmounted during retry, cancelling");
           }
         }, backoffDelay);
       } else {
@@ -280,6 +324,7 @@ export const useStoryFilters = () => {
         setPosts([]);
         // Reset retry count
         setRetryCount(0);
+        setLoading(false);
       }
     } finally {
       // Only set loading to false if we're not scheduling a retry
@@ -291,7 +336,9 @@ export const useStoryFilters = () => {
       
       // Clear the fetch in progress flag after a short delay to prevent rapid repeated calls
       setTimeout(() => {
-        fetchInProgressRef.current = false;
+        if (isMountedRef.current) {
+          fetchInProgressRef.current = false;
+        }
       }, 500);
     }
   }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
@@ -309,15 +356,20 @@ export const useStoryFilters = () => {
     }
   }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading, isRetrying]);
 
+  // Reset loadedRef when user changes to force a new fetch
+  // Also reset when component mounts
+  useEffect(() => {
+    loadedRef.current = false;
+  }, [user]);
+
   // Fetch posts on initial load or when dependencies change
   useEffect(() => {
-    // Reset loadedRef when user changes to trigger a new fetch
-    if (user !== undefined) {
-      loadedRef.current = false;
+    if (loadedRef.current) {
+      console.log("Posts already loaded, skipping initial fetch");
+      return;
     }
     
-    if (loadedRef.current) return;
-    
+    console.log("Executing initial posts fetch");
     loadPosts();
     loadedRef.current = true;
     
@@ -331,7 +383,7 @@ export const useStoryFilters = () => {
     }, 60 * 1000);  // Check every minute
     
     return () => clearInterval(refreshTimer);
-  }, [loadPosts, user, lastLoad]);  // Added user as dependency to re-fetch when user changes
+  }, [loadPosts, lastLoad]);
 
   const toggleTag = (tag: string) => {
     console.log(`Toggling tag: ${tag}`);

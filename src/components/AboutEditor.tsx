@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from "react";
-import { Image, Save, X, FileImage } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Image, Save, X, FileImage, RefreshCw } from "lucide-react";
 import { fetchAboutContent, saveAboutContent } from "../services/aboutService";
 import { fetchBucketImages } from "../services/imageService";
 import { useToast } from "../hooks/use-toast";
@@ -21,29 +21,71 @@ const AboutEditor: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [availableImages, setAvailableImages] = useState<string[]>([]);
   const [isLoadingImages, setIsLoadingImages] = useState(false);
   const { toast } = useToast();
+  const isMountedRef = useRef(true);
+  const fetchRetryCount = useRef(0);
+  const MAX_RETRIES = 2;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const loadAboutContent = async () => {
       try {
         setIsLoading(true);
-        console.log("AboutEditor: Loading about content");
+        setLoadError(null);
+        
+        if (fetchRetryCount.current > 0) {
+          console.log(`AboutEditor: Retry attempt ${fetchRetryCount.current} of ${MAX_RETRIES}`);
+        } else {
+          console.log("AboutEditor: Loading about content");
+        }
+        
         const data = await fetchAboutContent();
+        
+        if (!isMountedRef.current) return;
         
         setContent(data.content || "");
         setImageUrl(data.image_url);
+        setIsLoading(false);
+        fetchRetryCount.current = 0;
         console.log("AboutEditor: About content loaded successfully");
       } catch (error) {
         console.error("AboutEditor: Error loading about content:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load about content. Please try again later.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
+        
+        if (!isMountedRef.current) return;
+        
+        if (fetchRetryCount.current < MAX_RETRIES) {
+          // Retry with exponential backoff
+          const retryDelay = Math.min(1000 * Math.pow(2, fetchRetryCount.current), 5000);
+          fetchRetryCount.current += 1;
+          
+          console.log(`AboutEditor: Retrying in ${retryDelay}ms (attempt ${fetchRetryCount.current}/${MAX_RETRIES})`);
+          setLoadError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
+          
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              loadAboutContent();
+            }
+          }, retryDelay);
+        } else {
+          // Max retries reached
+          setLoadError("Failed to load about content. Please try again later.");
+          setIsLoading(false);
+          
+          toast({
+            title: "Error",
+            description: "Failed to load about content after multiple attempts.",
+            variant: "destructive"
+          });
+        }
       }
     };
 
@@ -55,21 +97,29 @@ const AboutEditor: React.FC = () => {
       setIsLoadingImages(true);
       console.log("AboutEditor: Loading images from bucket");
       const images = await fetchBucketImages();
+      if (!isMountedRef.current) return;
+      
       setAvailableImages(images);
       console.log("AboutEditor: Loaded", images.length, "images from bucket");
     } catch (error) {
       console.error("AboutEditor: Error loading bucket images:", error);
+      if (!isMountedRef.current) return;
+      
       toast({
         title: "Error",
         description: "Failed to load images. Please try again later.",
         variant: "destructive"
       });
     } finally {
-      setIsLoadingImages(false);
+      if (isMountedRef.current) {
+        setIsLoadingImages(false);
+      }
     }
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
+    
     try {
       setIsSaving(true);
       console.log("AboutEditor: Saving about content");
@@ -79,6 +129,8 @@ const AboutEditor: React.FC = () => {
         image_url: imageUrl
       });
       
+      if (!isMountedRef.current) return;
+      
       console.log("AboutEditor: About content saved successfully");
       toast({
         title: "Success",
@@ -87,13 +139,18 @@ const AboutEditor: React.FC = () => {
       });
     } catch (error) {
       console.error("AboutEditor: Error saving about content:", error);
+      
+      if (!isMountedRef.current) return;
+      
       toast({
         title: "Error",
         description: "Failed to save about content. Please try again later.",
         variant: "destructive"
       });
     } finally {
-      setIsSaving(false);
+      if (isMountedRef.current) {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -109,13 +166,67 @@ const AboutEditor: React.FC = () => {
     });
   };
 
+  const handleRetry = () => {
+    fetchRetryCount.current = 0;
+    setIsLoading(true);
+    setLoadError(null);
+    
+    // Using setTimeout to give visual feedback that retry was clicked
+    setTimeout(() => {
+      if (isMountedRef.current) {
+        const loadAboutContent = async () => {
+          try {
+            console.log("AboutEditor: Retrying content load");
+            const data = await fetchAboutContent();
+            
+            if (!isMountedRef.current) return;
+            
+            setContent(data.content || "");
+            setImageUrl(data.image_url);
+            setIsLoading(false);
+            console.log("AboutEditor: About content loaded successfully on retry");
+          } catch (error) {
+            console.error("AboutEditor: Error on retry:", error);
+            
+            if (!isMountedRef.current) return;
+            
+            setLoadError("Failed to load content. Please try again.");
+            setIsLoading(false);
+            
+            toast({
+              title: "Error",
+              description: "Failed to load about content on retry.",
+              variant: "destructive"
+            });
+          }
+        };
+        
+        loadAboutContent();
+      }
+    }, 500);
+  };
+
   if (isLoading) {
     return (
       <div>
         <Navigation />
         <div className="container mx-auto px-4 py-8">
-          <div className="flex justify-center items-center h-64">
-            <Spinner size="lg" />
+          <div className="flex flex-col justify-center items-center h-64">
+            <Spinner 
+              size="lg" 
+              label={loadError ? loadError : "Loading content..."}
+            />
+            
+            {loadError && !loadError.includes("Retrying") && (
+              <Button 
+                onClick={handleRetry}
+                variant="outline"
+                className="mt-6 flex items-center gap-2"
+              >
+                <RefreshCw size={16} />
+                Try Again
+              </Button>
+            )}
           </div>
         </div>
       </div>

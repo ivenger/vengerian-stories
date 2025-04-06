@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from "react";
-import { Pencil } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { Pencil, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";
 import { Spinner } from "@/components/ui/spinner";
 import Navigation from "../components/Navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const About: React.FC = () => {
   const [content, setContent] = useState("");
@@ -15,33 +16,69 @@ const About: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user, loading: authLoading, isAdmin } = useAuth();
+  const { toast } = useToast();
+  const isMountedRef = useRef(true);
+  const fetchAttempts = useRef(0);
+  const maxRetries = 2;
 
   useEffect(() => {
-    let isMounted = true;
+    // Set mounted flag
+    isMountedRef.current = true;
+    
+    // Reset loading state on component mount
+    setIsLoading(true);
+    setError(null);
     
     const loadAboutContent = async () => {
       try {
-        setIsLoading(true);
-        setError(null);
-        console.log("About: Fetching about content...");
+        if (fetchAttempts.current > 0) {
+          console.log(`About: Retry attempt ${fetchAttempts.current} of ${maxRetries}`);
+        } else {
+          console.log("About: Fetching about content...");
+        }
         
         const data = await fetchAboutContent();
         
         // Only update state if component is still mounted
-        if (isMounted) {
+        if (isMountedRef.current) {
           console.log("About: Content fetched successfully:", data);
           setContent(data.content || "");
           setImageUrl(data.image_url);
           setIsLoading(false);
+          // Reset retry counter on success
+          fetchAttempts.current = 0;
         }
       } catch (error) {
         console.error("About: Error loading about content:", error);
         
         // Only update state if component is still mounted
-        if (isMounted) {
-          setError("About content could not be loaded. Please try again later.");
-          setContent("");
-          setIsLoading(false);
+        if (isMountedRef.current) {
+          if (fetchAttempts.current < maxRetries) {
+            // Retry with exponential backoff
+            const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
+            fetchAttempts.current += 1;
+            
+            console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
+            setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
+            
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                loadAboutContent();
+              }
+            }, retryDelay);
+          } else {
+            // Max retries reached
+            setError("Content could not be loaded. Please try again later.");
+            setContent("");
+            setIsLoading(false);
+            
+            // Show toast for user feedback
+            toast({
+              title: "Loading Error",
+              description: "Failed to load about content after multiple attempts.",
+              variant: "destructive"
+            });
+          }
         }
       }
     };
@@ -50,9 +87,9 @@ const About: React.FC = () => {
     
     // Cleanup function to prevent state updates on unmounted component
     return () => {
-      isMounted = false;
+      isMountedRef.current = false;
     };
-  }, []);
+  }, [toast]);
 
   const formatContent = (text: string) => {
     if (!text) return "";
@@ -69,17 +106,26 @@ const About: React.FC = () => {
         
         <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-sm">
           {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <Spinner size="lg" />
+            <div className="flex flex-col justify-center items-center h-64">
+              <Spinner 
+                size="lg" 
+                label={error ? error : "Loading content..."}
+              />
             </div>
-          ) : error ? (
-            <div className="text-center py-8 text-red-500">
-              <p>{error}</p>
+          ) : error && !error.includes("Retrying") ? (
+            <div className="text-center py-8">
+              <p className="text-red-500 mb-4">{error}</p>
               <Button 
-                onClick={() => window.location.reload()} 
+                onClick={() => {
+                  setIsLoading(true);
+                  setError(null);
+                  fetchAttempts.current = 0;
+                  window.location.reload();
+                }} 
                 variant="outline"
-                className="mt-4"
+                className="flex items-center gap-2"
               >
+                <RefreshCw size={16} />
                 Try Again
               </Button>
             </div>

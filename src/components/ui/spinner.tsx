@@ -5,12 +5,14 @@ interface SpinnerProps {
   size?: "sm" | "md" | "lg";
   className?: string;
   variant?: "default" | "primary";
+  label?: string;
 }
 
 const Spinner = ({ 
   size = "md", 
   className, 
-  variant = "default"
+  variant = "default",
+  label
 }: SpinnerProps) => {
   const sizeClasses = {
     sm: "w-3 h-3 border-2",
@@ -36,7 +38,12 @@ const Spinner = ({
           sizeClasses[size],
           variantClasses[variant]
         )}
+        role="status"
+        aria-label="Loading"
       />
+      {label && (
+        <span className="mt-4 text-gray-600 text-sm">{label}</span>
+      )}
     </div>
   );
 };
