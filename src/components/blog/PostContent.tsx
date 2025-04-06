@@ -42,12 +42,10 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
 
         <div className="prose max-w-none">
           <MarkdownPreview 
-            title={post.title}
-            date={post.date}
-            language={post.language?.[0] || 'English'}
             content={post.content}
+            language={post.language?.[0] || 'English'}
             tags={post.tags || []}
-            imageUrl={post.image_url || null}
+            imageUrl={null} // Don't pass the image URL here as it's already shown in PostHeader
           />
         </div>
       </div>

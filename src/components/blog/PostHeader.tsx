@@ -23,6 +23,8 @@ const PostHeader = ({ title, date, tags = [], imageUrl }: PostHeaderProps) => {
         </Link>
       </div>
 
+      {/* We don't render the title here to avoid duplication, it's now only in PostContent */}
+      
       {imageUrl && (
         <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-100">
           <img
