@@ -1,75 +1,69 @@
 
-import React, { useCallback } from 'react';
-import StoriesList from "../components/StoriesList";
+import React from "react";
 import Navigation from "../components/Navigation";
-import MultilingualTitle from "@/components/MultilingualTitle";
-import useStoryFilters from "@/hooks/useStoryFilters";
-import ActiveFilters from "@/components/ActiveFilters";
-import FilterDialog from "@/components/FilterDialog";
+import MultilingualTitle from "../components/MultilingualTitle";
+import FilterDialog from "../components/FilterDialog";
+import ActiveFilters from "../components/ActiveFilters";
+import StoriesList from "../components/StoriesList";
+import { useStoryFilters } from "../hooks/useStoryFilters";
 
-const Index: React.FC = () => {
+const Index = () => {
+  // Use our custom hook to handle all filter logic
   const {
-    posts: filteredPosts,
+    posts,
+    loading,
+    error,
     allTags,
     selectedTags,
     showUnreadOnly,
-    loading,
-    error,
+    toggleTag,
+    toggleUnreadFilter,
+    clearFilters,
     hasActiveFilters,
-    onToggleTag,
-    onToggleUnreadFilter,
-    onClearFilters,
-    onReloadPosts,
-    isFilterDialogOpen,
-    setIsFilterDialogOpen,
-    onOpenFiltersDialog
+    loadPosts
   } = useStoryFilters();
-
-  const handleReloadPosts = useCallback(() => {
-    onReloadPosts();
-  }, [onReloadPosts]);
-
+  
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50">
       <Navigation />
-      <div className="container mx-auto px-4 py-8">
-        <MultilingualTitle />
-        
-        {/* Filter UI */}
-        <div className="mb-6">
-          <ActiveFilters
-            hasActiveFilters={hasActiveFilters}
-            selectedTags={selectedTags}
-            toggleTag={onToggleTag}
-            showUnreadOnly={showUnreadOnly}
-            toggleUnreadFilter={onToggleUnreadFilter}
-            clearFilters={onClearFilters}
-            openFiltersDialog={onOpenFiltersDialog}
-          />
+      <main className="container mx-auto px-4 py-8">
+        <div className="mb-6 text-center relative">
+          <MultilingualTitle />
+          <div className="flex items-center justify-center gap-2">
+            <p className="text-gray-600">
+              Короткое, длиннее и странное
+            </p>
+            
+            <FilterDialog 
+              allTags={allTags}
+              selectedTags={selectedTags}
+              toggleTag={toggleTag}
+              clearFilters={clearFilters}
+              hasActiveFilters={hasActiveFilters}
+              showUnreadOnly={showUnreadOnly}
+              toggleUnreadFilter={toggleUnreadFilter}
+            />
+          </div>
           
-          <FilterDialog
-            open={isFilterDialogOpen}
-            onOpenChange={setIsFilterDialogOpen}
-            allTags={allTags}
+          <ActiveFilters 
             selectedTags={selectedTags}
-            toggleTag={onToggleTag}
-            showUnreadOnly={showUnreadOnly}
-            toggleUnreadFilter={onToggleUnreadFilter}
-            clearFilters={onClearFilters}
+            toggleTag={toggleTag}
+            clearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
           />
         </div>
 
-        {/* Stories List */}
-        <StoriesList 
-          posts={filteredPosts} 
-          loading={loading}
-          error={error}
-          reload={handleReloadPosts}
-          hasActiveFilters={hasActiveFilters}
-          clearFilters={onClearFilters}
-        />
-      </div>
+        <div className="max-w-3xl mx-auto">
+          <StoriesList 
+            posts={posts} 
+            loading={loading} 
+            error={error}
+            hasActiveFilters={hasActiveFilters} 
+            clearFilters={clearFilters}
+            onRetry={loadPosts}
+          />
+        </div>
+      </main>
     </div>
   );
 };

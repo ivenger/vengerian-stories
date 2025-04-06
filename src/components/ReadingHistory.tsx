@@ -1,6 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthProvider";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
 import { ReadingHistoryItem } from "../types/readingHistory";
-import { readingHistoryService } from "@/services/blogService";
-import { fetchAllPosts } from "@/services/postService";
 
 const ReadingHistory = () => {
   const { user } = useAuth();
@@ -28,14 +26,47 @@ const ReadingHistory = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch all published blog posts
-        const posts = await fetchAllPosts();
-        const publishedPosts = posts.filter(post => post.status === "published");
-        setAllPosts(publishedPosts);
+        // Fetch all published blog posts with explicit columns
+        const { data: posts, error: postsError } = await supabase
+          .from("entries")
+          .select("id, title, title_language, content, excerpt, date, language, status, image_url, created_at, updated_at, translations, tags")
+          .eq("status", "published")
+          .order("created_at", { ascending: false });
+          
+        if (postsError) throw postsError;
         
-        // Fix: Use correct function name getUserReadPostIds
-        const readPostIds = await readingHistoryService.getUserReadPostIds(user.id);
-        setReadPosts(readPostIds);
+        // Fetch reading history with explicit column selection
+        const { data: history, error: historyError } = await supabase
+          .from("reading_history")
+          .select("id, user_id, post_id, read_at")
+          .eq("user_id", user.id);
+        
+        if (historyError) {
+          console.error("ReadingHistory: Error fetching reading history:", historyError);
+          // Don't throw error for reading history issues, just continue with empty state
+          setReadPosts([]);
+        } else {
+          setReadPosts((history || []).map(item => item.post_id));
+        }
+
+        // Map the posts to BlogEntry type
+        const mappedPosts = (posts || []).map((post): BlogEntry => ({
+          id: post.id,
+          title: post.title,
+          title_language: post.title_language || ['en'],
+          content: post.content || '',
+          excerpt: post.excerpt,
+          date: post.date,
+          language: post.language || ['English'],
+          status: post.status || 'published',
+          image_url: post.image_url,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          translations: post.translations || [],
+          tags: post.tags || []
+        }));
+        
+        setAllPosts(mappedPosts);
       } catch (err: any) {
         console.error("ReadingHistory: Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");

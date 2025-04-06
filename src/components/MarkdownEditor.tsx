@@ -1,3 +1,5 @@
+
+// Just updating the import statement at the top of the file
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -179,8 +181,7 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
     const getTagsForLanguage = async () => {
       try {
         const tags = await fetchTagsByLanguage();
-        const tagNames = tags.map(tag => tag.name || '').filter(name => name !== '');
-        setFilteredTags(tagNames);
+        setFilteredTags(tags);
       } catch (error) {
         console.error("Error fetching tags:", error);
         setFilteredTags([]);

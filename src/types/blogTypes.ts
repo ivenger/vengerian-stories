@@ -14,5 +14,4 @@ export interface BlogEntry {
   updated_at?: string;
   translations?: string[]; // Field used in MarkdownEditor
   tags?: string[]; // Added tags field
-  isRead?: boolean; // Added isRead field to track reading status
 }
