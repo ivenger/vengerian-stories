@@ -23,6 +23,7 @@ const About: React.FC = () => {
   const isFirstMount = useRef(true);
   const mountCountRef = useRef(0);
 
+  // Main effect for loading content
   useEffect(() => {
     console.log("About: Component mounting", {
       mountCount: ++mountCountRef.current,
@@ -50,8 +51,7 @@ const About: React.FC = () => {
 
       console.log("About: Starting content load", {
         fetchAttempts: fetchAttempts.current,
-        hasExistingController: !!currentController,
-        currentContent: !!content
+        hasExistingController: !!currentController
       });
 
       setError(null);
@@ -59,6 +59,7 @@ const About: React.FC = () => {
         setIsLoading(true);
       }
 
+      // Clean up any existing request
       if (currentController) {
         console.log("About: Aborting existing request");
         currentController.abort();
@@ -75,6 +76,7 @@ const About: React.FC = () => {
 
         const data = await fetchAboutContent(currentController.signal);
 
+        // Check if the component is still mounted and this is still the current request
         if (!isMountedRef.current) {
           console.log("About: Fetch completed but component unmounted - discarding result");
           return;
@@ -149,7 +151,6 @@ const About: React.FC = () => {
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
           console.log("About: Completing request", {
             hasError: !!error,
-            contentLength: content.length,
             attemptsMade: fetchAttempts.current
           });
           setIsLoading(false);
@@ -172,10 +173,11 @@ const About: React.FC = () => {
       if (currentController) {
         console.log("About: Cleaning up controller");
         currentController.abort();
+        currentController = null;
       }
       fetchControllerRef.current = null;
     };
-  }, [toast, maxRetries, content]);
+  }, [toast, maxRetries]); // Removed content from dependencies
 
   const handleRetry = () => {
     console.log("About: Manual retry requested");
@@ -200,12 +202,12 @@ const About: React.FC = () => {
       .catch(error => {
         if (isMountedRef.current && error.name !== 'AbortError') {
           console.error("About: Error on retry:", error);
-          setError("Failed to load content. Please try again later.");
+          setError("Failed to load About content. Please try again later.");
           setIsLoading(false);
           
           toast({
             title: "Error",
-            description: "Failed to load content on retry.",
+            description: "Failed to load About content on retry.",
             variant: "destructive"
           });
         }
