@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -57,29 +56,27 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
 // Fetch all posts with optional tag filtering
 export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> => {
   console.log(`Fetching posts with tags filter:`, tags);
-  
+
   try {
     let query = supabase
       .from('entries')
       .select('*')
       .eq('status', 'published')
       .order('date', { ascending: false });
-    
+
     if (tags && tags.length > 0) {
       console.log(`Applying tag filters: ${tags.join(', ')}`);
-      // For each tag, we need to check if it's in the tags array
-      tags.forEach(tag => {
-        query = query.contains('tags', [tag]);
-      });
+      // Use a single contains query for all tags instead of multiple queries
+      query = query.contains('tags', tags);
     }
-    
+
     const { data, error } = await query;
-    
+
     if (error) {
       console.error('Error fetching filtered posts:', error);
       throw error;
     }
-    
+
     console.log(`Fetched ${data?.length || 0} filtered posts`);
     return data as BlogEntry[] || [];
   } catch (error) {
