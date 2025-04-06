@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Image, Save, X, FileImage, RefreshCw } from "lucide-react";
 import { fetchAboutContent, saveAboutContent } from "../services/aboutService";
@@ -63,7 +62,6 @@ const AboutEditor: React.FC = () => {
         if (!isMountedRef.current) return;
         
         if (fetchRetryCount.current < MAX_RETRIES) {
-          // Retry with exponential backoff
           const retryDelay = Math.min(1000 * Math.pow(2, fetchRetryCount.current), 5000);
           fetchRetryCount.current += 1;
           
@@ -76,7 +74,6 @@ const AboutEditor: React.FC = () => {
             }
           }, retryDelay);
         } else {
-          // Max retries reached
           setLoadError("Failed to load about content. Please try again later.");
           setIsLoading(false);
           
@@ -124,10 +121,7 @@ const AboutEditor: React.FC = () => {
       setIsSaving(true);
       console.log("AboutEditor: Saving about content");
       
-      await saveAboutContent({ 
-        content: content,
-        image_url: imageUrl
-      });
+      await saveAboutContent(content, imageUrl);
       
       if (!isMountedRef.current) return;
       
@@ -171,7 +165,6 @@ const AboutEditor: React.FC = () => {
     setIsLoading(true);
     setLoadError(null);
     
-    // Using setTimeout to give visual feedback that retry was clicked
     setTimeout(() => {
       if (isMountedRef.current) {
         const loadAboutContent = async () => {
