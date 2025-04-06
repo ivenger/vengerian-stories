@@ -1,11 +1,10 @@
+
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { BlogEntry } from '../../types/blogTypes';
 import { fetchFilteredPosts } from '../../services/post';
 import { useToast } from "@/hooks/use-toast";
-import { useAuthContext } from "../../components/AuthProvider";
 
 export const usePostsLoader = () => {
-  const { user, refreshSession } = useAuthContext();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +40,7 @@ export const usePostsLoader = () => {
     if (!mountedRef.current) return;
     
     setError(null);
-  }, [user]);
+  }, []);
   
   const loadPosts = useCallback(async (forceRefresh = false) => {
     console.log("loadPosts called with forceRefresh:", forceRefresh);
@@ -63,11 +62,6 @@ export const usePostsLoader = () => {
       if (mountedRef.current) {
         setLoading(true);
         setError(null);
-      }
-      
-      if (user && forceRefresh) {
-        console.log("Refreshing user session before loading posts");
-        await refreshSession();
       }
       
       console.log("Fetching published posts from postService");
@@ -117,23 +111,6 @@ export const usePostsLoader = () => {
       
       console.error("Failed to load posts:", error);
       
-      if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
-          error?.message?.includes('auth') || error?.message?.includes('authentication')) {
-        console.log("Detected potential auth error, attempting session refresh");
-        if (user) {
-          try {
-            const refreshed = await refreshSession();
-            if (refreshed) {
-              console.log("Session refreshed, retrying post load");
-              loadingRef.current = false;
-              return loadPosts(false);
-            }
-          } catch (refreshError) {
-            console.error("Session refresh failed:", refreshError);
-          }
-        }
-      }
-      
       if (mountedRef.current) {
         setError(
           error?.message === "TypeError: Failed to fetch" 
@@ -156,7 +133,7 @@ export const usePostsLoader = () => {
         requestInProgressRef.current = null;
       }
     }
-  }, [user, refreshSession, toast]);
+  }, [toast]);
   
   return {
     posts,

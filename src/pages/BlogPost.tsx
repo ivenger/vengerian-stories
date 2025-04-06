@@ -1,13 +1,13 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
-import { useAuthContext } from "../components/AuthProvider";
-import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
 import PostLoading from "@/components/blog/PostLoading";
+import { useReadingTracker } from "@/components/blog/useReadingTracker";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,8 +15,7 @@ const BlogPost = () => {
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, refreshSession } = useAuthContext();
-  const { isRead } = useReadingTracker(id, user);
+  const { isRead } = useReadingTracker(id);
   const [fetchAttempted, setFetchAttempted] = useState(false);
 
   const fetchPostData = useCallback(async () => {
@@ -56,7 +55,6 @@ const BlogPost = () => {
   useEffect(() => {
     console.log("BlogPost: Post fetch effect triggered");
     let isMounted = true;
-    let timeoutId: number;
     
     const fetchWithTimeout = async () => {
       try {
@@ -70,25 +68,13 @@ const BlogPost = () => {
       }
     };
     
-    timeoutId = window.setTimeout(() => {
-      if (isMounted && loading && !fetchAttempted) {
-        console.log("BlogPost: Post fetch taking too long, attempting session refresh");
-        refreshSession().then(() => {
-          if (isMounted) {
-            fetchWithTimeout();
-          }
-        });
-      }
-    }, 10000);
-    
     fetchWithTimeout();
     
     return () => {
       isMounted = false;
-      window.clearTimeout(timeoutId);
       console.log("BlogPost: Cleaning up fetch effect");
     };
-  }, [id, refreshSession, fetchPostData]);
+  }, [id, fetchPostData]);
 
   return (
     <div>
@@ -99,7 +85,7 @@ const BlogPost = () => {
         ) : error || !post ? (
           <PostError error={error} />
         ) : (
-          <PostContent post={post} isUserLoggedIn={!!user} isRead={isRead} />
+          <PostContent post={post} isUserLoggedIn={false} isRead={isRead} />
         )}
       </div>
     </div>

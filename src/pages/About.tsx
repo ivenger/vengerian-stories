@@ -1,10 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
 import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
-import { useAuthContext } from "../components/AuthProvider";
 import { Spinner } from "@/components/ui/spinner";
 import Navigation from "../components/Navigation";
 
@@ -13,7 +13,7 @@ const About: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading, isAdmin } = useAuthContext();
+  const isAdmin = false; // Without authentication, no one is admin
 
   useEffect(() => {
     let isMounted = true;
@@ -84,20 +84,6 @@ const About: React.FC = () => {
             </div>
           ) : (
             <div>
-              {!authLoading && user && isAdmin && (
-                <div className="flex justify-end mb-4">
-                  <Link to="/admin/about">
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center text-sm"
-                    >
-                      <Pencil size={14} className="mr-1" />
-                      Edit About
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
               <div className="flex flex-col md:flex-row gap-6 items-start">
                 {imageUrl && (
                   <div className="w-full md:w-1/3 flex-none mb-4 md:mb-0">

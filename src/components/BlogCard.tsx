@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, Globe } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
-import { useAuthContext } from './AuthProvider';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from './ui/badge';
 
@@ -32,36 +31,8 @@ const getLanguageAbbreviation = (language: string): string => {
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
-  const { user } = useAuthContext();
   const [isRead, setIsRead] = useState(false);
   
-  // Check if the post has been read by the user
-  useEffect(() => {
-    if (!user) return;
-    
-    const checkReadStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('post_id', post.id)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-          console.error("Error checking read status:", error);
-          return;
-        }
-        
-        setIsRead(!!data);
-      } catch (err) {
-        console.error("Error checking post read status:", err);
-      }
-    };
-    
-    checkReadStatus();
-  }, [user, post.id]);
-
   // Determine layout direction based on language
   const isHebrewPost = post.language?.includes('Hebrew');
   const contentDirection = isRtl ? 'flex-row-reverse' : 'flex-row';
@@ -71,13 +42,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
-        {/* Read indicator for logged in users */}
-        {user && (
-          <div className={`absolute top-3 ${isRtl ? 'left-3' : 'right-3'} ${isRead ? 'text-green-500' : 'text-gray-200'}`}>
-            <Eye size={18} />
-          </div>
-        )}
-        
         <div className="p-5">
           <div className={`flex flex-col md:${contentDirection} gap-4`}>
             {post.image_url && (
