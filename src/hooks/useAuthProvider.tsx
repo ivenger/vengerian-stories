@@ -27,6 +27,9 @@ export function useAuthProvider() {
       // Log the exact RPC invocation details
       console.log("Invoking RPC function 'is_admin' with parameters:", { user_id: userId });
 
+      // Add a log statement just before the RPC call to confirm the function is reaching this point
+      console.log("Starting RPC call to 'is_admin' with userId:", userId);
+
       // Make the RPC call to check if the user is an admin
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       if (error) {
