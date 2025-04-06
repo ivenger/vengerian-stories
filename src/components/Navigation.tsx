@@ -1,5 +1,4 @@
-
-import React from "react";
+import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
 import { useAuth } from "./AuthProvider";
@@ -10,13 +9,17 @@ const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    console.log("Navigation: Admin status changed:", isAdmin);
+  }, [isAdmin]);
+
   const isActive = (path: string) => {
     return location.pathname === path;
   };
 
   const handleSignOut = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.preventDefault(); // Prevent any default button behavior
-    e.stopPropagation(); // Stop event propagation
+    e.preventDefault();
+    e.stopPropagation();
     
     try {
       await signOut();
@@ -26,31 +29,25 @@ const Navigation = () => {
     }
   };
 
-  // Get display name based on auth method
   const getDisplayName = () => {
     if (!user) return null;
     
-    // If user has metadata with first_name (typically from OAuth providers like Google)
     if (user.user_metadata?.full_name) {
-      return user.user_metadata.full_name.split(' ')[0]; // Get first name
+      return user.user_metadata.full_name.split(' ')[0];
     }
     
-    // If user has a name in user_metadata
     if (user.user_metadata?.name) {
-      return user.user_metadata.name.split(' ')[0]; // Get first name 
+      return user.user_metadata.name.split(' ')[0];
     }
     
-    // Otherwise extract from email
     if (user.email) {
       return user.email.split('@')[0];
     }
     
-    return 'User'; // Fallback
+    return 'User';
   };
   
   const displayName = getDisplayName();
-  
-  console.log("Navigation component - isAdmin:", isAdmin);
 
   return (
     <nav className="bg-white shadow-md">
@@ -75,7 +72,7 @@ const Navigation = () => {
                   <span className="max-w-[120px] truncate">{displayName}</span>
                 </Link>
                 
-                {isAdmin && ( // Only show Admin link if user is an admin
+                {isAdmin && (
                   <Link to="/admin" className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
                     <Settings size={18} className="mr-2" />
                     <span>Admin</span>
