@@ -1,11 +1,47 @@
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
+// Shared utility for session validation and retry logic
+const withSessionValidation = async <T>(
+  operation: () => Promise<T>,
+  maxAttempts = 3
+): Promise<T> => {
+  let attempt = 0;
+  
+  while (attempt < maxAttempts) {
+    try {
+      // Check session before each attempt
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Try to refresh the session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          throw new Error("No valid session");
+        }
+      }
+      
+      return await operation();
+    } catch (error: any) {
+      attempt++;
+      
+      if (error.message === "No valid session" || attempt >= maxAttempts) {
+        throw error;
+      }
+      
+      // Exponential backoff with jitter
+      const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error("Max retry attempts reached");
+};
+
 // Fetch all blog posts (for admin purposes)
 export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
   console.log('Fetching all posts');
   
-  try {
+  return withSessionValidation(async () => {
     const { data, error } = await supabase
       .from('entries')
       .select('*')
@@ -18,19 +54,14 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
     
     console.log(`Fetched ${data?.length || 0} posts`);
     return data as BlogEntry[] || [];
-  } catch (error: any) {
-    console.error('Failed to fetch all posts:', error);
-    // Provide more descriptive error message
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to fetch posts: ${message}`);
-  }
+  });
 };
 
 // Fetch a blog post by ID
 export const fetchPostById = async (id: string): Promise<BlogEntry> => {
   console.log(`Fetching post with ID: ${id}`);
   
-  try {
+  return withSessionValidation(async () => {
     const { data, error } = await supabase
       .from('entries')
       .select('*')
@@ -49,18 +80,14 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
     
     console.log('Post fetched successfully:', data.id);
     return data as BlogEntry;
-  } catch (error: any) {
-    console.error(`Failed to fetch post with ID ${id}:`, error);
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to fetch post: ${message}`);
-  }
+  });
 };
 
 // Fetch all posts with optional tag filtering
 export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> => {
   console.log(`Fetching posts with tags filter:`, tags);
 
-  try {
+  return withSessionValidation(async () => {
     let query = supabase
       .from('entries')
       .select('*')
@@ -69,7 +96,6 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
 
     if (tags && tags.length > 0) {
       console.log(`Applying tag filters: ${tags.join(', ')}`);
-      // Use a single contains query for all tags instead of multiple queries
       query = query.contains('tags', tags);
     }
 
@@ -82,16 +108,12 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
 
     console.log(`Fetched ${data?.length || 0} filtered posts`);
     return data as BlogEntry[] || [];
-  } catch (error: any) {
-    console.error('Failed to fetch filtered posts:', error);
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to fetch filtered posts: ${message}`);
-  }
+  });
 };
 
 // Save a blog post
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
-  try {
+  return withSessionValidation(async () => {
     if (!post) {
       console.error("Error: Post data is required to save.");
       throw new Error("Post data is required to save.");
@@ -104,12 +126,10 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       tags: post.tags
     });
 
-    // Omit the 'created_at' field from the post data
     const { created_at, ...postData } = post;
 
     if (post.id) {
       // Update existing post
-      console.log(`Updating post with ID: ${post.id}`);
       const { data, error } = await supabase
         .from('entries')
         .update(postData)
@@ -126,7 +146,6 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       return data as BlogEntry;
     } else {
       // Create a new post
-      console.log('Creating a new post');
       const { data, error } = await supabase
         .from('entries')
         .insert([postData])
@@ -141,18 +160,14 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       console.log('Post created successfully:', data.id);
       return data as BlogEntry;
     }
-  } catch (error: any) {
-    console.error('Failed to save post:', error);
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to save post: ${message}`);
-  }
+  });
 };
 
 // Delete a blog post
 export const deletePost = async (id: string): Promise<void> => {
-  console.log(`Deleting post with ID: ${id}`);
-  
-  try {
+  return withSessionValidation(async () => {
+    console.log(`Deleting post with ID: ${id}`);
+    
     const { error } = await supabase
       .from('entries')
       .delete()
@@ -164,18 +179,14 @@ export const deletePost = async (id: string): Promise<void> => {
     }
     
     console.log('Post deleted successfully:', id);
-  } catch (error: any) {
-    console.error(`Failed to delete post with ID ${id}:`, error);
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to delete post: ${message}`);
-  }
+  });
 };
 
 // Mark a post as read for a user - Improved error handling
 export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
-  console.log(`Marking post ${postId} as read for user ${userId}`);
-  
-  try {
+  return withSessionValidation(async () => {
+    console.log(`Marking post ${postId} as read for user ${userId}`);
+    
     // First check if the record already exists
     const { data: existingRecord, error: checkError } = await supabase
       .from('reading_history')
@@ -215,18 +226,14 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
     }
     
     console.log(`Post ${postId} marked as read successfully`);
-  } catch (error: any) {
-    console.error("Error in markPostAsRead:", error);
-    // Don't throw error for this non-critical operation
-    console.warn(`Failed to mark post as read: ${error.message}`);
-  }
+  });
 };
 
 // Check if a post has been read by a user - Improved error handling
 export const hasReadPost = async (userId: string, postId: string): Promise<boolean> => {
-  console.log(`Checking if user ${userId} has read post ${postId}`);
-  
-  try {
+  return withSessionValidation(async () => {
+    console.log(`Checking if user ${userId} has read post ${postId}`);
+    
     const { data, error } = await supabase
       .from('reading_history')
       .select('user_id, post_id')
@@ -242,8 +249,5 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
     const hasRead = !!data;
     console.log(`User ${userId} has ${hasRead ? '' : 'not '}read post ${postId}`);
     return hasRead;
-  } catch (error: any) {
-    console.error("Error in hasReadPost:", error);
-    return false; // Assume not read in case of error
-  }
+  });
 };

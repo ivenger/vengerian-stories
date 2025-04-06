@@ -10,6 +10,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'vengerian-stories-auth',
-    storage: window.localStorage
+    storage: window.localStorage,
+    // Add shorter window for token refresh to be proactive
+    flowType: 'pkce',
+    retryAttempts: 3,
+    // Refresh 5 minutes before expiry
+    autoRefreshThreshold: 300
   }
 });

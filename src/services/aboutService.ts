@@ -6,13 +6,54 @@ interface AboutContent {
   language: string;
 }
 
+// Add retry logic with exponential backoff
+const retryWithBackoff = async <T>(
+  operation: () => Promise<T>,
+  maxAttempts = 3,
+  signal?: AbortSignal
+): Promise<T> => {
+  let attempt = 0;
+  
+  while (attempt < maxAttempts) {
+    try {
+      if (signal?.aborted) {
+        throw new DOMException("Request aborted", "AbortError");
+      }
+
+      // Check session before each attempt
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Try to refresh the session
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+        if (refreshError || !refreshData.session) {
+          throw new Error("No valid session");
+        }
+      }
+      
+      return await operation();
+    } catch (error: any) {
+      attempt++;
+      
+      if (error.name === "AbortError" || attempt >= maxAttempts) {
+        throw error;
+      }
+      
+      // Exponential backoff with jitter
+      const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  
+  throw new Error("Max retry attempts reached");
+};
+
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
   console.log("AboutService: Starting fetch", {
     hasSignal: !!signal,
     signalAborted: signal?.aborted
   });
   
-  try {
+  return retryWithBackoff(async () => {
     console.log("AboutService: Making Supabase request");
     const { data, error } = await supabase
       .from('about_content')
@@ -51,39 +92,26 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     });
 
     return data as AboutContent;
-  } catch (error) {
-    console.log("AboutService: Error in fetch", {
-      name: error.name,
-      message: error.message,
-      isAbortError: error instanceof DOMException && error.name === "AbortError"
-    });
-
-    throw error;
-  }
+  }, 3, signal);
 };
 
 export const saveAboutContent = async (content: string, imageUrl: string | null): Promise<void> => {
-  console.log("AboutService: Saving about content");
-  
-  try {
+  return retryWithBackoff(async () => {
+    console.log("AboutService: Saving about content");
+    
     const { error } = await supabase
       .from('about_content')
       .upsert({
         language: 'en',
-        content: content,
+        content,
         image_url: imageUrl
-      }, { 
-        onConflict: 'language' 
       });
     
     if (error) {
-      console.error("AboutService: Error saving about content:", error);
+      console.error("AboutService: Error saving content:", error);
       throw error;
     }
     
-    console.log("AboutService: About content saved successfully");
-  } catch (error) {
-    console.error("AboutService: Failed to save about content:", error);
-    throw error;
-  }
+    console.log("AboutService: Content saved successfully");
+  });
 };
