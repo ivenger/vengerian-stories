@@ -25,11 +25,25 @@ const StoriesList: React.FC<StoriesListProps> = ({
 }) => {
   const isRetrying = error?.includes('Retrying');
 
+  // Show more detailed error information
+  const getErrorMessage = (errorText: string) => {
+    if (errorText.includes('500')) {
+      return "Server error occurred. This might be due to database issues.";
+    } else if (errorText.includes('406')) {
+      return "Request not acceptable. This might be due to permission issues.";
+    } else if (errorText.includes('Failed to fetch')) {
+      return "Network error. Please check your connection and try again.";
+    }
+    return errorText;
+  };
+
   if (error) {
+    console.log("StoriesList rendering error state:", error);
     return (
       <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
         <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
-        <p className="text-gray-700 mb-4">{error}</p>
+        <p className="text-gray-700 mb-2">{getErrorMessage(error)}</p>
+        <p className="text-xs text-gray-500 mb-4">{error.includes('500') ? 'The server encountered an unexpected condition.' : ''}</p>
         <div className="flex justify-center gap-3">
           <Button 
             onClick={onRetry} 

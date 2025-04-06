@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -13,14 +14,16 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
     
     if (error) {
       console.error('Error fetching all posts:', error);
-      throw error;
+      throw new Error(`Failed to fetch posts: ${error.message} (${error.code})`);
     }
     
     console.log(`Fetched ${data?.length || 0} posts`);
     return data as BlogEntry[] || [];
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch all posts:', error);
-    throw error;
+    // Provide more descriptive error message
+    const message = error.message || 'Network or server error occurred';
+    throw new Error(`Failed to fetch posts: ${message}`);
   }
 };
 
@@ -37,7 +40,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
     
     if (error) {
       console.error('Error fetching post by ID:', error);
-      throw error;
+      throw new Error(`Failed to fetch post: ${error.message} (${error.code})`);
     }
     
     if (!data) {
@@ -47,9 +50,10 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
     
     console.log('Post fetched successfully:', data.id);
     return data as BlogEntry;
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to fetch post with ID ${id}:`, error);
-    throw error;
+    const message = error.message || 'Network or server error occurred';
+    throw new Error(`Failed to fetch post: ${message}`);
   }
 };
 
@@ -74,14 +78,15 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
 
     if (error) {
       console.error('Error fetching filtered posts:', error);
-      throw error;
+      throw new Error(`Failed to fetch filtered posts: ${error.message} (${error.code})`);
     }
 
     console.log(`Fetched ${data?.length || 0} filtered posts`);
     return data as BlogEntry[] || [];
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to fetch filtered posts:', error);
-    throw error;
+    const message = error.message || 'Network or server error occurred';
+    throw new Error(`Failed to fetch filtered posts: ${message}`);
   }
 };
 
@@ -115,7 +120,7 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
 
       if (error) {
         console.error('Error updating post:', error);
-        throw error;
+        throw new Error(`Failed to update post: ${error.message} (${error.code})`);
       }
 
       console.log('Post updated successfully:', data.id);
@@ -131,15 +136,16 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
 
       if (error) {
         console.error('Error creating post:', error);
-        throw error;
+        throw new Error(`Failed to create post: ${error.message} (${error.code})`);
       }
 
       console.log('Post created successfully:', data.id);
       return data as BlogEntry;
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Failed to save post:', error);
-    throw error;
+    const message = error.message || 'Network or server error occurred';
+    throw new Error(`Failed to save post: ${message}`);
   }
 };
 
@@ -155,41 +161,58 @@ export const deletePost = async (id: string): Promise<void> => {
     
     if (error) {
       console.error('Error deleting post:', error);
-      throw error;
+      throw new Error(`Failed to delete post: ${error.message} (${error.code})`);
     }
     
     console.log('Post deleted successfully:', id);
-  } catch (error) {
+  } catch (error: any) {
     console.error(`Failed to delete post with ID ${id}:`, error);
-    throw error;
+    const message = error.message || 'Network or server error occurred';
+    throw new Error(`Failed to delete post: ${message}`);
   }
 };
 
-// Mark a post as read for a user
+// Mark a post as read for a user - Improved error handling
 export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
   console.log(`Marking post ${postId} as read for user ${userId}`);
   
   try {
-    const { data, error } = await supabase
+    // First check if the record already exists to avoid 406 errors
+    const { data: existingRecord } = await supabase
       .from('reading_history')
-      .upsert(
-        { user_id: userId, post_id: postId },
-        { onConflict: 'user_id,post_id' }
-      );
+      .select('*')
+      .eq('user_id', userId)
+      .eq('post_id', postId)
+      .maybeSingle();
+      
+    // If record already exists, no need to insert again
+    if (existingRecord) {
+      console.log(`Post ${postId} already marked as read`);
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('reading_history')
+      .insert({ 
+        user_id: userId, 
+        post_id: postId,
+        read_at: new Date().toISOString()
+      });
       
     if (error) {
       console.error("Error marking post as read:", error);
-      throw error;
+      throw new Error(`Failed to mark post as read: ${error.message} (${error.code})`);
     }
     
     console.log(`Post ${postId} marked as read successfully`);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in markPostAsRead:", error);
-    throw error;
+    // Don't throw error for this non-critical operation
+    console.warn(`Failed to mark post as read: ${error.message}`);
   }
 };
 
-// Check if a post has been read by a user
+// Check if a post has been read by a user - Improved error handling
 export const hasReadPost = async (userId: string, postId: string): Promise<boolean> => {
   console.log(`Checking if user ${userId} has read post ${postId}`);
   
@@ -202,6 +225,11 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
       .maybeSingle();
       
     if (error) {
+      if (error.code === '406') {
+        console.warn("406 Not Acceptable error when checking read status - this may be a permission issue");
+        return false; // Assume not read in case of permission errors
+      }
+      
       console.error("Error checking if post was read:", error);
       return false; // Assume not read in case of error
     }
@@ -209,7 +237,7 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
     const hasRead = !!data;
     console.log(`User ${userId} has ${hasRead ? '' : 'not '}read post ${postId}`);
     return hasRead;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in hasReadPost:", error);
     return false; // Assume not read in case of error
   }
