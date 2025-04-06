@@ -10,12 +10,23 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
   console.log("AboutService: Fetching about content from Supabase");
   
   try {
+    // Immediately check if already aborted
     if (signal?.aborted) {
       throw new DOMException("Aborted", "AbortError");
     }
 
-    // Create the fetch promise that returns a proper Promise
-    const fetchPromise = new Promise<any>(async (resolve, reject) => {
+    // Create an abort handler promise if signal provided
+    let abortPromise: Promise<never> | undefined;
+    if (signal) {
+      abortPromise = new Promise((_, reject) => {
+        // Handle both immediate and future aborts
+        const abortHandler = () => reject(new DOMException("Aborted", "AbortError"));
+        signal.addEventListener("abort", abortHandler);
+      });
+    }
+
+    // Wrap Supabase query in a proper promise
+    const fetchPromise = new Promise<{ data: AboutContent | null; error: any }>(async (resolve, reject) => {
       try {
         const result = await supabase
           .from('about_content')
@@ -28,26 +39,16 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       }
     });
 
-    // Create promises array for racing
-    const promises: Promise<any>[] = [fetchPromise];
+    // Race between fetch and abort if signal provided
+    const { data, error } = await (abortPromise 
+      ? Promise.race([fetchPromise, abortPromise])
+      : fetchPromise);
 
-    if (signal) {
-      promises.push(
-        new Promise((_, reject) => {
-          signal.addEventListener('abort', () => {
-            reject(new DOMException("Aborted", "AbortError"));
-          });
-        })
-      );
-    }
-
-    const { data, error } = await Promise.race(promises);
-    
     if (error) {
       console.error("AboutService: Error fetching about content:", error);
       throw error;
     }
-    
+
     if (!data) {
       console.warn("AboutService: No about content found");
       return {
@@ -56,11 +57,16 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
         language: "en"
       };
     }
-    
+
     console.log("AboutService: About content fetched successfully");
     return data as AboutContent;
   } catch (error) {
-    console.error("AboutService: Failed to fetch about content:", error);
+    // Log and rethrow the error, maintaining its type
+    if (error instanceof DOMException && error.name === "AbortError") {
+      console.log("AboutService: Fetch aborted");
+    } else {
+      console.error("AboutService: Failed to fetch about content:", error);
+    }
     throw error;
   }
 };

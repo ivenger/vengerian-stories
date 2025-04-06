@@ -23,86 +23,91 @@ const About: React.FC = () => {
 
   useEffect(() => {
     isMountedRef.current = true;
-    setIsLoading(true);
-    setError(null);
     fetchAttempts.current = 0;
-    
+    let currentController: AbortController | null = null;
+
     const loadAboutContent = async () => {
-      // Cancel any existing request
-      if (fetchControllerRef.current) {
-        fetchControllerRef.current.abort();
+      // Clear any existing error state and show loading
+      setError(null);
+      setIsLoading(true);
+
+      // Cancel any in-flight request
+      if (currentController) {
+        currentController.abort();
       }
-      
+
       // Create new controller for this request
-      fetchControllerRef.current = new AbortController();
-      
+      currentController = new AbortController();
+      fetchControllerRef.current = currentController;
+
       try {
         console.log("About: Fetching about content...");
-        const data = await fetchAboutContent(fetchControllerRef.current.signal);
-        
-        // Guard against unmount
-        if (!isMountedRef.current) {
-          console.log("About: Component unmounted during fetch, skipping state updates");
-          return;
-        }
+        const data = await fetchAboutContent(currentController.signal);
 
-        console.log("About: Content fetched successfully:", data);
-        setContent(data.content || "");
-        setImageUrl(data.image_url);
-        setIsLoading(false);
-        setError(null);
-        fetchAttempts.current = 0;
+        // Only update state if this is still the current request
+        if (isMountedRef.current && fetchControllerRef.current === currentController) {
+          console.log("About: Content fetched successfully");
+          setContent(data.content || "");
+          setImageUrl(data.image_url);
+          setError(null);
+          fetchAttempts.current = 0;
+        }
       } catch (error: any) {
-        // Don't handle aborted requests
-        if (error.name === 'AbortError') {
+        // Ignore aborted requests
+        if (error.name === "AbortError") {
           console.log("About: Fetch aborted");
           return;
         }
 
-        // Guard against unmount
-        if (!isMountedRef.current) {
-          console.log("About: Component unmounted during error handling, skipping state updates");
-          return;
-        }
+        // Only handle error if this is still the current request
+        if (isMountedRef.current && fetchControllerRef.current === currentController) {
+          console.error("About: Error loading about content:", error);
 
-        console.error("About: Error loading about content:", error);
-        
-        if (fetchAttempts.current < maxRetries) {
-          const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
-          fetchAttempts.current += 1;
-          
-          console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
-          setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
-          
-          setTimeout(() => {
-            if (isMountedRef.current) {
-              loadAboutContent();
-            }
-          }, retryDelay);
-        } else {
-          setError("Content could not be loaded. Please try again later.");
+          if (fetchAttempts.current < maxRetries) {
+            const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
+            fetchAttempts.current += 1;
+
+            console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
+            setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
+
+            // Schedule retry
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                loadAboutContent();
+              }
+            }, retryDelay);
+          } else {
+            setError("Content could not be loaded. Please try again later.");
+            toast({
+              title: "Loading Error",
+              description: "Failed to load about content after multiple attempts.",
+              variant: "destructive"
+            });
+          }
+        }
+      } finally {
+        // Only update loading state if this is still the current request
+        if (isMountedRef.current && fetchControllerRef.current === currentController) {
           setIsLoading(false);
-          toast({
-            title: "Loading Error",
-            description: "Failed to load about content after multiple attempts.",
-            variant: "destructive"
-          });
         }
       }
     };
 
+    // Start initial load
     loadAboutContent();
-    
+
     return () => {
       console.log("About: Component unmounting, cleaning up");
       isMountedRef.current = false;
-      if (fetchControllerRef.current) {
+      
+      // Abort any in-flight request
+      if (currentController) {
         console.log("About: Aborting fetch on unmount");
-        fetchControllerRef.current.abort();
-        fetchControllerRef.current = null;
+        currentController.abort();
       }
+      fetchControllerRef.current = null;
     };
-  }, [toast]);
+  }, [toast, maxRetries]);
 
   const handleRetry = () => {
     console.log("About: Manual retry requested");
