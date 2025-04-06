@@ -1,148 +1,128 @@
 import React, { useState, useEffect } from 'react';
 import BlogCard from './BlogCard';
-import { BlogEntry } from '@/types/blogTypes';
-import { useStoryFilters } from '@/hooks/useStoryFilters';
-import { useAuth } from './AuthProvider';
-import ActiveFilters from './ActiveFilters';
-import FilterDialog from './FilterDialog';
-import { Filter } from 'lucide-react';
-import { Button } from './ui/button';
-import { Alert, AlertDescription, AlertTitle } from './ui/alert';
-import { Spinner } from './ui/spinner';
-import { useSupabaseRequest } from '@/hooks/useSupabaseRequest';
-import { fetchFilteredPosts } from '@/services/postService';
-import { useToast } from '@/hooks/use-toast';
+import { BlogEntry } from '../types/blogTypes';
+import { AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
-const StoriesList: React.FC = () => {
-  const {
-    allTags,
-    selectedTags,
-    showUnreadOnly,
-    toggleTag,
-    toggleUnreadFilter,
-    clearFilters,
-    hasActiveFilters
-  } = useStoryFilters();
-  const { user } = useAuth();
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const { toast } = useToast();
+interface StoriesListProps {
+  posts: BlogEntry[];
+  loading: boolean;
+  error?: string | null;
+  hasActiveFilters: boolean;
+  clearFilters: () => void;
+  onRetry?: () => void;
+}
 
-  const {
-    execute: fetchPosts,
-    loading,
-    error,
-    data: posts,
-    reset: resetPosts
-  } = useSupabaseRequest<BlogEntry[]>(
-    () => fetchFilteredPosts(selectedTags),
-    {
-      onError: () => {
-        toast({
-          title: "Error",
-          description: "Failed to load stories. Please try again.",
-          variant: "destructive"
-        });
-      }
+const StoriesList: React.FC<StoriesListProps> = ({ 
+  posts, 
+  loading, 
+  error,
+  hasActiveFilters,
+  clearFilters,
+  onRetry
+}) => {
+  const isRetrying = error?.includes('Retrying');
+  const [localLoading, setLocalLoading] = useState(loading);
+
+  // Update local loading state when prop changes
+  useEffect(() => {
+    // Add a small delay before showing loading state to prevent flicker
+    if (loading) {
+      const timer = setTimeout(() => {
+        setLocalLoading(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setLocalLoading(false);
     }
-  );
+  }, [loading]);
 
-  useEffect(() => {
-    console.log("StoriesList: Component mounted");
-    fetchPosts();
-  }, [fetchPosts]);
-
-  useEffect(() => {
-    console.log("StoriesList: Filters changed, refreshing posts");
-    fetchPosts();
-  }, [selectedTags, showUnreadOnly, fetchPosts]);
-
-  const handleClearFilters = () => {
-    clearFilters();
-    resetPosts();
-    fetchPosts();
+  // Show more detailed error information
+  const getErrorMessage = (errorText: string) => {
+    if (errorText.includes('500')) {
+      return "Server error occurred. This might be due to database issues.";
+    } else if (errorText.includes('406')) {
+      return "Request not acceptable. This might be due to permission issues.";
+    } else if (errorText.includes('Failed to fetch')) {
+      return "Network error. Please check your connection and try again.";
+    }
+    return errorText;
   };
 
-  if (loading && !posts) {
-    return (
-      <div className="flex justify-center items-center min-h-[200px]">
-        <Spinner />
-      </div>
-    );
-  }
-
   if (error) {
+    console.log("StoriesList rendering error state:", error);
     return (
-      <Alert variant="destructive">
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
-    );
-  }
-
-  const filteredPosts = showUnreadOnly && user
-    ? posts?.filter(post => !post.readBy?.includes(user.id))
-    : posts;
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Stories</h1>
-        <Button
-          variant="outline"
-          onClick={() => setIsFilterOpen(true)}
-          className="flex items-center gap-2"
-        >
-          <Filter className="w-4 h-4" />
-          Filter Stories
-        </Button>
-      </div>
-
-      {hasActiveFilters && (
-        <ActiveFilters
-          selectedTags={selectedTags}
-          showUnreadOnly={showUnreadOnly}
-          onClearAll={handleClearFilters}
-          onRemoveTag={(tag) => toggleTag(tag)}
-          onToggleUnread={() => toggleUnreadFilter()}
-        />
-      )}
-
-      <FilterDialog
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        selectedTags={selectedTags}
-        allTags={allTags}
-        showUnreadOnly={showUnreadOnly}
-        onTagToggle={toggleTag}
-        onUnreadToggle={toggleUnreadFilter}
-        onClearAll={handleClearFilters}
-        isUserLoggedIn={!!user}
-      />
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredPosts?.map((post) => (
-          <BlogCard
-            key={post.id}
-            post={post}
-            isRead={user ? post.readBy?.includes(user.id) : false}
-          />
-        ))}
-      </div>
-
-      {filteredPosts?.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No stories found matching your criteria.</p>
+      <div className="text-center py-12 bg-red-50 rounded-lg border border-red-100">
+        <AlertCircle className="h-10 w-10 text-red-500 mx-auto mb-3" />
+        <p className="text-gray-700 mb-2">{getErrorMessage(error)}</p>
+        <p className="text-xs text-gray-500 mb-4">{error.includes('500') ? 'The server encountered an unexpected condition.' : ''}</p>
+        <div className="flex justify-center gap-3">
+          <Button 
+            onClick={onRetry} 
+            variant="outline"
+            className="border-red-300 hover:bg-red-50 flex items-center gap-2"
+            disabled={isRetrying}
+          >
+            {isRetrying ? (
+              <>
+                <Spinner size="sm" />
+                <span>Retrying...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                <span>Try Again</span>
+              </>
+            )}
+          </Button>
           {hasActiveFilters && (
-            <Button
-              variant="link"
-              onClick={handleClearFilters}
-              className="mt-2"
+            <Button 
+              onClick={clearFilters}
+              variant="outline" 
+              className="border-gray-300"
             >
-              Clear all filters
+              Clear Filters
             </Button>
           )}
         </div>
-      )}
+      </div>
+    );
+  }
+
+  if (localLoading) {
+    console.log("StoriesList is in loading state");
+    return (
+      <div className="flex flex-col justify-center items-center h-64">
+        <Spinner size="lg" label="Loading stories..." />
+      </div>
+    );
+  }
+  
+  if (posts.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">
+          {hasActiveFilters 
+            ? "No stories found with the current selection. Try different options or clear them." 
+            : "No stories found. Check back later for new content."}
+        </p>
+        {hasActiveFilters && (
+          <Button 
+            onClick={clearFilters} 
+            variant="outline"
+            className="mt-4"
+          >
+            Clear Selection
+          </Button>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <div className="grid gap-8">
+      {posts.map(post => <BlogCard key={post.id} post={post} />)}
     </div>
   );
 };

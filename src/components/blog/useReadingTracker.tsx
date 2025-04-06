@@ -1,62 +1,99 @@
 import { useState, useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 import { User } from '@supabase/supabase-js';
-import { hasReadPost, markPostAsRead } from '@/services/postService';
-import { useToast } from '@/hooks/use-toast';
-import { useSupabaseRequest } from '@/hooks/useSupabaseRequest';
 
-export function useReadingTracker(postId?: string, user?: User | null) {
+export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
-  const { toast } = useToast();
 
-  const {
-    execute: checkReadStatus,
-    loading: checkingStatus
-  } = useSupabaseRequest(
-    async () => {
-      if (!postId || !user) return false;
-      const readStatus = await hasReadPost(user.id, postId);
-      setIsRead(readStatus);
-      return readStatus;
-    },
-    {
-      onError: () => {
-        console.error("Failed to check read status");
-        setIsRead(false);
-      }
-    }
-  );
-
-  const {
-    execute: markRead,
-    loading: markingRead
-  } = useSupabaseRequest(
-    async () => {
-      if (!postId || !user) return;
-      await markPostAsRead(user.id, postId);
-      setIsRead(true);
-    },
-    {
-      onError: () => {
-        toast({
-          title: "Error",
-          description: "Failed to mark post as read. Please try again.",
-          variant: "destructive"
-        });
-      }
-    }
-  );
-
+  // Check if post is already marked as read
   useEffect(() => {
-    if (postId && user) {
-      checkReadStatus();
-    } else {
-      setIsRead(false);
-    }
-  }, [postId, user, checkReadStatus]);
+    let isMounted = true;
 
-  return {
-    isRead,
-    markRead,
-    loading: checkingStatus || markingRead
-  };
-}
+    const checkReadStatus = async () => {
+      if (!user || !postId) {
+        console.log("ReadingTracker: Not checking read status because user or postId is missing");
+        return;
+      }
+
+      console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
+      try {
+        const { data, error } = await supabase
+          .from('reading_history')
+          .select('id, user_id, post_id, read_at')
+          .eq('user_id', user.id)
+          .eq('post_id', postId)
+          .maybeSingle();
+
+        if (error) {
+          console.error("useReadingTracker: Error checking read status:", error);
+          return;
+        }
+
+        if (isMounted) {
+          console.log(`ReadingTracker: Read status is ${!!data}`);
+          setIsRead(!!data);
+        }
+      } catch (readErr) {
+        console.error("ReadingTracker: Error checking read status:", readErr);
+      }
+    };
+
+    checkReadStatus();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postId, user]);
+
+  // Mark post as read when it loads
+  useEffect(() => {
+    let isMounted = true;
+
+    const markAsRead = async () => {
+      if (!user || !postId || isRead) {
+        console.log("ReadingTracker: Not marking as read because:", 
+          !user ? "no user" : !postId ? "no postId" : "already read");
+        return;
+      }
+
+      try {
+        console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
+        // Insert into reading history
+        const { error } = await supabase
+          .from('reading_history')
+          .upsert({ 
+            user_id: user.id, 
+            post_id: postId,
+            read_at: new Date().toISOString()
+          }, { 
+            onConflict: 'user_id,post_id' 
+          });
+
+        if (error) {
+          if (error.code === '406') {
+            console.warn("ReadingTracker: 406 Not Acceptable error when marking as read - skipping");
+            return;
+          }
+          console.error("ReadingTracker: Error marking post as read:", error);
+          return;
+        }
+
+        if (isMounted) {
+          console.log("ReadingTracker: Successfully marked post as read");
+          setIsRead(true);
+        }
+      } catch (err) {
+        console.error("ReadingTracker: Error in markAsRead:", err);
+      }
+    };
+
+    // Only try to mark as read if we have all required data
+    markAsRead();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [postId, user, isRead]);
+
+  return { isRead };
+};

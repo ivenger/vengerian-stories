@@ -10,11 +10,20 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'vengerian-stories-auth',
-    storage: window.localStorage,
-    // Add shorter window for token refresh to be proactive
-    flowType: 'pkce',
-    retryAttempts: 3,
-    // Refresh 5 minutes before expiry
-    autoRefreshThreshold: 300
+    storage: window.localStorage
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    fetch: (url: RequestInfo, options: RequestInit = {}) => {
+      const headers = new Headers(options.headers || {});
+      headers.set('x-client-info', 'vengerian-stories@1.0.0');
+      return fetch(url, {
+        ...options,
+        headers,
+        credentials: 'include'
+      });
+    }
   }
 });

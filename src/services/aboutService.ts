@@ -6,61 +6,33 @@ interface AboutContent {
   language: string;
 }
 
-// Add retry logic with exponential backoff
-const retryWithBackoff = async <T>(
-  operation: () => Promise<T>,
-  maxAttempts = 3,
-  signal?: AbortSignal
-): Promise<T> => {
-  let attempt = 0;
-  
-  while (attempt < maxAttempts) {
-    try {
-      if (signal?.aborted) {
-        throw new DOMException("Request aborted", "AbortError");
-      }
-
-      // Check session before each attempt
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        // Try to refresh the session
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-        if (refreshError || !refreshData.session) {
-          throw new Error("No valid session");
-        }
-      }
-      
-      return await operation();
-    } catch (error: any) {
-      attempt++;
-      
-      if (error.name === "AbortError" || attempt >= maxAttempts) {
-        throw error;
-      }
-      
-      // Exponential backoff with jitter
-      const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 1000, 10000);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  
-  throw new Error("Max retry attempts reached");
-};
-
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
   console.log("AboutService: Starting fetch", {
     hasSignal: !!signal,
     signalAborted: signal?.aborted
   });
   
-  return retryWithBackoff(async () => {
+  // Immediately check for aborted signal
+  if (signal?.aborted) {
+    console.log("AboutService: Request aborted before fetch");
+    throw new DOMException("Request aborted", "AbortError");
+  }
+
+  try {
+    // Create AbortController for the timeout
+    const timeoutController = new AbortController();
+    const timeout = setTimeout(() => {
+      timeoutController.abort();
+    }, 10000);
+
     console.log("AboutService: Making Supabase request");
     const { data, error } = await supabase
       .from('about_content')
       .select('*')
       .eq('language', 'en')
-      .maybeSingle()
-      .abortSignal(signal);
+      .maybeSingle();
+
+    clearTimeout(timeout);
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
@@ -73,6 +45,11 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
         message: error.message,
         details: error.details
       });
+      
+      // Handle auth errors by throwing a specific error
+      if (error.code === 'PGRST301' || error.message?.includes('JWT')) {
+        throw new Error('AuthError');
+      }
       throw error;
     }
 
@@ -92,26 +69,44 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     });
 
     return data as AboutContent;
-  }, 3, signal);
+  } catch (error: any) {
+    console.log("AboutService: Error in fetch", {
+      name: error.name,
+      message: error.message,
+      isAbortError: error instanceof DOMException && error.name === "AbortError"
+    });
+
+    if (error.message === 'AuthError') {
+      // Give the auth system a chance to refresh the token
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    throw error;
+  }
 };
 
 export const saveAboutContent = async (content: string, imageUrl: string | null): Promise<void> => {
-  return retryWithBackoff(async () => {
-    console.log("AboutService: Saving about content");
-    
+  console.log("AboutService: Saving about content");
+  
+  try {
     const { error } = await supabase
       .from('about_content')
       .upsert({
         language: 'en',
-        content,
+        content: content,
         image_url: imageUrl
+      }, { 
+        onConflict: 'language' 
       });
     
     if (error) {
-      console.error("AboutService: Error saving content:", error);
+      console.error("AboutService: Error saving about content:", error);
       throw error;
     }
     
-    console.log("AboutService: Content saved successfully");
-  });
+    console.log("AboutService: About content saved successfully");
+  } catch (error) {
+    console.error("AboutService: Failed to save about content:", error);
+    throw error;
+  }
 };

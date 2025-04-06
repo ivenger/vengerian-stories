@@ -43,9 +43,6 @@ const applyFiltersToData = (
   return filteredPosts;
 };
 
-const REFRESH_INTERVAL = 10 * 60 * 1000; // 10 minutes
-const MAX_RETRY_ATTEMPTS = 3;
-
 export const useStoryFilters = (user: User | null) => {
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,43 +231,9 @@ export const useStoryFilters = (user: User | null) => {
     }
   };
 
-  // Enhanced session validation with stronger error handling
-  const validateAndRefreshSession = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.log("No active session, attempting refresh");
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error || !data.session) {
-          console.error("Session refresh failed:", error);
-          return false;
-        }
-        return true;
-      }
-      
-      // Check if session is near expiry (within 5 minutes)
-      const expiresAt = session.expires_at;
-      const isNearExpiry = expiresAt && (expiresAt * 1000 - Date.now() < 5 * 60 * 1000);
-      
-      if (isNearExpiry) {
-        console.log("Session near expiry, refreshing");
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.error("Failed to refresh near-expiry session:", error);
-          return false;
-        }
-      }
-      
-      return true;
-    } catch (err) {
-      console.error("Session validation failed:", err);
-      return false;
-    }
-  }, []);
-
-  // Enhanced loadPosts with session validation
+  // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
+    // Don't start a new fetch if one is in progress or component is unmounting
     if (!isMountedRef.current) {
       console.log("Component unmounted, skipping fetch");
       return;
@@ -304,58 +267,84 @@ export const useStoryFilters = (user: User | null) => {
     setLastLoad(Date.now());
     
     try {
-      // Validate session before proceeding
-      const isSessionValid = await validateAndRefreshSession();
-      if (!isSessionValid) {
-        throw new Error("Invalid session");
+      // If we've been loading for too long with a session, try refreshing it
+      if (user && forceRefresh) {
+        await refreshSession();
       }
-
+      
       // Always fetch all posts first
       console.log("Fetching all posts");
       const allPosts = await fetchFilteredPosts();
+      console.log(`Received ${allPosts.length} total posts from API`);
       
+      // Bail out if component unmounted during fetch
       if (!isMountedRef.current) {
         console.log("Component unmounted during fetch, skipping state updates");
         return;
       }
       
-      console.log(`Received ${allPosts.length} total posts from API`);
       setOriginalPosts(allPosts);
       applyFilters(allPosts);
       
-      // Reset state on success
+      // Reset retry count and loading state on success
       setRetryCount(0);
       setIsRetrying(false);
-      loadedRef.current = true;
+      setLoading(false);
       
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
       if (!isMountedRef.current) {
-        console.log("Component unmounted during error handling");
-        return;
-      }
-
-      // Handle session errors
-      if (error.message === "Invalid session") {
-        setError("Your session has expired. Please refresh the page to continue.");
-        setLoading(false);
+        console.log("Component unmounted during error handling, skipping state updates");
         return;
       }
       
-      // Implement retry logic with backoff
-      if (retryCount < MAX_RETRY_ATTEMPTS) {
+      // Handle potential auth errors
+      if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
+          error?.message?.includes('auth') || error?.message?.includes('authentication')) {
+        console.log("Detected potential auth error, attempting session refresh");
+        if (user) {
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            console.log("Session refreshed, retrying post load");
+            setIsRetrying(true);
+            // Always clean up the current fetch before scheduling a retry
+            fetchInProgressRef.current = false;
+            setTimeout(() => {
+              if (isMountedRef.current) {
+                loadPosts(true); // Force refresh after auth error
+              }
+            }, 1000);
+            return;
+          }
+        }
+      }
+      
+      // Check if we should retry
+      if (retryCount < MAX_RETRIES && error?.message?.includes('Failed to fetch')) {
+        const nextRetryCount = retryCount + 1;
         const backoffDelay = getBackoffDelay(retryCount);
-        console.log(`Retrying in ${backoffDelay}ms (attempt ${retryCount + 1})`);
-        setRetryCount(prev => prev + 1);
+        
+        console.log(`Retry ${nextRetryCount}/${MAX_RETRIES} scheduled in ${backoffDelay}ms`);
+        setRetryCount(nextRetryCount);
+        setError(`Network error. Retrying in ${Math.round(backoffDelay/1000)} seconds...`);
         setIsRetrying(true);
         
+        // Clean up the current fetch before scheduling retry
+        fetchInProgressRef.current = false;
+        
+        // Schedule retry with backoff
         setTimeout(() => {
           if (isMountedRef.current) {
-            loadPosts(true);
+            console.log(`Executing retry ${nextRetryCount}/${MAX_RETRIES}`);
+            loadPosts(true); // Force refresh on retry
+          } else {
+            console.log("Component unmounted during retry delay, cancelling");
+            setIsRetrying(false);
           }
         }, backoffDelay);
       } else {
+        // We've exhausted retries or it's not a network error
         setError(
           error?.message === "TypeError: Failed to fetch" 
             ? "Network error. Please check your connection and try again." 
@@ -364,14 +353,16 @@ export const useStoryFilters = (user: User | null) => {
         setPosts([]);
         setRetryCount(0);
         setIsRetrying(false);
+        setLoading(false);
       }
     } finally {
-      if (isMountedRef.current) {
+      // If we're not retrying, we can safely reset all state
+      if (!isRetrying) {
         fetchInProgressRef.current = false;
         setLoading(false);
       }
     }
-  }, [user, validateAndRefreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
+  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
 
   // When filters change, apply them to the original posts
   useEffect(() => {
