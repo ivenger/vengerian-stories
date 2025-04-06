@@ -11,62 +11,14 @@ export type SignOutResult = {
 
 export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState(session?.user || null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authInitialized, setAuthInitialized] = useState(false);
-  const refreshTimerRef = useRef<number | null>(null);
   const isMountedRef = useRef(true);
   const { toast } = useToast();
   
-  // Clear refresh timer on unmount
-  const clearRefreshTimer = useCallback(() => {
-    if (refreshTimerRef.current) {
-      clearTimeout(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-  }, []);
-
-  // Refresh session token
-  const refreshSession = useCallback(async (): Promise<boolean> => {
-    if (!isMountedRef.current) return false;
-    
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      if (error) return false;
-      return !!data.session;
-    } catch (err) {
-      console.error('Session refresh failed:', err);
-      return false;
-    }
-  }, []);
-
-  // Schedule next token refresh
-  const scheduleRefresh = useCallback((currentSession: Session | null) => {
-    clearRefreshTimer();
-    
-    if (!currentSession?.expires_at) return;
-    
-    const expiresAt = currentSession.expires_at * 1000; // Convert to milliseconds
-    const refreshBuffer = 5 * 60 * 1000; // 5 minutes before expiry
-    const refreshTime = Math.max(expiresAt - refreshBuffer - Date.now(), 0);
-    
-    if (refreshTime <= 0) {
-      // Refresh immediately if token is expired or about to expire
-      refreshSession();
-      return;
-    }
-    
-    refreshTimerRef.current = window.setTimeout(async () => {
-      const success = await refreshSession();
-      
-      // If refresh failed, try again soon
-      if (!success && isMountedRef.current) {
-        refreshTimerRef.current = window.setTimeout(() => refreshSession(), 30 * 1000);
-      }
-    }, refreshTime);
-  }, [clearRefreshTimer, refreshSession]);
-
   // Sign out the user
   const signOut = useCallback(async () => {
     try {
@@ -78,22 +30,42 @@ export function useAuth() {
           description: "Failed to sign out. Please try again.",
           variant: "destructive"
         });
-        return;
+        return { error };
       }
       
       toast({
         title: "Signed out",
         description: "You've been signed out successfully."
       });
-    } catch (err) {
+      
+      return { error: null };
+    } catch (err: any) {
       console.error("Sign out exception:", err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
+      return { error: err };
     }
   }, [toast]);
+
+  // Refresh session token
+  const refreshSession = useCallback(async (): Promise<boolean> => {
+    if (!isMountedRef.current) return false;
+    
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("Session refresh failed:", error.message);
+        return false;
+      }
+      return !!data.session;
+    } catch (err) {
+      console.error('Session refresh failed:', err);
+      return false;
+    }
+  }, []);
 
   // Initialize authentication
   useEffect(() => {
@@ -104,7 +76,44 @@ export function useAuth() {
       setLoading(true);
       
       try {
-        // Get existing session
+        // Set up auth state change listener first
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          async (event, newSession) => {
+            if (!isMountedRef.current) return;
+            
+            if (newSession?.user) {
+              setSession(newSession);
+              setUser(newSession.user);
+              
+              // Check admin status
+              const adminStatus = await checkUserRole(newSession.user.id);
+              if (isMountedRef.current) {
+                setIsAdmin(adminStatus);
+              }
+              
+              if (event === 'SIGNED_IN' && isMountedRef.current) {
+                toast({
+                  title: 'Welcome back!',
+                  description: 'You\'ve successfully signed in.'
+                });
+              }
+            } else {
+              if (isMountedRef.current) {
+                setSession(null);
+                setUser(null);
+                setIsAdmin(false);
+              }
+            }
+            
+            if (isMountedRef.current) {
+              setLoading(false);
+              setError(null);
+              setAuthInitialized(true);
+            }
+          }
+        );
+        
+        // Then check for existing session
         const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError) {
@@ -119,65 +128,26 @@ export function useAuth() {
         
         if (currentSession?.user && isMountedRef.current) {
           setSession(currentSession);
+          setUser(currentSession.user);
           
           // Check admin status
           const adminStatus = await checkUserRole(currentSession.user.id);
           if (isMountedRef.current) {
             setIsAdmin(adminStatus);
-            scheduleRefresh(currentSession);
           }
-        } else if (isMountedRef.current) {
-          setSession(null);
-          setIsAdmin(false);
         }
         
-        // Set up auth state change listener
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          async (event, newSession) => {
-            if (!isMountedRef.current) return;
-            
-            if (newSession?.user) {
-              setSession(newSession);
-              
-              // Check admin status
-              const adminStatus = await checkUserRole(newSession.user.id);
-              if (isMountedRef.current) {
-                setIsAdmin(adminStatus);
-                scheduleRefresh(newSession);
-              }
-              
-              if (event === 'SIGNED_IN') {
-                toast({
-                  title: 'Welcome back!',
-                  description: 'You\'ve successfully signed in.'
-                });
-              }
-            } else {
-              clearRefreshTimer();
-              
-              if (isMountedRef.current) {
-                setSession(null);
-                setIsAdmin(false);
-              }
-            }
-            
-            if (isMountedRef.current) {
-              setLoading(false);
-              setAuthInitialized(true);
-            }
+        // Syncing auth state across tabs
+        window.addEventListener('storage', (event) => {
+          if (event.key === 'supabase.auth.token' && isMountedRef.current) {
+            refreshSession();
           }
-        );
+        });
         
         // Handle tab visibility for session verification
-        const handleVisibilityChange = async () => {
-          if (!isMountedRef.current) return;
-          
-          if (document.visibilityState === 'visible' && session) {
-            try {
-              await refreshSession();
-            } catch (err) {
-              console.error('Session verification failed:', err);
-            }
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible' && isMountedRef.current) {
+            refreshSession();
           }
         };
         
@@ -185,9 +155,9 @@ export function useAuth() {
         
         // Handle online status changes
         const handleOnline = () => {
-          if (!isMountedRef.current) return;
-          
-          if (session) refreshSession();
+          if (isMountedRef.current && session) {
+            refreshSession();
+          }
         };
         
         window.addEventListener('online', handleOnline);
@@ -215,13 +185,12 @@ export function useAuth() {
     
     return () => {
       isMountedRef.current = false;
-      clearRefreshTimer();
     };
-  }, [clearRefreshTimer, refreshSession, scheduleRefresh, session, toast]);
+  }, [refreshSession, toast]);
 
   return {
     session,
-    user: session?.user || null,
+    user,
     loading,
     isAdmin,
     error,
