@@ -14,5 +14,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
 const originalFetch = supabase.auth.fetch;
 supabase.auth.fetch = async (input, init) => {
   console.log('Supabase Request Headers:', init?.headers);
+
+  // Log specific headers for debugging
+  if (init?.headers) {
+    console.log('Accept Header:', init.headers['Accept']);
+    console.log('Authorization Header:', init.headers['Authorization']);
+  }
+
   return originalFetch(input, init);
 };
