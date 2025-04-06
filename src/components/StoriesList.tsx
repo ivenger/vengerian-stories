@@ -11,13 +11,15 @@ interface StoriesListProps {
   loading: boolean;
   error?: string | null;
   onRetry?: () => void;
+  readPostIds?: string[];
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
   posts, 
   loading, 
   error,
-  onRetry
+  onRetry,
+  readPostIds = []
 }) => {
   if (error) {
     return (
@@ -68,7 +70,13 @@ const StoriesList: React.FC<StoriesListProps> = ({
   
   return (
     <div className="grid gap-8">
-      {posts.map(post => <BlogCard key={post.id} post={post} />)}
+      {posts.map(post => (
+        <BlogCard 
+          key={post.id} 
+          post={post} 
+          isRead={readPostIds.includes(post.id)} 
+        />
+      ))}
     </div>
   );
 };

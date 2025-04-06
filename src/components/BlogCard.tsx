@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, Globe } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
@@ -7,6 +7,7 @@ import { Badge } from './ui/badge';
 
 interface BlogCardProps {
   post: BlogEntry;
+  isRead?: boolean;
 }
 
 const hasCyrillic = (text: string): boolean => {
@@ -27,7 +28,7 @@ const getLanguageAbbreviation = (language: string): string => {
   return languageMap[language] || language.toLowerCase().substring(0, 2);
 };
 
-const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
+const BlogCard: React.FC<BlogCardProps> = ({ post, isRead = false }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
   
@@ -40,6 +41,13 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   return (
     <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
+        {isRead && (
+          <div className="absolute top-2 right-2 flex items-center text-blue-600">
+            <Eye size={16} className="mr-1" />
+            <span className="text-xs">Read</span>
+          </div>
+        )}
+        
         <div className="p-5">
           <div className={`flex flex-col md:${contentDirection} gap-4`}>
             {post.image_url && (

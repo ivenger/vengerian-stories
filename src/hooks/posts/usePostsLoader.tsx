@@ -29,17 +29,7 @@ export const usePostsLoader = () => {
         requestInProgressRef.current.abort();
         requestInProgressRef.current = null;
       }
-      
-      setPosts([]);
-      setError(null);
-      setLoading(false);
     };
-  }, []);
-  
-  useEffect(() => {
-    if (!mountedRef.current) return;
-    
-    setError(null);
   }, []);
   
   const loadPosts = useCallback(async (forceRefresh = false) => {

@@ -7,7 +7,7 @@ import { BlogEntry } from "../types/blogTypes";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
 import PostLoading from "@/components/blog/PostLoading";
-import { useReadingTracker } from "@/components/blog/useReadingTracker";
+import { useReadPosts } from "@/hooks/posts/useReadPosts";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +16,7 @@ const BlogPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchAttempted, setFetchAttempted] = useState(false);
+  const { markPostAsRead, hasReadPost } = useReadPosts();
 
   const fetchPostData = useCallback(async () => {
     if (!id) {
@@ -40,6 +41,8 @@ const BlogPost = () => {
       } else {
         console.log(`BlogPost: Successfully fetched post with title: ${postData.title}`);
         setPost(postData);
+        // Mark post as read when it loads successfully
+        markPostAsRead(id);
       }
     } catch (err) {
       console.error("BlogPost: Error fetching post:", err);
@@ -49,7 +52,7 @@ const BlogPost = () => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, markPostAsRead]);
 
   useEffect(() => {
     console.log("BlogPost: Post fetch effect triggered");
@@ -74,6 +77,8 @@ const BlogPost = () => {
       console.log("BlogPost: Cleaning up fetch effect");
     };
   }, [id, fetchPostData]);
+
+  const isRead = id ? hasReadPost(id) : false;
 
   return (
     <div>

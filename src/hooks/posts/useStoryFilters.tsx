@@ -5,34 +5,12 @@ import { usePostsLoader } from './usePostsLoader';
 
 export const useStoryFilters = () => {
   const { posts, loading, error, loadPosts, lastLoad } = usePostsLoader();
-  const { readPostIds, clearReadPosts } = useReadPosts();
+  const { readPostIds, markPostAsRead } = useReadPosts();
   
   // Use refs to track loading states
   const initialLoadDoneRef = useRef(false);
   const loadingInProgressRef = useRef(false);
-  const visibilityChangeSetupDoneRef = useRef(false);
   const mountedRef = useRef(true);
-  const visibilityListenerRef = useRef<null | (() => void)>(null);
-  const refreshTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
-  // Clear all timers and listeners
-  const cleanupAll = useCallback(() => {
-    if (refreshTimerRef.current) {
-      console.log("Cleaning up refresh timer");
-      clearInterval(refreshTimerRef.current);
-      refreshTimerRef.current = null;
-    }
-    
-    if (visibilityListenerRef.current) {
-      console.log("Removing visibility change listener");
-      document.removeEventListener('visibilitychange', visibilityListenerRef.current);
-      visibilityListenerRef.current = null;
-    }
-    
-    visibilityChangeSetupDoneRef.current = false;
-    initialLoadDoneRef.current = false;
-    loadingInProgressRef.current = false;
-  }, []);
   
   // Reset state on mount/unmount
   useEffect(() => {
@@ -70,52 +48,6 @@ export const useStoryFilters = () => {
       mountedRef.current = false;
       initialLoadDoneRef.current = false;
       loadingInProgressRef.current = false;
-      clearReadPosts(); // Clear read posts state on unmount
-      cleanupAll();
-    };
-  }, [loadPosts, cleanupAll, clearReadPosts]);
-  
-  // Handle visibility change to refresh posts when needed
-  useEffect(() => {
-    if (!mountedRef.current) return;
-    
-    // Skip if we've already set this up
-    if (visibilityChangeSetupDoneRef.current) {
-      console.log("Visibility change listener already set up, skipping");
-      return;
-    }
-    
-    visibilityChangeSetupDoneRef.current = true;
-    console.log("Setting up visibility change listener (once)");
-    
-    const handleVisibilityChange = () => {
-      if (!mountedRef.current) return;
-      
-      if (document.visibilityState === 'visible' && initialLoadDoneRef.current && !loadingInProgressRef.current) {
-        console.log("Page became visible - refreshing posts");
-        loadingInProgressRef.current = true;
-        
-        loadPosts(true).catch(err => {
-          console.error("Error refreshing posts on visibility change:", err);
-        }).finally(() => {
-          if (mountedRef.current) {
-            loadingInProgressRef.current = false;
-          }
-        });
-      }
-    };
-    
-    // Store the handler reference so we can clean it up properly
-    visibilityListenerRef.current = handleVisibilityChange;
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      if (visibilityListenerRef.current) {
-        console.log("Removing visibility change listener");
-        document.removeEventListener('visibilitychange', visibilityListenerRef.current);
-        visibilityListenerRef.current = null;
-      }
-      visibilityChangeSetupDoneRef.current = false;
     };
   }, [loadPosts]);
   
@@ -124,6 +56,7 @@ export const useStoryFilters = () => {
     loading,
     error,
     loadPosts,
-    readPostIds
+    readPostIds,
+    markPostAsRead
   };
 };
