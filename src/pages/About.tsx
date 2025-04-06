@@ -23,7 +23,6 @@ const About: React.FC = () => {
   const isFirstMount = useRef(true);
   const mountCountRef = useRef(0);
 
-  // Main effect for loading content
   useEffect(() => {
     console.log("About: Component mounting", {
       mountCount: ++mountCountRef.current,
@@ -59,7 +58,6 @@ const About: React.FC = () => {
         setIsLoading(true);
       }
 
-      // Clean up any existing request
       if (currentController) {
         console.log("About: Aborting existing request");
         currentController.abort();
@@ -76,7 +74,6 @@ const About: React.FC = () => {
 
         const data = await fetchAboutContent(currentController.signal);
 
-        // Check if the component is still mounted and this is still the current request
         if (!isMountedRef.current) {
           console.log("About: Fetch completed but component unmounted - discarding result");
           return;
@@ -177,7 +174,7 @@ const About: React.FC = () => {
       }
       fetchControllerRef.current = null;
     };
-  }, [toast, maxRetries]); // Removed content from dependencies
+  }, [toast, maxRetries]);
 
   const handleRetry = () => {
     console.log("About: Manual retry requested");

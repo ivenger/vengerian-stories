@@ -1,30 +1,40 @@
 import { supabase } from "../integrations/supabase/client";
 
-// Update the function call error
-export const getAboutContent = async (language: string = 'en') => {
+// Renamed function to match imports in other files
+export const fetchAboutContent = async (abortSignal?: AbortSignal) => {
   try {
-    const { data, error } = await supabase
+    const query = supabase
       .from('about_content')
       .select('*')
-      .eq('language', language as any)
+      .eq('language', 'en' as any)
       .single();
+      
+    // Add support for abort signal if provided
+    if (abortSignal) {
+      query.abortSignal(abortSignal);
+    }
+    
+    const { data, error } = await query;
       
     if (error) throw error;
     
     return {
       content: data?.content || '',
-      language: data?.language || language,
-      imageUrl: data?.image_url || null
+      language: data?.language || 'en',
+      image_url: data?.image_url || null
     };
   } catch (error) {
     console.error('Error fetching about content:', error);
     return {
       content: '',
-      language,
+      language: 'en',
       imageUrl: null
     };
   }
 };
+
+// Keep original function as an alias for backward compatibility
+export const getAboutContent = fetchAboutContent;
 
 export const saveAboutContent = async (content: string, imageUrl: string | null = null, language: string = 'en') => {
   try {

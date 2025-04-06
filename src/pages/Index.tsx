@@ -1,61 +1,71 @@
-
-// Import useState and the readingHistoryService
-import { useState, useEffect } from "react";
-import { useAuth } from "@/components/AuthProvider";
-import Navigation from "@/components/Navigation";
-import StoriesList from "@/components/StoriesList";
-import { useStoryFilters } from "@/hooks/useStoryFilters";
-import Footer from "@/components/Footer";
+import React, { useState, useEffect, useCallback } from 'react';
+import StoriesList from "../components/StoriesList";
+import Navigation from "../components/Navigation";
+import MultilingualTitle from "@/components/MultilingualTitle";
+import useStoryFilters from "@/hooks/useStoryFilters";
 import ActiveFilters from "@/components/ActiveFilters";
 import FilterDialog from "@/components/FilterDialog";
-import { readingHistoryService } from "@/services/blogService";
 
-const Index = () => {
-  const { user } = useAuth();
-  const storyFilters = useStoryFilters(user);  // Pass user as required argument
-  const [showFilters, setShowFilters] = useState(false);
+const Index: React.FC = () => {
+  const {
+    posts: filteredPosts,
+    allTags,
+    selectedTags,
+    showUnreadOnly,
+    isLoading,
+    error,
+    hasActiveFilters,
+    onToggleTag,
+    onToggleUnreadFilter,
+    onClearFilters,
+    onReloadPosts,
+    isFilterDialogOpen,
+    setIsFilterDialogOpen,
+    onOpenFiltersDialog
+  } = useStoryFilters();
 
-  const toggleFiltersDialog = () => {
-    setShowFilters(!showFilters);
-  };
+  const handleReloadPosts = useCallback(() => {
+    onReloadPosts();
+  }, [onReloadPosts]);
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <Navigation />
-      
-      <main className="flex-grow container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8">
+        <MultilingualTitle />
+        
+        {/* Filter UI */}
         <div className="mb-6">
-          <ActiveFilters 
-            hasActiveFilters={storyFilters.hasActiveFilters}
-            selectedTags={storyFilters.selectedTags} 
-            onToggleTag={storyFilters.toggleTag}
-            showUnreadOnly={storyFilters.showUnreadOnly}
-            onToggleUnreadFilter={storyFilters.toggleUnreadFilter}
-            onClearFilters={storyFilters.clearFilters}
-            onOpenFiltersDialog={toggleFiltersDialog}
+          <ActiveFilters
+            hasActiveFilters={hasActiveFilters}
+            selectedTags={selectedTags}
+            toggleTag={onToggleTag}
+            showUnreadOnly={showUnreadOnly}
+            toggleUnreadFilter={onToggleUnreadFilter}
+            clearFilters={onClearFilters}
+            openFiltersDialog={onOpenFiltersDialog}
           />
           
-          <FilterDialog 
-            isOpen={showFilters}
-            onClose={() => setShowFilters(false)}
-            allTags={storyFilters.allTags}
-            selectedTags={storyFilters.selectedTags}
-            onToggleTag={storyFilters.toggleTag}
-            showUnreadOnly={storyFilters.showUnreadOnly}
-            onToggleUnreadFilter={storyFilters.toggleUnreadFilter}
-            onClearFilters={storyFilters.clearFilters}
+          <FilterDialog
+            open={isFilterDialogOpen}
+            onOpenChange={setIsFilterDialogOpen}
+            allTags={allTags}
+            selectedTags={selectedTags}
+            toggleTag={onToggleTag}
+            showUnreadOnly={showUnreadOnly}
+            toggleUnreadFilter={onToggleUnreadFilter}
+            clearFilters={onClearFilters}
           />
         </div>
-        
+
+        {/* Stories List */}
         <StoriesList 
-          posts={storyFilters.posts} 
-          loading={storyFilters.loading} 
-          error={storyFilters.error} 
-          onReload={() => storyFilters.loadPosts(true)} 
+          posts={filteredPosts} 
+          loading={isLoading}
+          error={error}
+          reload={handleReloadPosts}
         />
-      </main>
-      
-      <Footer />
+      </div>
     </div>
   );
 };

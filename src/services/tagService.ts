@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 
 // Fetch all tags
@@ -105,5 +104,27 @@ export const deleteTag = async (tagName: string): Promise<boolean> => {
   } catch (error) {
     console.error('Failed to delete tag:', error);
     return false;
+  }
+};
+
+export const fetchTagsByLanguage = async (language = 'en') => {
+  try {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*');
+
+    if (error) {
+      throw error;
+    }
+
+    // Transform tags for the requested language
+    return data.map(tag => ({
+      id: tag.id,
+      name: tag[language] || tag.name || tag.en || '',
+      language
+    }));
+  } catch (error) {
+    console.error('Error fetching tags by language:', error);
+    return [];
   }
 };
