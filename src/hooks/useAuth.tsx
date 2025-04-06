@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -205,6 +204,18 @@ export function useAuth() {
               }
             }
             
+            if (!newSession?.user) {
+              setSession(null);
+              setUser(null);
+              setUserRoles([]);
+              clearRefreshTimer();
+              toast({
+                title: 'Session expired',
+                description: 'Please sign in again.',
+                variant: 'destructive',
+              });
+            }
+            
             setLoading(false);
           }
         );
@@ -216,7 +227,7 @@ export function useAuth() {
         if (currentSession?.user && isMounted) {
           setSession(currentSession);
           setUser(currentSession.user);
-          const roles = await fetchUserRoles(currentSession.user.id);
+          const roles = await fetchUserRoles(currentSession.user.id).catch(() => []);
           if (isMounted) setUserRoles(roles);
           scheduleRefresh(currentSession);
         }
@@ -227,10 +238,16 @@ export function useAuth() {
         const handleVisibilityChange = async () => {
           if (document.visibilityState === 'visible' && session) {
             try {
-              // Try to refresh the session proactively
               await refreshSession();
             } catch (err) {
               console.error('Session verification failed:', err);
+              setSession(null);
+              setUser(null);
+              toast({
+                title: 'Session expired',
+                description: 'Please sign in again.',
+                variant: 'destructive',
+              });
             }
           }
         };

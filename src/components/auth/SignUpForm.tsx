@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -25,6 +24,13 @@ export function SignUpForm() {
     // Validate passwords match
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setIsLoading(false);
+      return;
+    }
+
+    // Validate password strength
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password)) {
+      setError('Password must be at least 8 characters long and include letters and numbers.');
       setIsLoading(false);
       return;
     }
