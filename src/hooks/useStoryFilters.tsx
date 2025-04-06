@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,10 @@ export const useStoryFilters = () => {
   const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  
+  // Use refs to track state changes and prevent unnecessary renders
+  const loadedRef = useRef(false);
+  const filtersRef = useRef({ tags: selectedTags, unreadOnly: showUnreadOnly });
   
   // Max number of retries
   const MAX_RETRIES = 3;
@@ -59,6 +63,9 @@ export const useStoryFilters = () => {
     } catch (e) {
       console.error("Error saving filters to localStorage:", e);
     }
+    
+    // Update filters ref to track changes
+    filtersRef.current = { tags: selectedTags, unreadOnly: showUnreadOnly };
   }, [selectedTags, showUnreadOnly, user]);
 
   // Fetch reading history if user is logged in
@@ -107,6 +114,7 @@ export const useStoryFilters = () => {
         // Don't set error state for tags failure as it's not critical
       }
     };
+    
     loadTags();
   }, []);
 
@@ -208,7 +216,7 @@ export const useStoryFilters = () => {
         setLoading(false);
       }
     }
-  }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession, retryCount, isRetrying]);
+  }, [user, refreshSession, retryCount, isRetrying]);
 
   // Extract the filtering logic to a separate function for reuse
   const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
@@ -247,21 +255,24 @@ export const useStoryFilters = () => {
     }
   }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading, isRetrying]);
 
-  // Fetch posts on initial load
+  // Fetch posts on initial load - ONLY ONCE
   useEffect(() => {
+    if (loadedRef.current) return;
+    
     loadPosts();
+    loadedRef.current = true;
     
     // Set up a refresh timer to avoid stale data, but with a longer interval
     const refreshTimer = setInterval(() => {
       const now = Date.now();
-      if (now - lastLoad > 10 * 60 * 1000) {  // 10 minutes (increased from 5)
+      if (now - lastLoad > 10 * 60 * 1000) {  // 10 minutes
         console.log("It's been a while since posts were loaded, refreshing");
         loadPosts(true);
       }
     }, 60 * 1000);  // Check every minute
     
     return () => clearInterval(refreshTimer);
-  }, [loadPosts, lastLoad]);
+  }, []);  // Empty dependency array - load only once on mount
 
   const toggleTag = (tag: string) => {
     console.log(`Toggling tag: ${tag}`);
@@ -304,6 +315,6 @@ export const useStoryFilters = () => {
     toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
-    loadPosts // Expose reload function
+    loadPosts  // Expose reload function
   };
 };
