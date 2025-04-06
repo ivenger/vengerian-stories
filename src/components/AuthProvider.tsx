@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -70,8 +69,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       supabase.auth.signOut().then(() => {
         console.log("User signed out due to app version change");
         setSession(null);
-        setUser(null);
-        // Don't reload the page as it can cause loops - let React handle the state change
       }).catch(err => {
         console.error("Error during forced sign out:", err);
       });
