@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { useAuth } from '@/hooks/useAuth';
@@ -33,34 +34,4 @@ export function useAuthContext() {
     throw new Error('useAuthContext must be used within an AuthProvider');
   }
   return context;
-}
-
-if (!success) {
-  setSession(null);
-  setUser(null);
-  setUserRoles([]);
-  toast({
-    title: 'Session expired',
-    description: 'Please sign in again.',
-    variant: 'destructive',
-  });
-}
-
-catch (err: any) {
-  console.error('Sign in failed:', err);
-  toast({
-    title: 'Sign in failed',
-    description: err.message || 'An unexpected error occurred. Please try again.',
-    variant: 'destructive',
-  });
-  throw err;
-}
-
-if (error) {
-  toast({
-    title: 'Error',
-    description: 'Failed to sign out. Please try again.',
-    variant: 'destructive',
-  });
-  return false;
 }
