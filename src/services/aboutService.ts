@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 
 interface AboutContent {
@@ -10,79 +9,59 @@ interface AboutContent {
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
   console.log("AboutService: Fetching about content from Supabase");
   
-  // Create a promise that will be rejected if the signal is aborted
-  if (signal) {
-    if (signal.aborted) {
-      return Promise.reject(new DOMException("Aborted", "AbortError"));
+  try {
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
     }
-    
-    // If the signal is aborted during the fetch, reject the promise
-    const abortPromise = new Promise<never>((_, reject) => {
-      signal.addEventListener("abort", () => {
-        reject(new DOMException("Aborted", "AbortError"));
-      });
-    });
-    
-    // Race between the fetch and the abort
-    try {
-      const { data, error } = await Promise.race([
-        supabase
+
+    // Create the fetch promise that returns a proper Promise
+    const fetchPromise = new Promise<any>(async (resolve, reject) => {
+      try {
+        const result = await supabase
           .from('about_content')
           .select('*')
           .eq('language', 'en')
-          .maybeSingle(),
-        abortPromise
-      ]);
-      
-      if (error) {
-        console.error("AboutService: Error fetching about content:", error);
-        throw error;
+          .maybeSingle();
+        resolve(result);
+      } catch (error) {
+        reject(error);
       }
-      
-      if (!data) {
-        console.warn("AboutService: No about content found");
-        return {
-          content: "Content coming soon...",
-          image_url: null,
-          language: "en"
-        };
-      }
-      
-      console.log("AboutService: About content fetched successfully");
-      return data as AboutContent;
-    } catch (error) {
-      console.error("AboutService: Failed to fetch about content:", error);
+    });
+
+    // Create promises array for racing
+    const promises: Promise<any>[] = [fetchPromise];
+
+    if (signal) {
+      promises.push(
+        new Promise((_, reject) => {
+          signal.addEventListener('abort', () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        })
+      );
+    }
+
+    const { data, error } = await Promise.race(promises);
+    
+    if (error) {
+      console.error("AboutService: Error fetching about content:", error);
       throw error;
     }
-  } else {
-    // If no signal is provided, just fetch normally
-    try {
-      const { data, error } = await supabase
-        .from('about_content')
-        .select('*')
-        .eq('language', 'en')
-        .maybeSingle();
-      
-      if (error) {
-        console.error("AboutService: Error fetching about content:", error);
-        throw error;
-      }
-      
-      if (!data) {
-        console.warn("AboutService: No about content found");
-        return {
-          content: "Content coming soon...",
-          image_url: null,
-          language: "en"
-        };
-      }
-      
-      console.log("AboutService: About content fetched successfully");
-      return data as AboutContent;
-    } catch (error) {
-      console.error("AboutService: Failed to fetch about content:", error);
-      throw error;
+    
+    if (!data) {
+      console.warn("AboutService: No about content found");
+      return {
+        content: "Content coming soon...",
+        image_url: null,
+        language: "en"
+      };
     }
+    
+    console.log("AboutService: About content fetched successfully");
+    return data as AboutContent;
+  } catch (error) {
+    console.error("AboutService: Failed to fetch about content:", error);
+    throw error;
   }
 };
 

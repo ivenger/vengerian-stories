@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -23,94 +22,80 @@ const About: React.FC = () => {
   const fetchControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Set mounted flag
     isMountedRef.current = true;
-    
-    // Reset loading state on component mount
     setIsLoading(true);
     setError(null);
+    fetchAttempts.current = 0;
     
     const loadAboutContent = async () => {
-      // If there's an existing fetch, abort it
+      // Cancel any existing request
       if (fetchControllerRef.current) {
-        console.log("About: Aborting previous fetch");
         fetchControllerRef.current.abort();
       }
       
-      // Create a new AbortController for this fetch
+      // Create new controller for this request
       fetchControllerRef.current = new AbortController();
       
       try {
-        if (fetchAttempts.current > 0) {
-          console.log(`About: Retry attempt ${fetchAttempts.current} of ${maxRetries}`);
-        } else {
-          console.log("About: Fetching about content...");
-        }
-        
+        console.log("About: Fetching about content...");
         const data = await fetchAboutContent(fetchControllerRef.current.signal);
         
-        // Only update state if component is still mounted
-        if (isMountedRef.current) {
-          console.log("About: Content fetched successfully:", data);
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
-          setIsLoading(false);
-          setError(null);
-          // Reset retry counter on success
-          fetchAttempts.current = 0;
+        // Guard against unmount
+        if (!isMountedRef.current) {
+          console.log("About: Component unmounted during fetch, skipping state updates");
+          return;
         }
+
+        console.log("About: Content fetched successfully:", data);
+        setContent(data.content || "");
+        setImageUrl(data.image_url);
+        setIsLoading(false);
+        setError(null);
+        fetchAttempts.current = 0;
       } catch (error: any) {
-        console.error("About: Error loading about content:", error);
-        
-        // Don't update state if aborted or component unmounted
+        // Don't handle aborted requests
         if (error.name === 'AbortError') {
           console.log("About: Fetch aborted");
           return;
         }
-        
-        // Only update state if component is still mounted
-        if (isMountedRef.current) {
-          if (fetchAttempts.current < maxRetries) {
-            // Retry with exponential backoff
-            const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
-            fetchAttempts.current += 1;
-            
-            console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
-            setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
-            
-            setTimeout(() => {
-              if (isMountedRef.current) {
-                loadAboutContent();
-              }
-            }, retryDelay);
-          } else {
-            // Max retries reached
-            setError("Content could not be loaded. Please try again later.");
-            setIsLoading(false);
-            
-            // Show toast for user feedback
-            toast({
-              title: "Loading Error",
-              description: "Failed to load about content after multiple attempts.",
-              variant: "destructive"
-            });
-          }
+
+        // Guard against unmount
+        if (!isMountedRef.current) {
+          console.log("About: Component unmounted during error handling, skipping state updates");
+          return;
         }
-      } finally {
-        // Clear the controller reference if this is the current fetch
-        if (isMountedRef.current && fetchControllerRef.current) {
-          fetchControllerRef.current = null;
+
+        console.error("About: Error loading about content:", error);
+        
+        if (fetchAttempts.current < maxRetries) {
+          const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
+          fetchAttempts.current += 1;
+          
+          console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
+          setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
+          
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              loadAboutContent();
+            }
+          }, retryDelay);
+        } else {
+          setError("Content could not be loaded. Please try again later.");
+          setIsLoading(false);
+          toast({
+            title: "Loading Error",
+            description: "Failed to load about content after multiple attempts.",
+            variant: "destructive"
+          });
         }
       }
     };
 
     loadAboutContent();
     
-    // Cleanup function to prevent state updates on unmounted component
     return () => {
+      console.log("About: Component unmounting, cleaning up");
       isMountedRef.current = false;
-      
-      // Abort any in-progress fetch when component unmounts
       if (fetchControllerRef.current) {
         console.log("About: Aborting fetch on unmount");
         fetchControllerRef.current.abort();
