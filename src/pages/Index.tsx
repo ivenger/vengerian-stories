@@ -52,7 +52,7 @@ const Index = () => {
           <StoriesList 
             posts={posts} 
             loading={loading} 
-            error={error}
+            error={error ? error.message : null}
             onRetry={() => {
               if (isMountedRef.current) {
                 loadPosts(true);
