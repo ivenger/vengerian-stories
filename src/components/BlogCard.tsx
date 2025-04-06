@@ -1,9 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, Globe } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
-import { supabase } from '@/integrations/supabase/client';
 import { Badge } from './ui/badge';
 
 interface BlogCardProps {
@@ -31,7 +30,6 @@ const getLanguageAbbreviation = (language: string): string => {
 const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
-  const [isRead, setIsRead] = useState(false);
   
   // Determine layout direction based on language
   const isHebrewPost = post.language?.includes('Hebrew');

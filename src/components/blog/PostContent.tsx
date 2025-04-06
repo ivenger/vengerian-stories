@@ -8,8 +8,6 @@ import { Badge } from "../ui/badge";
 
 interface PostContentProps {
   post: BlogEntry;
-  isUserLoggedIn: boolean;
-  isRead: boolean;
 }
 
 const getLanguageAbbreviation = (language: string): string => {
@@ -26,7 +24,7 @@ const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
 };
 
-const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead }) => {
+const PostContent: React.FC<PostContentProps> = ({ post }) => {
   const isRtl = post.language?.includes('Hebrew') || hasHebrew(post.title);
   const contentDirection = isRtl ? 'rtl' : 'ltr';
   const textAlignment = isRtl ? 'text-right' : 'text-left';
@@ -37,8 +35,6 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
       className={`bg-white rounded-lg shadow-md overflow-hidden relative max-w-4xl mx-auto ${textAlignment}`}
       dir={contentDirection}
     >
-      {isUserLoggedIn && <ReadStatus isRead={isRead} />}
-
       <div className="p-8">
         <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
 

@@ -15,7 +15,6 @@ const BlogPost = () => {
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { isRead } = useReadingTracker(id);
   const [fetchAttempted, setFetchAttempted] = useState(false);
 
   const fetchPostData = useCallback(async () => {
@@ -85,7 +84,7 @@ const BlogPost = () => {
         ) : error || !post ? (
           <PostError error={error} />
         ) : (
-          <PostContent post={post} isUserLoggedIn={false} isRead={isRead} />
+          <PostContent post={post} />
         )}
       </div>
     </div>
