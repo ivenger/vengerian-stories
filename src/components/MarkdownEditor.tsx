@@ -1,3 +1,5 @@
+
+// Just updating the import statement at the top of the file
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -13,7 +15,9 @@ import {
   Image
 } from "lucide-react";
 import { format, parse } from "date-fns";
-import { fetchAllPosts, fetchAllTags, fetchBucketImages, fetchTagsByLanguage } from "../services/blogService";
+import { fetchAllPosts } from "../services/postService";
+import { fetchAllTags, fetchTagsByLanguage } from "../services/tagService";
+import { fetchBucketImages } from "../services/imageService";
 import { useToast } from "../hooks/use-toast";
 import { 
   Select,

@@ -1,5 +1,29 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
+
+// Fetch all blog posts (for admin purposes)
+export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
+  console.log('Fetching all posts');
+  
+  try {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('*')
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching all posts:', error);
+      throw error;
+    }
+    
+    console.log(`Fetched ${data?.length || 0} posts`);
+    return data as BlogEntry[] || [];
+  } catch (error) {
+    console.error('Failed to fetch all posts:', error);
+    throw error;
+  }
+};
 
 // Fetch a blog post by ID
 export const fetchPostById = async (id: string): Promise<BlogEntry> => {
