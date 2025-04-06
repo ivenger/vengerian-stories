@@ -20,23 +20,31 @@ const About: React.FC = () => {
   const fetchAttempts = useRef(0);
   const maxRetries = 3;
   const fetchControllerRef = useRef<AbortController | null>(null);
+  const isFirstMount = useRef(true);
 
   useEffect(() => {
     isMountedRef.current = true;
-    fetchAttempts.current = 0;
+    
+    // Only reset fetch attempts if this isn't a remount during route transition
+    if (isFirstMount.current) {
+      fetchAttempts.current = 0;
+      isFirstMount.current = false;
+    }
+
     let currentController: AbortController | null = null;
 
     const loadAboutContent = async () => {
-      // Clear any existing error state and show loading
-      setError(null);
-      setIsLoading(true);
+      if (!isMountedRef.current) return;
 
-      // Cancel any in-flight request
+      setError(null);
+      if (fetchAttempts.current === 0) {
+        setIsLoading(true);
+      }
+
       if (currentController) {
         currentController.abort();
       }
 
-      // Create new controller for this request
       currentController = new AbortController();
       fetchControllerRef.current = currentController;
 
@@ -44,7 +52,6 @@ const About: React.FC = () => {
         console.log("About: Fetching about content...");
         const data = await fetchAboutContent(currentController.signal);
 
-        // Only update state if this is still the current request
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
           console.log("About: Content fetched successfully");
           setContent(data.content || "");
@@ -53,13 +60,14 @@ const About: React.FC = () => {
           fetchAttempts.current = 0;
         }
       } catch (error: any) {
-        // Ignore aborted requests
+        if (!isMountedRef.current) return;
+        
         if (error.name === "AbortError") {
           console.log("About: Fetch aborted");
+          // Don't set error state for aborted requests during unmount
           return;
         }
 
-        // Only handle error if this is still the current request
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
           console.error("About: Error loading about content:", error);
 
@@ -70,7 +78,6 @@ const About: React.FC = () => {
             console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
             setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
 
-            // Schedule retry
             setTimeout(() => {
               if (isMountedRef.current) {
                 loadAboutContent();
@@ -86,21 +93,18 @@ const About: React.FC = () => {
           }
         }
       } finally {
-        // Only update loading state if this is still the current request
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
           setIsLoading(false);
         }
       }
     };
 
-    // Start initial load
     loadAboutContent();
 
     return () => {
       console.log("About: Component unmounting, cleaning up");
       isMountedRef.current = false;
       
-      // Abort any in-flight request
       if (currentController) {
         console.log("About: Aborting fetch on unmount");
         currentController.abort();
@@ -115,13 +119,11 @@ const About: React.FC = () => {
     setError(null);
     fetchAttempts.current = 0;
     
-    // Create a new AbortController for the retry
     if (fetchControllerRef.current) {
       fetchControllerRef.current.abort();
     }
     fetchControllerRef.current = new AbortController();
     
-    // Fetch the content again
     fetchAboutContent(fetchControllerRef.current.signal)
       .then(data => {
         if (isMountedRef.current) {
@@ -138,8 +140,8 @@ const About: React.FC = () => {
           setIsLoading(false);
           
           toast({
-            title: "Loading Error",
-            description: "Failed to load about content. Please try again.",
+            title: "Error",
+            description: "Failed to load content on retry.",
             variant: "destructive"
           });
         }
@@ -148,7 +150,6 @@ const About: React.FC = () => {
 
   const formatContent = (text: string) => {
     if (!text) return "";
-    
     let html = text.replace(/\n/g, "<br>");
     return html;
   };
