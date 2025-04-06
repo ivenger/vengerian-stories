@@ -128,6 +128,36 @@ export const useStoryFilters = () => {
     return delay + (Math.random() * 1000);
   };
 
+  // Extract the filtering logic to a separate function for reuse
+  // MOVED THIS UP before loadPosts to fix the circular reference
+  const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
+    console.log("Applying filters to posts", {
+      totalPosts: postsToFilter.length,
+      selectedTags,
+      showUnreadOnly
+    });
+    
+    let filteredPosts = [...postsToFilter];
+    
+    if (selectedTags.length > 0) {
+      console.log("Filtering by tags:", selectedTags);
+      filteredPosts = filteredPosts.filter(post => {
+        if (!post.tags) return false;
+        return selectedTags.some(tag => post.tags?.includes(tag));
+      });
+      console.log(`${filteredPosts.length} posts after tag filtering`);
+    }
+    
+    // Apply read/unread filter if enabled
+    if (showUnreadOnly && user) {
+      console.log("Filtering for unread posts, read IDs:", readPostIds);
+      filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
+      console.log(`${filteredPosts.length} posts after unread filter`);
+    }
+    
+    setPosts(filteredPosts);
+  }, [selectedTags, showUnreadOnly, user, readPostIds]);
+
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
     // Prevent multiple simultaneous fetch attempts
@@ -235,35 +265,6 @@ export const useStoryFilters = () => {
       }, 500);
     }
   }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
-
-  // Extract the filtering logic to a separate function for reuse
-  const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
-    console.log("Applying filters to posts", {
-      totalPosts: postsToFilter.length,
-      selectedTags,
-      showUnreadOnly
-    });
-    
-    let filteredPosts = [...postsToFilter];
-    
-    if (selectedTags.length > 0) {
-      console.log("Filtering by tags:", selectedTags);
-      filteredPosts = filteredPosts.filter(post => {
-        if (!post.tags) return false;
-        return selectedTags.some(tag => post.tags?.includes(tag));
-      });
-      console.log(`${filteredPosts.length} posts after tag filtering`);
-    }
-    
-    // Apply read/unread filter if enabled
-    if (showUnreadOnly && user) {
-      console.log("Filtering for unread posts, read IDs:", readPostIds);
-      filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
-      console.log(`${filteredPosts.length} posts after unread filter`);
-    }
-    
-    setPosts(filteredPosts);
-  }, [selectedTags, showUnreadOnly, user, readPostIds]);
 
   // When filters change, apply them to the original posts
   useEffect(() => {
