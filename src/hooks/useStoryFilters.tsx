@@ -1,6 +1,5 @@
-
 import { useState, useEffect, useCallback } from 'react';
-import { Post } from '../types'; 
+import { Post, BlogEntry } from '../types'; 
 import { useAuth } from '../components/AuthProvider';
 
 const useStoryFilters = () => {
@@ -118,7 +117,7 @@ const useStoryFilters = () => {
           const updatedPosts = prevFilteredPosts.map(post => ({
             ...post,
             isRead: readPostIds.has(post.id),
-          }));
+          })) as BlogEntry[];
           
           console.log("useStoryFilters: Posts updated with reading history", { updatedCount: updatedPosts.length });
           return updatedPosts;

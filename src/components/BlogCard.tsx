@@ -30,8 +30,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     
     const checkReadStatus = async () => {
       try {
-        // Use the service function instead of direct query
-        const hasRead = await readingHistoryService.hasReadPost(post.id, user.id);
+        // Fix: Use hasUserReadPost instead of hasReadPost
+        const hasRead = await readingHistoryService.hasUserReadPost(post.id, user.id);
         setIsRead(hasRead);
       } catch (err) {
         console.error("Error checking post read status:", err);

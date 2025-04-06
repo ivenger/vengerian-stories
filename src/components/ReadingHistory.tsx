@@ -33,8 +33,8 @@ const ReadingHistory = () => {
         const publishedPosts = posts.filter(post => post.status === "published");
         setAllPosts(publishedPosts);
         
-        // Fetch reading history
-        const readPostIds = await readingHistoryService.getReadPostIds(user.id);
+        // Fix: Use correct function name getUserReadPostIds
+        const readPostIds = await readingHistoryService.getUserReadPostIds(user.id);
         setReadPosts(readPostIds);
       } catch (err: any) {
         console.error("ReadingHistory: Error fetching reading data:", err);

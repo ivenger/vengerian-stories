@@ -19,8 +19,8 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
 
       console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
-        // Use the service function instead of direct query
-        const hasRead = await readingHistoryService.hasReadPost(postId, user.id);
+        // Fix: Use hasUserReadPost instead of hasReadPost
+        const hasRead = await readingHistoryService.hasUserReadPost(postId, user.id);
         
         if (isMounted) {
           console.log(`ReadingTracker: Read status is ${hasRead}`);
@@ -52,10 +52,10 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
         
-        // Use the service function instead of direct insert
-        const success = await readingHistoryService.markPostAsRead(postId, user.id);
+        // Fix: Use markPostAsRead and don't check return value
+        await readingHistoryService.markPostAsRead(postId, user.id);
 
-        if (isMounted && success) {
+        if (isMounted) {
           console.log("ReadingTracker: Successfully marked post as read");
           setIsRead(true);
         }
