@@ -63,20 +63,25 @@ export const useStoryFilters = (user: User | null) => {
   const fetchInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
   const pageKey = useRef(Math.random().toString(36).substring(7));
-  
+  const refreshTimerRef = useRef<NodeJS.Timeout>();
+
   // Max number of retries
   const MAX_RETRIES = 3;
   
-  // Reset mounted state on unmount
+  // Reset mounted state and cleanup on unmount
   useEffect(() => {
     console.log("StoryFilters: Component mounted with key", pageKey.current);
     isMountedRef.current = true;
-    // Reset loading state on mount to ensure we're showing loading state when navigating back
+    loadedRef.current = false; // Reset loaded state on mount
     setLoading(true);
     
     return () => {
       console.log("StoryFilters: Component unmounting");
       isMountedRef.current = false;
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+      }
+      fetchInProgressRef.current = false;
     };
   }, []);
   
@@ -122,11 +127,7 @@ export const useStoryFilters = (user: User | null) => {
 
   // Fetch reading history if user is logged in
   useEffect(() => {
-    if (!user) {
-      setReadPostIds([]);
-      setShowUnreadOnly(false);
-      return;
-    }
+    if (!user || !isMountedRef.current) return;
     
     const fetchReadPosts = async () => {
       try {
@@ -164,6 +165,7 @@ export const useStoryFilters = (user: User | null) => {
   // Fetch all available tags
   useEffect(() => {
     const loadTags = async () => {
+      if (!isMountedRef.current) return;
       try {
         console.log("Fetching all tags...");
         const tags = await fetchAllTags();
@@ -385,8 +387,8 @@ export const useStoryFilters = (user: User | null) => {
 
   // Fetch posts on initial load or when dependencies change
   useEffect(() => {
-    if (loadedRef.current) {
-      console.log("Posts already loaded, skipping initial fetch");
+    if (!isMountedRef.current || loadedRef.current) {
+      console.log("Posts already loaded or component unmounted, skipping initial fetch");
       return;
     }
     
@@ -394,8 +396,8 @@ export const useStoryFilters = (user: User | null) => {
     loadPosts();
     loadedRef.current = true;
     
-    // Set up a refresh timer to avoid stale data, but with a longer interval
-    const refreshTimer = setInterval(() => {
+    // Set up a refresh timer to avoid stale data
+    refreshTimerRef.current = setInterval(() => {
       const now = Date.now();
       if (now - lastLoad > 10 * 60 * 1000 && isMountedRef.current) {  // 10 minutes
         console.log("It's been a while since posts were loaded, refreshing");
@@ -403,7 +405,11 @@ export const useStoryFilters = (user: User | null) => {
       }
     }, 60 * 1000);  // Check every minute
     
-    return () => clearInterval(refreshTimer);
+    return () => {
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+      }
+    };
   }, [loadPosts, lastLoad]);
 
   const toggleTag = (tag: string) => {
