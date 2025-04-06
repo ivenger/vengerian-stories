@@ -24,6 +24,7 @@ export const useStoryFilters = () => {
   // Use refs to track state changes and prevent unnecessary renders
   const loadedRef = useRef(false);
   const filtersRef = useRef({ tags: selectedTags, unreadOnly: showUnreadOnly });
+  const fetchInProgressRef = useRef(false);
   
   // Max number of retries
   const MAX_RETRIES = 3;
@@ -129,7 +130,16 @@ export const useStoryFilters = () => {
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
-    if (isRetrying) return; // Avoid multiple retries happening simultaneously
+    // Prevent multiple simultaneous fetch attempts
+    if (fetchInProgressRef.current && !forceRefresh) {
+      console.log("Fetch already in progress, skipping");
+      return;
+    }
+    
+    if (isRetrying) {
+      console.log("Retry in progress, skipping");
+      return;
+    }
     
     console.log("loadPosts called with filters:", { 
       selectedTags, 
@@ -139,6 +149,7 @@ export const useStoryFilters = () => {
       retryCount
     });
     
+    fetchInProgressRef.current = true;
     setLoading(true);
     setError(null);
     setLastLoad(Date.now());
@@ -175,6 +186,7 @@ export const useStoryFilters = () => {
             setIsRetrying(true);
             setTimeout(() => {
               setIsRetrying(false);
+              fetchInProgressRef.current = false;
               loadPosts(false);
             }, 1000);
             return;
@@ -196,6 +208,7 @@ export const useStoryFilters = () => {
         // Schedule retry with backoff
         setTimeout(() => {
           setIsRetrying(false);
+          fetchInProgressRef.current = false;
           loadPosts(false);
         }, backoffDelay);
       } else {
@@ -215,8 +228,13 @@ export const useStoryFilters = () => {
         console.log("Setting loading to false");
         setLoading(false);
       }
+      
+      // Clear the fetch in progress flag after a short delay to prevent rapid repeated calls
+      setTimeout(() => {
+        fetchInProgressRef.current = false;
+      }, 500);
     }
-  }, [user, refreshSession, retryCount, isRetrying]);
+  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
 
   // Extract the filtering logic to a separate function for reuse
   const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
@@ -250,8 +268,13 @@ export const useStoryFilters = () => {
   // When filters change, apply them to the original posts
   useEffect(() => {
     if (originalPosts.length > 0 && !loading && !isRetrying) {
-      console.log("Filters changed, applying to cached posts");
-      applyFilters(originalPosts);
+      // Only apply filters if they've actually changed from what we last applied
+      const currentFilters = { tags: selectedTags, unreadOnly: showUnreadOnly };
+      if (JSON.stringify(currentFilters) !== JSON.stringify(filtersRef.current)) {
+        console.log("Filters changed, applying to cached posts");
+        applyFilters(originalPosts);
+        filtersRef.current = currentFilters;
+      }
     }
   }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading, isRetrying]);
 
