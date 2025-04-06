@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -180,7 +179,7 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
     // First check if the record already exists to avoid 406 errors
     const { data: existingRecord } = await supabase
       .from('reading_history')
-      .select('*')
+      .select('user_id, post_id') // Specify columns explicitly
       .eq('user_id', userId)
       .eq('post_id', postId)
       .maybeSingle();
@@ -219,7 +218,7 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
   try {
     const { data, error } = await supabase
       .from('reading_history')
-      .select('*')
+      .select('user_id, post_id') // Specify columns explicitly
       .eq('user_id', userId)
       .eq('post_id', postId)
       .maybeSingle();

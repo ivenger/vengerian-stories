@@ -19,7 +19,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         const { data, error } = await supabase
           .from('reading_history')
-          .select('*', { head: true, count: 'exact' }) // Explicitly set headers
+          .select('user_id, post_id') // Specify columns explicitly
           .eq('user_id', user.id)
           .eq('post_id', postId)
           .single();
