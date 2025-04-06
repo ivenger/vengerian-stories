@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 
 interface AboutContent {
@@ -9,65 +10,79 @@ interface AboutContent {
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
   console.log("AboutService: Fetching about content from Supabase");
   
-  try {
-    // Immediately check if already aborted
-    if (signal?.aborted) {
-      throw new DOMException("Aborted", "AbortError");
+  // Create a promise that will be rejected if the signal is aborted
+  if (signal) {
+    if (signal.aborted) {
+      return Promise.reject(new DOMException("Aborted", "AbortError"));
     }
-
-    // Create an abort handler promise if signal provided
-    let abortPromise: Promise<never> | undefined;
-    if (signal) {
-      abortPromise = new Promise((_, reject) => {
-        // Handle both immediate and future aborts
-        const abortHandler = () => reject(new DOMException("Aborted", "AbortError"));
-        signal.addEventListener("abort", abortHandler);
+    
+    // If the signal is aborted during the fetch, reject the promise
+    const abortPromise = new Promise<never>((_, reject) => {
+      signal.addEventListener("abort", () => {
+        reject(new DOMException("Aborted", "AbortError"));
       });
-    }
-
-    // Wrap Supabase query in a proper promise
-    const fetchPromise = new Promise<{ data: AboutContent | null; error: any }>(async (resolve, reject) => {
-      try {
-        const result = await supabase
+    });
+    
+    // Race between the fetch and the abort
+    try {
+      const { data, error } = await Promise.race([
+        supabase
           .from('about_content')
           .select('*')
           .eq('language', 'en')
-          .maybeSingle();
-        resolve(result);
-      } catch (error) {
-        reject(error);
+          .maybeSingle(),
+        abortPromise
+      ]);
+      
+      if (error) {
+        console.error("AboutService: Error fetching about content:", error);
+        throw error;
       }
-    });
-
-    // Race between fetch and abort if signal provided
-    const { data, error } = await (abortPromise 
-      ? Promise.race([fetchPromise, abortPromise])
-      : fetchPromise);
-
-    if (error) {
-      console.error("AboutService: Error fetching about content:", error);
+      
+      if (!data) {
+        console.warn("AboutService: No about content found");
+        return {
+          content: "Content coming soon...",
+          image_url: null,
+          language: "en"
+        };
+      }
+      
+      console.log("AboutService: About content fetched successfully");
+      return data as AboutContent;
+    } catch (error) {
+      console.error("AboutService: Failed to fetch about content:", error);
       throw error;
     }
-
-    if (!data) {
-      console.warn("AboutService: No about content found");
-      return {
-        content: "Content coming soon...",
-        image_url: null,
-        language: "en"
-      };
-    }
-
-    console.log("AboutService: About content fetched successfully");
-    return data as AboutContent;
-  } catch (error) {
-    // Log and rethrow the error, maintaining its type
-    if (error instanceof DOMException && error.name === "AbortError") {
-      console.log("AboutService: Fetch aborted");
-    } else {
+  } else {
+    // If no signal is provided, just fetch normally
+    try {
+      const { data, error } = await supabase
+        .from('about_content')
+        .select('*')
+        .eq('language', 'en')
+        .maybeSingle();
+      
+      if (error) {
+        console.error("AboutService: Error fetching about content:", error);
+        throw error;
+      }
+      
+      if (!data) {
+        console.warn("AboutService: No about content found");
+        return {
+          content: "Content coming soon...",
+          image_url: null,
+          language: "en"
+        };
+      }
+      
+      console.log("AboutService: About content fetched successfully");
+      return data as AboutContent;
+    } catch (error) {
       console.error("AboutService: Failed to fetch about content:", error);
+      throw error;
     }
-    throw error;
   }
 };
 
