@@ -74,6 +74,8 @@ export const useStoryFilters = (user: User | null) => {
     isMountedRef.current = true;
     loadedRef.current = false; // Reset loaded state on mount
     setLoading(true);
+    setIsRetrying(false);
+    setRetryCount(0);
     
     return () => {
       console.log("StoryFilters: Component unmounting");
@@ -81,7 +83,8 @@ export const useStoryFilters = (user: User | null) => {
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
       }
-      fetchInProgressRef.current = false;
+      fetchInProgressRef.current = false; // Reset fetch in progress on unmount
+      setIsRetrying(false);
     };
   }, []);
   
@@ -223,20 +226,21 @@ export const useStoryFilters = (user: User | null) => {
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
-    // Reset loading state on force refresh
-    if (forceRefresh) {
-      setLoading(true);
-      setError(null);
+    // Don't start a new fetch if one is in progress or component is unmounting
+    if (!isMountedRef.current) {
+      console.log("Component unmounted, skipping fetch");
+      return;
     }
-    
-    // Prevent multiple simultaneous fetch attempts
-    if (fetchInProgressRef.current && !forceRefresh) {
-      console.log("Fetch already in progress, skipping");
+
+    // If retrying, only proceed if this is a forced refresh
+    if (isRetrying && !forceRefresh) {
+      console.log("Retry in progress, skipping non-forced fetch");
       return;
     }
     
-    if (isRetrying) {
-      console.log("Retry in progress, skipping");
+    // Prevent multiple simultaneous fetch attempts unless forced
+    if (fetchInProgressRef.current && !forceRefresh) {
+      console.log("Fetch already in progress, skipping non-forced fetch");
       return;
     }
     
@@ -266,20 +270,20 @@ export const useStoryFilters = (user: User | null) => {
       const allPosts = await fetchFilteredPosts();
       console.log(`Received ${allPosts.length} total posts from API`);
       
-      // Check if component is still mounted before updating state
+      // Bail out if component unmounted during fetch
       if (!isMountedRef.current) {
-        console.log("Component unmounted, skipping state updates");
+        console.log("Component unmounted during fetch, skipping state updates");
         return;
       }
       
       setOriginalPosts(allPosts);
-      
-      // Apply filters
       applyFilters(allPosts);
       
-      // Reset retry count on success
+      // Reset retry count and loading state on success
       setRetryCount(0);
+      setIsRetrying(false);
       setLoading(false);
+      
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
@@ -295,24 +299,18 @@ export const useStoryFilters = (user: User | null) => {
         if (user) {
           const refreshed = await refreshSession();
           if (refreshed) {
-            // If refresh successful, try loading posts again without incrementing retry count
             console.log("Session refreshed, retrying post load");
             setIsRetrying(true);
+            // Always clean up the current fetch before scheduling a retry
+            fetchInProgressRef.current = false;
             setTimeout(() => {
               if (isMountedRef.current) {
-                setIsRetrying(false);
-                fetchInProgressRef.current = false;
-                loadPosts(false);
+                loadPosts(true); // Force refresh after auth error
               }
             }, 1000);
             return;
           }
         }
-      }
-      
-      if (!isMountedRef.current) {
-        console.log("Component unmounted during auth error handling, skipping state updates");
-        return;
       }
       
       // Check if we should retry
@@ -322,19 +320,20 @@ export const useStoryFilters = (user: User | null) => {
         
         console.log(`Retry ${nextRetryCount}/${MAX_RETRIES} scheduled in ${backoffDelay}ms`);
         setRetryCount(nextRetryCount);
-        
         setError(`Network error. Retrying in ${Math.round(backoffDelay/1000)} seconds...`);
         setIsRetrying(true);
+        
+        // Clean up the current fetch before scheduling retry
+        fetchInProgressRef.current = false;
         
         // Schedule retry with backoff
         setTimeout(() => {
           if (isMountedRef.current) {
             console.log(`Executing retry ${nextRetryCount}/${MAX_RETRIES}`);
-            setIsRetrying(false);
-            fetchInProgressRef.current = false;
-            loadPosts(false);
+            loadPosts(true); // Force refresh on retry
           } else {
-            console.log("Component unmounted during retry, cancelling");
+            console.log("Component unmounted during retry delay, cancelling");
+            setIsRetrying(false);
           }
         }, backoffDelay);
       } else {
@@ -345,24 +344,16 @@ export const useStoryFilters = (user: User | null) => {
             : "Failed to load stories. Please try again later."
         );
         setPosts([]);
-        // Reset retry count
         setRetryCount(0);
+        setIsRetrying(false);
         setLoading(false);
       }
     } finally {
-      // Only set loading to false if we're not scheduling a retry
-      // and the component is still mounted
-      if (!isRetrying && isMountedRef.current) {
-        console.log("Setting loading to false");
+      // If we're not retrying, we can safely reset all state
+      if (!isRetrying) {
+        fetchInProgressRef.current = false;
         setLoading(false);
       }
-      
-      // Clear the fetch in progress flag after a short delay to prevent rapid repeated calls
-      setTimeout(() => {
-        if (isMountedRef.current) {
-          fetchInProgressRef.current = false;
-        }
-      }, 500);
     }
   }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
 
