@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +46,7 @@ const ReadingHistory = () => {
         setAllPosts(posts || []);
         setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
       } catch (err: any) {
-        console.error("Error fetching reading data:", err);
+        console.error("ReadingHistory: Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");
       } finally {
         setLoading(false);

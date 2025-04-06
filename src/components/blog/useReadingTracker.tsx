@@ -25,7 +25,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           .single();
 
         if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-          console.error("ReadingTracker: Error checking read status:", error);
+          console.error("useReadingTracker: Error checking read status:", error);
         } else if (isMounted) {
           console.log(`ReadingTracker: Read status is ${!!data}`);
           setIsRead(!!data);

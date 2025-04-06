@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
@@ -137,7 +136,7 @@ export const useStoryFilters = () => {
           .eq('user_id', user.id);
           
         if (error) {
-          console.error("Error fetching reading history:", error);
+          console.error("useStoryFilters: Error fetching reading history:", error);
           // Don't set error state as this is non-critical
           return;
         }

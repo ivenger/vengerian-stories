@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye } from 'lucide-react';
@@ -38,7 +37,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
           .single();
           
         if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-          console.error("Error checking read status:", error);
+          console.error("BlogCard: Error checking read status:", error);
           return;
         }
         
