@@ -17,6 +17,7 @@ export const useStoryFilters = () => {
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
+  const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
 
   // Load saved filters from localStorage on initial render
   useEffect(() => {
@@ -122,23 +123,14 @@ export const useStoryFilters = () => {
         await refreshSession();
       }
       
-      const tagsParam = selectedTags.length > 0 ? selectedTags : undefined;
+      // Always fetch all posts first
+      console.log("Fetching all posts");
+      const allPosts = await fetchFilteredPosts();
+      console.log(`Received ${allPosts.length} total posts from API`);
+      setOriginalPosts(allPosts);
       
-      console.log("Filtering posts with tags:", tagsParam);
-      
-      const filteredPosts = await fetchFilteredPosts(tagsParam);
-      console.log(`Received ${filteredPosts.length} posts from API`);
-      
-      // Apply read/unread filter if enabled
-      let postsAfterReadFilter = filteredPosts;
-      
-      if (showUnreadOnly && user) {
-        console.log("Filtering for unread posts, read IDs:", readPostIds);
-        postsAfterReadFilter = filteredPosts.filter(post => !readPostIds.includes(post.id));
-        console.log(`${postsAfterReadFilter.length} posts after unread filter`);
-      }
-        
-      setPosts(postsAfterReadFilter);
+      // Apply filters
+      applyFilters(allPosts);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
@@ -168,7 +160,44 @@ export const useStoryFilters = () => {
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession]);
 
-  // Fetch posts when filters change
+  // Extract the filtering logic to a separate function for reuse
+  const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
+    console.log("Applying filters to posts", {
+      totalPosts: postsToFilter.length,
+      selectedTags,
+      showUnreadOnly
+    });
+    
+    let filteredPosts = [...postsToFilter];
+    
+    if (selectedTags.length > 0) {
+      console.log("Filtering by tags:", selectedTags);
+      filteredPosts = filteredPosts.filter(post => {
+        if (!post.tags) return false;
+        return selectedTags.some(tag => post.tags?.includes(tag));
+      });
+      console.log(`${filteredPosts.length} posts after tag filtering`);
+    }
+    
+    // Apply read/unread filter if enabled
+    if (showUnreadOnly && user) {
+      console.log("Filtering for unread posts, read IDs:", readPostIds);
+      filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
+      console.log(`${filteredPosts.length} posts after unread filter`);
+    }
+    
+    setPosts(filteredPosts);
+  }, [selectedTags, showUnreadOnly, user, readPostIds]);
+
+  // When filters change, apply them to the original posts
+  useEffect(() => {
+    if (originalPosts.length > 0 && !loading) {
+      console.log("Filters changed, applying to cached posts");
+      applyFilters(originalPosts);
+    }
+  }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading]);
+
+  // Fetch posts on initial load
   useEffect(() => {
     loadPosts();
     
@@ -185,11 +214,14 @@ export const useStoryFilters = () => {
   }, [loadPosts, lastLoad]);
 
   const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter(t => t !== tag));
-    } else {
-      setSelectedTags([...selectedTags, tag]);
-    }
+    console.log(`Toggling tag: ${tag}`);
+    setSelectedTags(prev => {
+      if (prev.includes(tag)) {
+        return prev.filter(t => t !== tag);
+      } else {
+        return [...prev, tag];
+      }
+    });
   };
   
   const toggleUnreadFilter = () => {
@@ -197,8 +229,15 @@ export const useStoryFilters = () => {
   };
 
   const clearFilters = () => {
+    console.log("Clearing all filters");
     setSelectedTags([]);
     setShowUnreadOnly(false);
+    
+    // Immediately apply empty filters to show all posts
+    if (originalPosts.length > 0) {
+      console.log("Showing all posts after clearing filters");
+      setPosts(originalPosts);
+    }
   };
 
   const hasActiveFilters = selectedTags.length > 0 || showUnreadOnly;

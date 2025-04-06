@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ActiveFiltersProps {
   selectedTags: string[];
@@ -12,6 +13,7 @@ interface ActiveFiltersProps {
 const ActiveFilters: React.FC<ActiveFiltersProps> = ({
   selectedTags,
   toggleTag,
+  clearFilters,
   hasActiveFilters
 }) => {
   if (!hasActiveFilters) return null;
@@ -27,13 +29,29 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
           >
             {tag}
             <button 
-              onClick={() => toggleTag(tag)} 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleTag(tag);
+              }} 
               className="ml-1 text-white hover:text-gray-200"
             >
               <X size={12} />
             </button>
           </span>
         ))}
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          className="ml-2 h-6 px-2 text-xs"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            clearFilters();
+          }}
+        >
+          Clear All
+        </Button>
       </div>
     </div>
   );

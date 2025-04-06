@@ -56,7 +56,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const contentDirection = isHebrewPost ? 'flex-row-reverse' : 'flex-row';
 
   return (
-    <Link to={`/blog/${post.id}`} className="block">
+    <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
         {/* Read indicator for logged in users */}
         {user && (
@@ -97,6 +97,7 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
                     <span 
                       key={index}
                       className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <Tag className={`h-3 w-3 ${isRtl ? 'ml-1' : 'mr-1'}`} />
                       {tag}
