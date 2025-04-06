@@ -21,12 +21,21 @@ const About: React.FC = () => {
   const maxRetries = 3;
   const fetchControllerRef = useRef<AbortController | null>(null);
   const isFirstMount = useRef(true);
+  const mountCountRef = useRef(0);
 
   useEffect(() => {
+    console.log("About: Component mounting", {
+      mountCount: ++mountCountRef.current,
+      isFirstMount: isFirstMount.current,
+      fetchAttempts: fetchAttempts.current,
+      isMounted: isMountedRef.current,
+      hasController: !!fetchControllerRef.current
+    });
+
     isMountedRef.current = true;
     
-    // Only reset fetch attempts if this isn't a remount during route transition
     if (isFirstMount.current) {
+      console.log("About: First mount - resetting fetch state");
       fetchAttempts.current = 0;
       isFirstMount.current = false;
     }
@@ -34,7 +43,16 @@ const About: React.FC = () => {
     let currentController: AbortController | null = null;
 
     const loadAboutContent = async () => {
-      if (!isMountedRef.current) return;
+      if (!isMountedRef.current) {
+        console.log("About: Skipping load - component unmounted");
+        return;
+      }
+
+      console.log("About: Starting content load", {
+        fetchAttempts: fetchAttempts.current,
+        hasExistingController: !!currentController,
+        currentContent: !!content
+      });
 
       setError(null);
       if (fetchAttempts.current === 0) {
@@ -42,6 +60,7 @@ const About: React.FC = () => {
       }
 
       if (currentController) {
+        console.log("About: Aborting existing request");
         currentController.abort();
       }
 
@@ -49,22 +68,47 @@ const About: React.FC = () => {
       fetchControllerRef.current = currentController;
 
       try {
-        console.log("About: Fetching about content...");
+        console.log("About: Initiating fetch request", {
+          fetchAttempts: fetchAttempts.current,
+          signal: currentController.signal.aborted
+        });
+
         const data = await fetchAboutContent(currentController.signal);
 
-        if (isMountedRef.current && fetchControllerRef.current === currentController) {
-          console.log("About: Content fetched successfully");
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
-          setError(null);
-          fetchAttempts.current = 0;
+        if (!isMountedRef.current) {
+          console.log("About: Fetch completed but component unmounted - discarding result");
+          return;
         }
+
+        if (fetchControllerRef.current !== currentController) {
+          console.log("About: Fetch completed but controller changed - discarding result");
+          return;
+        }
+
+        console.log("About: Content fetched successfully", {
+          hasContent: !!data.content,
+          hasImage: !!data.image_url
+        });
+
+        setContent(data.content || "");
+        setImageUrl(data.image_url);
+        setError(null);
+        fetchAttempts.current = 0;
       } catch (error: any) {
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current) {
+          console.log("About: Error occurred but component unmounted - ignoring", error);
+          return;
+        }
         
+        console.log("About: Fetch error occurred", {
+          errorName: error.name,
+          errorMessage: error.message,
+          isAborted: error.name === "AbortError",
+          currentAttempt: fetchAttempts.current
+        });
+
         if (error.name === "AbortError") {
-          console.log("About: Fetch aborted");
-          // Don't set error state for aborted requests during unmount
+          console.log("About: Request aborted - skipping error handling");
           return;
         }
 
@@ -75,15 +119,24 @@ const About: React.FC = () => {
             const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
             fetchAttempts.current += 1;
 
-            console.log(`About: Retrying in ${retryDelay}ms (attempt ${fetchAttempts.current}/${maxRetries})`);
+            console.log("About: Scheduling retry", {
+              attempt: fetchAttempts.current,
+              maxRetries,
+              delay: retryDelay
+            });
+
             setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
 
             setTimeout(() => {
               if (isMountedRef.current) {
+                console.log("About: Executing scheduled retry");
                 loadAboutContent();
+              } else {
+                console.log("About: Skipping scheduled retry - component unmounted");
               }
             }, retryDelay);
           } else {
+            console.log("About: Max retries reached - showing error");
             setError("Content could not be loaded. Please try again later.");
             toast({
               title: "Loading Error",
@@ -94,6 +147,11 @@ const About: React.FC = () => {
         }
       } finally {
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
+          console.log("About: Completing request", {
+            hasError: !!error,
+            contentLength: content.length,
+            attemptsMade: fetchAttempts.current
+          });
           setIsLoading(false);
         }
       }
@@ -102,16 +160,22 @@ const About: React.FC = () => {
     loadAboutContent();
 
     return () => {
-      console.log("About: Component unmounting, cleaning up");
+      console.log("About: Component unmounting", {
+        mountCount: mountCountRef.current,
+        hasController: !!currentController,
+        isMounted: isMountedRef.current,
+        fetchAttempts: fetchAttempts.current
+      });
+
       isMountedRef.current = false;
       
       if (currentController) {
-        console.log("About: Aborting fetch on unmount");
+        console.log("About: Cleaning up controller");
         currentController.abort();
       }
       fetchControllerRef.current = null;
     };
-  }, [toast, maxRetries]);
+  }, [toast, maxRetries, content]);
 
   const handleRetry = () => {
     console.log("About: Manual retry requested");
