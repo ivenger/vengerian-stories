@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
@@ -9,18 +10,18 @@ interface StoriesListProps {
   posts: BlogEntry[];
   loading: boolean;
   error?: string | null;
-  hasActiveFilters: boolean;
-  clearFilters: () => void;
-  onRetry?: () => void;
+  reload: () => void;
+  hasActiveFilters?: boolean;
+  clearFilters?: () => void;
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
   posts, 
   loading, 
   error,
-  hasActiveFilters,
-  clearFilters,
-  onRetry
+  reload,
+  hasActiveFilters = false,
+  clearFilters = () => {}
 }) => {
   const isRetrying = error?.includes('Retrying');
   const [localLoading, setLocalLoading] = useState(loading);
@@ -59,7 +60,7 @@ const StoriesList: React.FC<StoriesListProps> = ({
         <p className="text-xs text-gray-500 mb-4">{error.includes('500') ? 'The server encountered an unexpected condition.' : ''}</p>
         <div className="flex justify-center gap-3">
           <Button 
-            onClick={onRetry} 
+            onClick={reload} 
             variant="outline"
             className="border-red-300 hover:bg-red-50 flex items-center gap-2"
             disabled={isRetrying}

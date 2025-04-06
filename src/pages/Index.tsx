@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import StoriesList from "../components/StoriesList";
 import Navigation from "../components/Navigation";
@@ -12,7 +13,7 @@ const Index: React.FC = () => {
     allTags,
     selectedTags,
     showUnreadOnly,
-    isLoading,
+    loading,
     error,
     hasActiveFilters,
     onToggleTag,
@@ -61,9 +62,11 @@ const Index: React.FC = () => {
         {/* Stories List */}
         <StoriesList 
           posts={filteredPosts} 
-          loading={isLoading}
+          loading={loading}
           error={error}
           reload={handleReloadPosts}
+          hasActiveFilters={hasActiveFilters}
+          clearFilters={onClearFilters}
         />
       </div>
     </div>

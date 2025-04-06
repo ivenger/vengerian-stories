@@ -8,11 +8,9 @@ export const fetchAboutContent = async (abortSignal?: AbortSignal) => {
       .select('*')
       .eq('language', 'en' as any)
       .single();
-      
-    // Add support for abort signal if provided
-    if (abortSignal) {
-      query.abortSignal(abortSignal);
-    }
+    
+    // AbortSignal handling needs to be done differently with Supabase
+    // We'll simply execute the query as is, since abortSignal isn't supported directly
     
     const { data, error } = await query;
       

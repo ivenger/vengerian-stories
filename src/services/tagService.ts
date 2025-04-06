@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 
 // Fetch all tags
@@ -119,7 +120,7 @@ export const fetchTagsByLanguage = async (language = 'en') => {
 
     // Transform tags for the requested language
     return data.map(tag => ({
-      id: tag.id,
+      id: tag.id as string,
       name: tag[language] || tag.name || tag.en || '',
       language
     }));

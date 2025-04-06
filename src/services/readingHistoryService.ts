@@ -107,3 +107,31 @@ export const getReadPostIds = async (userId: string): Promise<string[]> => {
     return [];
   }
 };
+
+/**
+ * Gets full reading history records for a user
+ */
+export const getUserReadingHistory = async (userId: string): Promise<Array<{post_id: string, read_at: string}>> => {
+  try {
+    if (!userId) return [];
+    
+    const { data, error } = await supabase
+      .from('reading_history')
+      .select('post_id, read_at')
+      .eq('user_id', userId as any);
+      
+    if (error) {
+      console.error("Error fetching user reading history:", error);
+      return [];
+    }
+    
+    return (data || []).map(item => ({
+      post_id: item.post_id as string,
+      read_at: item.read_at as string
+    }));
+  } catch (err) {
+    console.error("Exception fetching user reading history:", err);
+    return [];
+  }
+};
+

@@ -1,5 +1,6 @@
+
 import { useState, useEffect, useCallback } from 'react';
-import { Post } from '../types';
+import { Post } from '../types'; // Using the newly created types index
 import { useAuth } from '../components/AuthProvider';
 
 const useStoryFilters = () => {
@@ -7,9 +8,9 @@ const useStoryFilters = () => {
   const [filteredPosts, setFilteredPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<number[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const [allTags, setAllTags] = useState<{ id: number; name: string; language: string }[]>([]);
+  const [allTags, setAllTags] = useState<string[]>([]);
   const [hasActiveFilters, setHasActiveFilters] = useState(false);
   const [isFilterDialogOpen, setIsFilterDialogOpen] = useState(false);
   const { user } = useAuth();
@@ -23,7 +24,7 @@ const useStoryFilters = () => {
     setIsFilterDialogOpen(true);
   };
 
-  const onToggleTag = (tagId: number) => {
+  const onToggleTag = (tagId: string) => {
     setSelectedTags((prevSelectedTags) => {
       const newSelectedTags = prevSelectedTags.includes(tagId)
         ? prevSelectedTags.filter((id) => id !== tagId)
@@ -74,7 +75,7 @@ const useStoryFilters = () => {
     }
   }, []);
 
-  const handleReloadPosts = () => {
+  const onReloadPosts = () => {
     fetchPosts();
   };
 
@@ -88,7 +89,7 @@ const useStoryFilters = () => {
 
     if (selectedTags.length > 0) {
       newFilteredPosts = newFilteredPosts.filter((post) =>
-        post.tags.some((tag) => selectedTags.includes(tag.id))
+        post.tags.some((tag) => selectedTags.includes(tag))
       );
     }
 
@@ -149,7 +150,7 @@ const useStoryFilters = () => {
 
         if (selectedTags.length > 0) {
           newFilteredPosts = newFilteredPosts.filter((post) =>
-            post.tags.some((tag) => selectedTags.includes(tag.id))
+            post.tags.some((tag) => selectedTags.includes(tag))
           );
         }
         
@@ -172,8 +173,9 @@ const useStoryFilters = () => {
     onToggleTag,
     onToggleUnreadFilter,
     onClearFilters,
-    onOpenFiltersDialog,
-    handleReloadPosts
+    onReloadPosts,
+    setIsFilterDialogOpen,
+    onOpenFiltersDialog
   };
 };
 
