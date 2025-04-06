@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuthContext } from "./AuthProvider";
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -40,8 +41,9 @@ const ProtectedRoute = ({
   // If authentication state is not initialized or still loading, show a loading indicator
   if (!authInitialized || loading) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      <div className="flex flex-col justify-center items-center h-screen">
+        <Spinner size="lg" />
+        <p className="mt-4 text-gray-600">Verifying authentication...</p>
       </div>
     );
   }
