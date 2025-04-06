@@ -10,9 +10,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'vengerian-stories-auth',
-    storage: localStorage
+    detectSessionInUrl: true
   },
   global: {
     headers: {
