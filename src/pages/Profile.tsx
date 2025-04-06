@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, BookOpen, User as UserIcon, Shield } from "lucide-react";
+import { Clock, BookOpen, User as UserIcon, Shield, UserCheck } from "lucide-react";
 import ReadingHistory from "../components/ReadingHistory";
 import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -20,6 +20,11 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
+  
+  // Log whether this user is admin for debugging
+  useEffect(() => {
+    console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin);
+  }, [user, isAdmin]);
   
   useEffect(() => {
     if (!user) return;
@@ -81,12 +86,15 @@ const Profile = () => {
                   <CardTitle className="text-2xl mb-1">User Profile</CardTitle>
                   <CardDescription>Manage your account and view your reading history</CardDescription>
                 </div>
-                {isAdmin && (
-                  <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-                    <Shield size={14} className="mr-1" />
-                    Admin
+                <div className="flex flex-col gap-2 items-end">
+                  <Badge variant="outline" className={`${isAdmin ? 'bg-purple-100 text-purple-800 hover:bg-purple-100' : 'bg-blue-100 text-blue-800 hover:bg-blue-100'}`}>
+                    {isAdmin ? (
+                      <><Shield size={14} className="mr-1" />Administrator</>
+                    ) : (
+                      <><UserCheck size={14} className="mr-1" />Regular User</>
+                    )}
                   </Badge>
-                )}
+                </div>
               </div>
             </CardHeader>
             
@@ -120,6 +128,13 @@ const Profile = () => {
                       <Clock size={16} className="text-gray-500 mr-2" />
                       <span>
                         Joined {new Date(userDetails?.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    <div className="flex items-center text-gray-600 text-sm">
+                      <Shield size={16} className="text-gray-500 mr-2" />
+                      <span>
+                        Role: {isAdmin ? 'Administrator' : 'Regular User'}
                       </span>
                     </div>
                   </div>

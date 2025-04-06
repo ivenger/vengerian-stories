@@ -7,7 +7,7 @@ import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
 export const useStoryFilters = () => {
-  const { user } = useAuth();
+  const { user, refreshSession } = useAuth();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +16,7 @@ export const useStoryFilters = () => {
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
+  const [lastLoad, setLastLoad] = useState<number>(Date.now());
 
   // Load saved filters from localStorage on initial render
   useEffect(() => {
@@ -103,17 +104,24 @@ export const useStoryFilters = () => {
   }, []);
 
   // Fetch posts based on selected filters
-  const loadPosts = useCallback(async () => {
+  const loadPosts = useCallback(async (forceRefresh = false) => {
     console.log("loadPosts called with filters:", { 
       selectedTags, 
       showUnreadOnly, 
-      userLoggedIn: !!user 
+      userLoggedIn: !!user,
+      forceRefresh
     });
     
     setLoading(true);
     setError(null);
+    setLastLoad(Date.now());
     
     try {
+      // If we've been loading for too long with a session, try refreshing it
+      if (user && forceRefresh) {
+        await refreshSession();
+      }
+      
       const tagsParam = selectedTags.length > 0 ? selectedTags : undefined;
       
       console.log("Filtering posts with tags:", tagsParam);
@@ -133,6 +141,21 @@ export const useStoryFilters = () => {
       setPosts(postsAfterReadFilter);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
+      
+      // Handle potential auth errors
+      if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
+          error?.message?.includes('auth') || error?.message?.includes('authentication')) {
+        console.log("Detected potential auth error, attempting session refresh");
+        if (user) {
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            // If refresh successful, try loading posts again
+            console.log("Session refreshed, retrying post load");
+            return loadPosts(false);
+          }
+        }
+      }
+      
       setError(
         error?.message === "TypeError: Failed to fetch" 
           ? "Network error. Please check your connection and try again." 
@@ -143,12 +166,23 @@ export const useStoryFilters = () => {
       console.log("Setting loading to false");
       setLoading(false);
     }
-  }, [selectedTags, showUnreadOnly, user, readPostIds]);
+  }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession]);
 
   // Fetch posts when filters change
   useEffect(() => {
     loadPosts();
-  }, [loadPosts]);
+    
+    // Set up a refresh timer to avoid stale data
+    const refreshTimer = setInterval(() => {
+      const now = Date.now();
+      if (now - lastLoad > 5 * 60 * 1000) {  // 5 minutes
+        console.log("It's been a while since posts were loaded, refreshing");
+        loadPosts(true);
+      }
+    }, 60 * 1000);  // Check every minute
+    
+    return () => clearInterval(refreshTimer);
+  }, [loadPosts, lastLoad]);
 
   const toggleTag = (tag: string) => {
     if (selectedTags.includes(tag)) {

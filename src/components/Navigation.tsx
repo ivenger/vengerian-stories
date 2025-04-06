@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
@@ -49,6 +50,8 @@ const Navigation = () => {
   
   const displayName = getDisplayName();
   
+  console.log("Navigation component - isAdmin:", isAdmin);
+
   return (
     <nav className="bg-white shadow-md">
       <div className="container mx-auto px-4">
@@ -72,7 +75,7 @@ const Navigation = () => {
                   <span className="max-w-[120px] truncate">{displayName}</span>
                 </Link>
                 
-                {isAdmin && (
+                {isAdmin && ( // Only show Admin link if user is an admin
                   <Link to="/admin" className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActive("/admin") ? "text-blue-600 bg-blue-50" : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"}`}>
                     <Settings size={18} className="mr-2" />
                     <span>Admin</span>

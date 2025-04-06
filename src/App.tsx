@@ -40,53 +40,57 @@ function App() {
     }
   }, [isDarkMode]);
 
+  const router = createBrowserRouter([
+    {
+      path: "/",
+      element: <Index />
+    },
+    {
+      path: "/blog/:id",
+      element: <BlogPost />
+    },
+    {
+      path: "/about",
+      element: <About />
+    },
+    {
+      path: "/auth",
+      element: <Auth />
+    },
+    {
+      path: "/profile",
+      element: (
+        <ProtectedRoute>
+          <Profile />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: "/admin",
+      element: (
+        <ProtectedRoute adminOnly={true} redirectTo="/">
+          <Admin />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: "/admin/about",
+      element: (
+        <ProtectedRoute adminOnly={true} redirectTo="/">
+          <AboutEditor />
+        </ProtectedRoute>
+      )
+    },
+    {
+      path: "*",
+      element: <NotFound />
+    }
+  ]);
+
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <RouterProvider router={
-          createBrowserRouter([
-            {
-              path: "/",
-              element: <Index />
-            },
-            {
-              path: "/blog/:id",
-              element: <BlogPost />
-            },
-            {
-              path: "/about",
-              element: <About />
-            },
-            {
-              path: "/auth",
-              element: <Auth />
-            },
-            {
-              path: "/profile",
-              element: <Profile />
-            },
-            {
-              path: "/admin",
-              element: (
-                <ProtectedRoute adminOnly={true}>
-                  <Admin />
-                </ProtectedRoute>
-              )
-            },
-            {
-              path: "/admin/about",
-              element: (
-                <ProtectedRoute adminOnly={true}>
-                  <AboutEditor />
-                </ProtectedRoute>
-              )
-            },
-            {
-              path: "*",
-              element: <NotFound />
-            }
-          ])
-        } />
+        <RouterProvider router={router} />
         <Toaster />
       </AuthProvider>
     </ErrorBoundary>
