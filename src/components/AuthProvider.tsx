@@ -24,6 +24,10 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+// Version hash to force logout on application rebuilds
+const APP_VERSION = Date.now().toString();
+const LAST_VERSION_KEY = 'app_version';
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!userId) return false;
     
     try {
+      console.log("Checking admin role for user:", userId);
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
@@ -42,6 +47,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return false;
       }
       
+      console.log("Admin check result:", data);
       return Boolean(data); // Ensure we return a boolean
     } catch (err) {
       console.error("Failed to check user role:", err);
@@ -49,12 +55,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Check if app was rebuilt and force logout if needed
+  useEffect(() => {
+    const storedVersion = localStorage.getItem(LAST_VERSION_KEY);
+    const currentVersion = APP_VERSION;
+    
+    console.log("App version check - Stored:", storedVersion, "Current:", currentVersion);
+    
+    if (storedVersion && storedVersion !== currentVersion) {
+      console.log("App version changed, forcing logout");
+      supabase.auth.signOut().then(() => {
+        console.log("User signed out due to app version change");
+        localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+      });
+    } else {
+      localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+    }
+  }, []);
+
   // Handle auth state changes and session management
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
 
+    console.log("Setting up auth state listener");
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -94,6 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    console.log("Checking for existing session");
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
       if (!isMounted) return;
@@ -105,6 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
       
+      console.log("Current session:", currentSession ? "exists" : "none");
       setSession(currentSession);
       
       if (currentSession?.user) {
@@ -127,6 +154,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     });
 
     return () => {
+      console.log("Cleaning up auth listener");
       isMounted = false;
       subscription.unsubscribe();
     };

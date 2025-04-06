@@ -1,22 +1,24 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import MarkdownPreview from "../components/MarkdownPreview";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "../components/AuthProvider";
-import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, Tag, Calendar, Eye } from "lucide-react";
+import { Tag, Calendar } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
+import PostHeader from "@/components/blog/PostHeader";
+import ReadStatus from "@/components/blog/ReadStatus";
+import { useReadingTracker } from "@/components/blog/useReadingTracker";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isRead, setIsRead] = useState(false);
   const { user } = useAuth();
+  const { isRead } = useReadingTracker(id, user);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,31 +45,8 @@ const BlogPost = () => {
           setPost(postData);
           setLoading(false);
         }
-        
-        // Check if post is already marked as read
-        if (user && isMounted) {
-          console.log(`BlogPost: Checking read status for user ${user.id} and post ${id}`);
-          try {
-            const { data, error } = await supabase
-              .from('reading_history')
-              .select('*')
-              .eq('user_id', user.id)
-              .eq('post_id', id)
-              .single();
-              
-            if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-              console.error("Error checking read status:", error);
-            } else if (isMounted) {
-              console.log(`BlogPost: Read status is ${!!data}`);
-              setIsRead(!!data);
-            }
-          } catch (readErr) {
-            console.error("Error checking read status:", readErr);
-            // Non-critical error, don't update UI
-          }
-        }
       } catch (err) {
-        console.error("Error fetching post:", err);
+        console.error("BlogPost: Error fetching post:", err);
         // Only update state if component is still mounted
         if (isMounted) {
           setError("Failed to load the post. Please try again later.");
@@ -83,54 +62,7 @@ const BlogPost = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, user]);
-
-  // Mark post as read when it loads
-  useEffect(() => {
-    let isMounted = true;
-    
-    const markAsRead = async () => {
-      if (!user || !post || isRead) {
-        console.log("BlogPost: Not marking as read because:", !user ? "no user" : !post ? "no post" : "already read");
-        return;
-      }
-      
-      try {
-        console.log(`BlogPost: Marking post ${post.id} as read for user ${user.id}`);
-        // Insert into reading history
-        const { error } = await supabase
-          .from('reading_history')
-          .upsert({ 
-            user_id: user.id, 
-            post_id: post.id,
-            read_at: new Date().toISOString()
-          }, { 
-            onConflict: 'user_id,post_id' 
-          });
-          
-        if (error) {
-          console.error("Error marking post as read:", error);
-          return;
-        }
-        
-        if (isMounted) {
-          console.log("BlogPost: Successfully marked post as read");
-          setIsRead(true);
-        }
-      } catch (err) {
-        console.error("Error in markAsRead:", err);
-      }
-    };
-    
-    // Only try to mark as read if the post has fully loaded
-    if (post && !loading) {
-      markAsRead();
-    }
-    
-    return () => {
-      isMounted = false;
-    };
-  }, [post, user, loading, isRead]);
+  }, [id]);
 
   if (loading) {
     return (
@@ -153,13 +85,7 @@ const BlogPost = () => {
             <h2 className="text-2xl font-semibold text-red-800 mb-4">
               {error || "Post not found"}
             </h2>
-            <Link
-              to="/"
-              className="inline-flex items-center px-4 py-2 bg-red-100 text-red-800 rounded-md hover:bg-red-200 transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Stories
-            </Link>
+            <PostHeader title="" date="" />
           </div>
         </div>
       </div>
@@ -170,37 +96,15 @@ const BlogPost = () => {
     <div>
       <Navigation />
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Link
-            to="/"
-            className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back to Stories
-          </Link>
-        </div>
+        <PostHeader 
+          title={post.title} 
+          date={post.date} 
+          tags={post.tags}
+          imageUrl={post.image_url}
+        />
 
         <article className="bg-white rounded-lg shadow-md overflow-hidden relative max-w-4xl mx-auto">
-          {user && (
-            <div className="absolute top-4 right-4">
-              <div className="flex items-center bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm">
-                <Eye className={`h-4 w-4 mr-1 ${isRead ? 'text-green-500' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">
-                  {isRead ? 'Read' : 'Unread'}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {post.image_url && (
-            <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-100">
-              <img
-                src={post.image_url}
-                alt={post.title}
-                className="w-full h-full object-cover"
-              />
-            </div>
-          )}
+          {user && <ReadStatus isRead={isRead} />}
 
           <div className="p-8">
             <h1 className="text-3xl font-bold mb-4">{post.title}</h1>
