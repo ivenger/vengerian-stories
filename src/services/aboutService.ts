@@ -10,39 +10,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
   console.log("AboutService: Fetching about content from Supabase");
   
   try {
-    // Immediately check if already aborted
-    if (signal?.aborted) {
-      throw new DOMException("Aborted", "AbortError");
-    }
-
-    // Create an abort handler promise if signal provided
-    let abortPromise: Promise<never> | undefined;
-    if (signal) {
-      abortPromise = new Promise((_, reject) => {
-        // Handle both immediate and future aborts
-        const abortHandler = () => reject(new DOMException("Aborted", "AbortError"));
-        signal.addEventListener("abort", abortHandler);
-      });
-    }
-
-    // Wrap Supabase query in a proper promise
-    const fetchPromise = new Promise<{ data: AboutContent | null; error: any }>(async (resolve, reject) => {
-      try {
-        const result = await supabase
-          .from('about_content')
-          .select('*')
-          .eq('language', 'en')
-          .maybeSingle();
-        resolve(result);
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    // Race between fetch and abort if signal provided
-    const { data, error } = await (abortPromise 
-      ? Promise.race([fetchPromise, abortPromise])
-      : fetchPromise);
+    const { data, error } = await supabase
+      .from('about_content')
+      .select('*')
+      .eq('language', 'en')
+      .maybeSingle()
+      .abortSignal(signal);
 
     if (error) {
       console.error("AboutService: Error fetching about content:", error);
@@ -61,7 +34,6 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     console.log("AboutService: About content fetched successfully");
     return data as AboutContent;
   } catch (error) {
-    // Log and rethrow the error, maintaining its type
     if (error instanceof DOMException && error.name === "AbortError") {
       console.log("AboutService: Fetch aborted");
     } else {
