@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,12 +44,12 @@ export function useAuthProvider() {
     try {
       console.log("Manually refreshing session");
       const { data, error } = await supabase.auth.refreshSession();
-      
+
       if (error) {
         console.error("Error refreshing session:", error);
         return false;
       }
-      
+
       if (data.session) {
         console.log("Session refreshed successfully");
         setSession(data.session);
@@ -62,6 +61,8 @@ export function useAuthProvider() {
     } catch (err) {
       console.error("Exception during session refresh:", err);
       return false;
+    } finally {
+      setLoading(false); // Ensure loading is reset
     }
   }, []);
 
@@ -87,12 +88,12 @@ export function useAuthProvider() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.email || "no user");
-        
+
         if (!isMounted) return;
-        
+
         if (newSession?.user) {
           setSession(newSession);
-          
+
           try {
             const adminStatus = await checkUserRole(newSession.user.id);
             if (isMounted) {
@@ -107,9 +108,9 @@ export function useAuthProvider() {
           setSession(null);
           setIsAdmin(false);
         }
-        
+
         if (isMounted) setLoading(false);
-        
+
         // Show toast for specific events
         if (event === 'SIGNED_IN') {
           toast({
@@ -131,17 +132,17 @@ export function useAuthProvider() {
     // THEN check for existing session
     supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
       if (!isMounted) return;
-      
+
       if (sessionError) {
         console.error("Session error:", sessionError);
         setError("Failed to retrieve authentication session. Please check your network connection.");
         setLoading(false);
         return;
       }
-      
+
       console.log("Current session:", currentSession ? `exists for ${currentSession.user.email}` : "none");
       setSession(currentSession);
-      
+
       if (currentSession?.user) {
         try {
           const adminStatus = await checkUserRole(currentSession.user.id);
@@ -154,7 +155,7 @@ export function useAuthProvider() {
           if (isMounted) setIsAdmin(false); // Default to non-admin on error
         }
       }
-      
+
       if (isMounted) setLoading(false);
     }).catch(err => {
       if (isMounted) {
