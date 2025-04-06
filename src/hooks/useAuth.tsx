@@ -247,21 +247,25 @@ export function useAuth() {
           setError(err.message || 'Authentication failed. Please refresh the page and try again.');
           setLoading(false);
         }
-        return () => {};
       }
+      
+      // Return an empty function as the cleanup function
+      return () => {};
     };
     
-    const cleanup = initAuth();
+    const cleanupPromise = initAuth();
     
     return () => {
       isMounted = false;
       clearRefreshTimer();
       
-      // Handle async cleanup
-      if (cleanup && typeof cleanup.then === 'function') {
-        cleanup.then((fn: any) => fn && fn());
-      } else if (typeof cleanup === 'function') {
-        cleanup();
+      // Handle async cleanup - fix the type issue here
+      if (cleanupPromise && typeof cleanupPromise.then === 'function') {
+        cleanupPromise.then((cleanupFn: any) => {
+          if (typeof cleanupFn === 'function') {
+            cleanupFn();
+          }
+        });
       }
     };
   }, [clearRefreshTimer, fetchUserRoles, refreshSession, scheduleRefresh, session, toast]);
