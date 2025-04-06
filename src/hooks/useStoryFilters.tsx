@@ -72,18 +72,25 @@ export const useStoryFilters = (user: User | null) => {
   useEffect(() => {
     console.log("StoryFilters: Component mounted with key", pageKey.current);
     isMountedRef.current = true;
-    loadedRef.current = false; // Reset loaded state on mount
+    loadedRef.current = false;
+    fetchInProgressRef.current = false;
+    
+    // Set initial loading state
     setLoading(true);
     setIsRetrying(false);
     setRetryCount(0);
     
+    // Execute initial fetch
+    loadPosts();
+    loadedRef.current = true;
+    
     return () => {
-      console.log("StoryFilters: Component unmounting");
+      console.log("StoryFilters: Component unmounting, cleaning up");
       isMountedRef.current = false;
       if (refreshTimerRef.current) {
         clearInterval(refreshTimerRef.current);
       }
-      fetchInProgressRef.current = false; // Reset fetch in progress on unmount
+      fetchInProgressRef.current = false;
       setIsRetrying(false);
     };
   }, []);
@@ -359,6 +366,10 @@ export const useStoryFilters = (user: User | null) => {
 
   // When filters change, apply them to the original posts
   useEffect(() => {
+    if (!isMountedRef.current) {
+      return;
+    }
+
     if (originalPosts.length > 0 && !loading && !isRetrying) {
       // Only apply filters if they've actually changed from what we last applied
       const currentFilters = { tags: selectedTags, unreadOnly: showUnreadOnly };
@@ -376,18 +387,10 @@ export const useStoryFilters = (user: User | null) => {
     loadedRef.current = false;
   }, [user]);
 
-  // Fetch posts on initial load or when dependencies change
+  // Set up refresh timer
   useEffect(() => {
-    if (!isMountedRef.current || loadedRef.current) {
-      console.log("Posts already loaded or component unmounted, skipping initial fetch");
-      return;
-    }
-    
-    console.log("Executing initial posts fetch");
-    loadPosts();
-    loadedRef.current = true;
-    
-    // Set up a refresh timer to avoid stale data
+    if (!isMountedRef.current) return;
+
     refreshTimerRef.current = setInterval(() => {
       const now = Date.now();
       if (now - lastLoad > 10 * 60 * 1000 && isMountedRef.current) {  // 10 minutes

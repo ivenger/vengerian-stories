@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
 import { AlertCircle, RefreshCw } from 'lucide-react';
@@ -24,6 +23,20 @@ const StoriesList: React.FC<StoriesListProps> = ({
   onRetry
 }) => {
   const isRetrying = error?.includes('Retrying');
+  const [localLoading, setLocalLoading] = useState(loading);
+
+  // Update local loading state when prop changes
+  useEffect(() => {
+    // Add a small delay before showing loading state to prevent flicker
+    if (loading) {
+      const timer = setTimeout(() => {
+        setLocalLoading(true);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setLocalLoading(false);
+    }
+  }, [loading]);
 
   // Show more detailed error information
   const getErrorMessage = (errorText: string) => {
@@ -77,7 +90,7 @@ const StoriesList: React.FC<StoriesListProps> = ({
     );
   }
 
-  if (loading) {
+  if (localLoading) {
     console.log("StoriesList is in loading state");
     return (
       <div className="flex flex-col justify-center items-center h-64">
