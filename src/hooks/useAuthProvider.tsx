@@ -24,38 +24,28 @@ export function useAuthProvider() {
     try {
       console.log("Checking admin role for user:", userId);
       
-      // Log the exact RPC invocation details
-      console.log("Invoking RPC function 'is_admin' with parameters:", { user_id: userId });
-
-      // Add a log statement just before the RPC call to confirm the function is reaching this point
-      console.log("Starting RPC call to 'is_admin' with userId:", userId);
-
       // Make the RPC call to check if the user is an admin
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
-      console.log("RPC call response:", { data, error });
+      
+      // Add detailed logging of the response
+      console.log("RPC is_admin raw response:", JSON.stringify({ data, error }, null, 2));
+      
       if (error) {
-        // Log error but don't throw - prevent authentication from breaking
         console.error("Error checking admin role:", error);
-        console.error("RPC call details: user_id:", userId, "error code:", error.code, "message:", error.message);
-        
-        // Handle specific error cases
-        if (error.code === '500') {
-          console.error("Server error checking admin status. This may be due to a problem with the is_admin RPC function.");
-        }
-        
-        // Default to non-admin on error rather than breaking authentication
         return false;
       }
       
-      // Log the result of the RPC call
-      console.log("RPC call result for 'is_admin':", { data, error });
+      // Explicitly log the type and value of data
+      console.log("Admin check result - Value:", data, "Type:", typeof data);
       
-      console.log("Admin check result:", data);
-      return Boolean(data);
+      // Ensure we're handling the boolean value correctly
+      const isAdmin = data === true;
+      console.log("Final admin status:", isAdmin);
+      
+      return isAdmin;
     } catch (err) {
       console.error("Failed to check user role:", err);
       console.error("Exception details: user_id:", userId, "error:", err);
-      // Default to non-admin on error
       return false;
     }
   };
