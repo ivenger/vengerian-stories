@@ -22,17 +22,14 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           .select('id, user_id, post_id, read_at')
           .eq('user_id', user.id)
           .eq('post_id', postId)
-          .single();
+          .maybeSingle();
 
         if (error) {
-          if (error.code === '406') {
-            console.warn("ReadingTracker: 406 Not Acceptable error when checking read status - continuing");
-            return;
-          }
-          if (error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-            console.error("useReadingTracker: Error checking read status:", error);
-          }
-        } else if (isMounted) {
+          console.error("useReadingTracker: Error checking read status:", error);
+          return;
+        }
+
+        if (isMounted) {
           console.log(`ReadingTracker: Read status is ${!!data}`);
           setIsRead(!!data);
         }

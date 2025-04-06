@@ -229,18 +229,14 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
   try {
     const { data, error } = await supabase
       .from('reading_history')
-      .select('user_id, post_id') // Specify columns explicitly
+      .select('user_id, post_id')
       .eq('user_id', userId)
       .eq('post_id', postId)
       .maybeSingle();
       
     if (error) {
-      if (error.code === '406') {
-        console.warn("406 Not Acceptable error when checking read status - assuming not read");
-        return false;
-      }
       console.error("Error checking if post was read:", error);
-      return false; // Assume not read in case of error
+      return false;
     }
     
     const hasRead = !!data;

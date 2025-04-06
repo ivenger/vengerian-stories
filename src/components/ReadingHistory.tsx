@@ -40,35 +40,33 @@ const ReadingHistory = () => {
           .from("reading_history")
           .select("id, user_id, post_id, read_at")
           .eq("user_id", user.id);
-          
+        
         if (historyError) {
-          if (historyError.code === '406') {
-            console.warn("406 Not Acceptable error when fetching reading history - continuing without reading history");
-            setReadPosts([]);
-          } else {
-            throw historyError;
-          }
+          console.error("ReadingHistory: Error fetching reading history:", historyError);
+          // Don't throw error for reading history issues, just continue with empty state
+          setReadPosts([]);
         } else {
-          // Map the posts to BlogEntry type
-          const mappedPosts = (posts || []).map((post): BlogEntry => ({
-            id: post.id,
-            title: post.title,
-            title_language: post.title_language || ['en'],
-            content: post.content || '',
-            excerpt: post.excerpt,
-            date: post.date,
-            language: post.language || ['English'],
-            status: post.status || 'published',
-            image_url: post.image_url,
-            created_at: post.created_at,
-            updated_at: post.updated_at,
-            translations: post.translations || [],
-            tags: post.tags || []
-          }));
-          
-          setAllPosts(mappedPosts);
-          setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
+          setReadPosts((history || []).map(item => item.post_id));
         }
+
+        // Map the posts to BlogEntry type
+        const mappedPosts = (posts || []).map((post): BlogEntry => ({
+          id: post.id,
+          title: post.title,
+          title_language: post.title_language || ['en'],
+          content: post.content || '',
+          excerpt: post.excerpt,
+          date: post.date,
+          language: post.language || ['English'],
+          status: post.status || 'published',
+          image_url: post.image_url,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+          translations: post.translations || [],
+          tags: post.tags || []
+        }));
+        
+        setAllPosts(mappedPosts);
       } catch (err: any) {
         console.error("ReadingHistory: Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");

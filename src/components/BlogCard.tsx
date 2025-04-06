@@ -34,9 +34,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
           .select('*')
           .eq('user_id', user.id)
           .eq('post_id', post.id)
-          .single();
+          .maybeSingle();
           
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
+        if (error) {
           console.error("BlogCard: Error checking read status:", error);
           return;
         }
