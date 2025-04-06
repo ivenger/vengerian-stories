@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-// Version hash to force logout on application rebuilds
+// Version hash to force logout on application rebuilds - updated with timestamp on each build
 const APP_VERSION = Date.now().toString();
 const LAST_VERSION_KEY = 'app_version';
 
@@ -58,18 +58,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Check if app was rebuilt and force logout if needed
   useEffect(() => {
     const storedVersion = localStorage.getItem(LAST_VERSION_KEY);
-    const currentVersion = APP_VERSION;
     
-    console.log("App version check - Stored:", storedVersion, "Current:", currentVersion);
+    console.log("App version check - Stored:", storedVersion, "Current:", APP_VERSION);
     
-    if (storedVersion && storedVersion !== currentVersion) {
+    if (storedVersion && storedVersion !== APP_VERSION) {
       console.log("App version changed, forcing logout");
       supabase.auth.signOut().then(() => {
         console.log("User signed out due to app version change");
-        localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+        localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
+        window.location.reload(); // Force page reload after signout
       });
     } else {
-      localStorage.setItem(LAST_VERSION_KEY, currentVersion);
+      localStorage.setItem(LAST_VERSION_KEY, APP_VERSION);
     }
   }, []);
 

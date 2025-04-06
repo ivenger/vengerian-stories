@@ -14,7 +14,7 @@ const About: React.FC = () => {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
 
   useEffect(() => {
     let isMounted = true;
@@ -30,13 +30,8 @@ const About: React.FC = () => {
         // Only update state if component is still mounted
         if (isMounted) {
           console.log("About: Content fetched successfully:", data);
-          
-          if (typeof data === 'string') {
-            setContent(data);
-          } else {
-            setContent(data.content || "");
-            setImageUrl(data.image_url);
-          }
+          setContent(data.content || "");
+          setImageUrl(data.image_url);
           setIsLoading(false);
         }
       } catch (error) {
@@ -90,7 +85,7 @@ const About: React.FC = () => {
             </div>
           ) : (
             <div>
-              {!authLoading && user && (
+              {!authLoading && user && isAdmin && (
                 <div className="flex justify-end mb-4">
                   <Link to="/admin/about">
                     <Button 

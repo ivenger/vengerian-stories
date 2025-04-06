@@ -21,13 +21,8 @@ const AboutEditor: React.FC = () => {
         console.log("AboutEditor: Loading about content");
         const data = await fetchAboutContent();
         
-        if (typeof data === 'string') {
-          setContent(data);
-          setImageUrl(null);
-        } else {
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
-        }
+        setContent(data.content || "");
+        setImageUrl(data.image_url);
         console.log("AboutEditor: About content loaded successfully");
       } catch (error) {
         console.error("AboutEditor: Error loading about content:", error);

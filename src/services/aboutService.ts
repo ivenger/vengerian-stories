@@ -2,13 +2,14 @@
 import { supabase } from "../integrations/supabase/client";
 
 // Fetch about content
-export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null }> => {
+export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null; language: string }> => {
   try {
     console.log("AboutService: Fetching about content from Supabase");
     
     const { data, error } = await supabase
       .from('about_content')
-      .select('content, image_url')
+      .select('content, image_url, language')
+      .eq('language', 'en')  // Default to English content
       .maybeSingle();
     
     if (error) {
@@ -17,7 +18,7 @@ export const fetchAboutContent = async (): Promise<{ content: string; image_url:
     }
     
     console.log("AboutService: About content retrieved:", data);
-    return data || { content: "", image_url: null };
+    return data || { content: "", image_url: null, language: "en" };
   } catch (error) {
     console.error('AboutService: Error in fetchAboutContent:', error);
     throw error;
@@ -31,15 +32,21 @@ export const saveAboutContent = async (contentData: { content: string; image_url
     
     const { data: existingData } = await supabase
       .from('about_content')
-      .select('id')
+      .select('id, language')
+      .eq('language', 'en')  // Default to English content
       .maybeSingle();
+    
+    const fullContentData = {
+      ...contentData,
+      language: 'en'  // Add the required language field
+    };
     
     if (existingData?.id) {
       // Update existing record
       console.log("AboutService: Updating existing about content record");
       const { error } = await supabase
         .from('about_content')
-        .update(contentData)
+        .update(fullContentData)
         .eq('id', existingData.id);
       
       if (error) {
@@ -53,7 +60,7 @@ export const saveAboutContent = async (contentData: { content: string; image_url
       console.log("AboutService: Creating new about content record");
       const { error } = await supabase
         .from('about_content')
-        .insert(contentData);
+        .insert(fullContentData);
       
       if (error) {
         console.error("AboutService: Error creating about content:", error);
