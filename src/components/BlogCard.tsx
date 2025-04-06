@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
 import { useAuth } from './AuthProvider';
-import { supabase } from '@/integrations/supabase/client';
+import { readingHistoryService } from '@/services/blogService';
 
 interface BlogCardProps {
   post: BlogEntry;
@@ -29,19 +30,9 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     
     const checkReadStatus = async () => {
       try {
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('post_id', post.id)
-          .maybeSingle();
-          
-        if (error) {
-          console.error("BlogCard: Error checking read status:", error);
-          return;
-        }
-        
-        setIsRead(!!data);
+        // Use the service function instead of direct query
+        const hasRead = await readingHistoryService.hasReadPost(post.id, user.id);
+        setIsRead(hasRead);
       } catch (err) {
         console.error("Error checking post read status:", err);
       }

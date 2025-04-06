@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -17,7 +18,22 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
     }
     
     console.log(`Fetched ${data?.length || 0} posts`);
-    return data as BlogEntry[] || [];
+    // Convert the Supabase data to BlogEntry type
+    return (data || []).map((item): BlogEntry => ({
+      id: item.id,
+      title: item.title,
+      title_language: item.title_language || ['en'],
+      content: item.content || '',
+      excerpt: item.excerpt,
+      date: item.date,
+      language: item.language || ['English'],
+      status: item.status || 'published',
+      image_url: item.image_url,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      translations: item.translations || [],
+      tags: item.tags || []
+    }));
   } catch (error: any) {
     console.error('Failed to fetch all posts:', error);
     // Provide more descriptive error message
@@ -34,7 +50,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
     const { data, error } = await supabase
       .from('entries')
       .select('*')
-      .eq('id', id)
+      .eq('id', id as any)
       .single();
     
     if (error) {
@@ -47,8 +63,25 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
       throw new Error(`Post with ID ${id} not found`);
     }
     
+    // Convert the Supabase data to BlogEntry type
+    const post: BlogEntry = {
+      id: data.id,
+      title: data.title,
+      title_language: data.title_language || ['en'],
+      content: data.content || '',
+      excerpt: data.excerpt,
+      date: data.date,
+      language: data.language || ['English'],
+      status: data.status || 'published',
+      image_url: data.image_url,
+      created_at: data.created_at,
+      updated_at: data.updated_at,
+      translations: data.translations || [],
+      tags: data.tags || []
+    };
+    
     console.log('Post fetched successfully:', data.id);
-    return data as BlogEntry;
+    return post;
   } catch (error: any) {
     console.error(`Failed to fetch post with ID ${id}:`, error);
     const message = error.message || 'Network or server error occurred';
@@ -64,7 +97,7 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     let query = supabase
       .from('entries')
       .select('*')
-      .eq('status', 'published')
+      .eq('status', 'published' as any)
       .order('date', { ascending: false });
 
     if (tags && tags.length > 0) {
@@ -81,7 +114,23 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     }
 
     console.log(`Fetched ${data?.length || 0} filtered posts`);
-    return data as BlogEntry[] || [];
+    
+    // Convert the Supabase data to BlogEntry type
+    return (data || []).map((item): BlogEntry => ({
+      id: item.id,
+      title: item.title,
+      title_language: item.title_language || ['en'],
+      content: item.content || '',
+      excerpt: item.excerpt,
+      date: item.date,
+      language: item.language || ['English'],
+      status: item.status || 'published',
+      image_url: item.image_url,
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+      translations: item.translations || [],
+      tags: item.tags || []
+    }));
   } catch (error: any) {
     console.error('Failed to fetch filtered posts:', error);
     const message = error.message || 'Network or server error occurred';
@@ -112,8 +161,8 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       console.log(`Updating post with ID: ${post.id}`);
       const { data, error } = await supabase
         .from('entries')
-        .update(postData)
-        .eq('id', post.id)
+        .update(postData as any)
+        .eq('id', post.id as any)
         .select('*')
         .single();
 
@@ -122,14 +171,29 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         throw new Error(`Failed to update post: ${error.message} (${error.code})`);
       }
 
-      console.log('Post updated successfully:', data.id);
-      return data as BlogEntry;
+      console.log('Post updated successfully:', post.id);
+      // Convert the Supabase data to BlogEntry type
+      return {
+        id: data.id,
+        title: data.title,
+        title_language: data.title_language || ['en'],
+        content: data.content || '',
+        excerpt: data.excerpt,
+        date: data.date,
+        language: data.language || ['English'],
+        status: data.status || 'published',
+        image_url: data.image_url,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        translations: data.translations || [],
+        tags: data.tags || []
+      };
     } else {
       // Create a new post
       console.log('Creating a new post');
       const { data, error } = await supabase
         .from('entries')
-        .insert([postData])
+        .insert([postData as any])
         .select('*')
         .single();
 
@@ -138,8 +202,23 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         throw new Error(`Failed to create post: ${error.message} (${error.code})`);
       }
 
-      console.log('Post created successfully:', data.id);
-      return data as BlogEntry;
+      console.log('Post created successfully:', post.id);
+      // Convert the Supabase data to BlogEntry type
+      return {
+        id: data.id,
+        title: data.title,
+        title_language: data.title_language || ['en'],
+        content: data.content || '',
+        excerpt: data.excerpt,
+        date: data.date,
+        language: data.language || ['English'],
+        status: data.status || 'published',
+        image_url: data.image_url,
+        created_at: data.created_at,
+        updated_at: data.updated_at,
+        translations: data.translations || [],
+        tags: data.tags || []
+      };
     }
   } catch (error: any) {
     console.error('Failed to save post:', error);
@@ -156,7 +235,7 @@ export const deletePost = async (id: string): Promise<void> => {
     const { error } = await supabase
       .from('entries')
       .delete()
-      .eq('id', id);
+      .eq('id', id as any);
     
     if (error) {
       console.error('Error deleting post:', error);
@@ -180,8 +259,8 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
     const { data: existingRecord, error: checkError } = await supabase
       .from('reading_history')
       .select('user_id, post_id')
-      .eq('user_id', userId)
-      .eq('post_id', postId)
+      .eq('user_id', userId as any)
+      .eq('post_id', postId as any)
       .maybeSingle();
       
     if (checkError) {
@@ -201,10 +280,10 @@ export const markPostAsRead = async (userId: string, postId: string): Promise<vo
     const { error: insertError } = await supabase
       .from('reading_history')
       .insert({ 
-        user_id: userId, 
-        post_id: postId,
+        user_id: userId as any, 
+        post_id: postId as any,
         read_at: new Date().toISOString()
-      });
+      } as any);
       
     if (insertError) {
       if (insertError.code === '406') {
@@ -230,8 +309,8 @@ export const hasReadPost = async (userId: string, postId: string): Promise<boole
     const { data, error } = await supabase
       .from('reading_history')
       .select('user_id, post_id')
-      .eq('user_id', userId)
-      .eq('post_id', postId)
+      .eq('user_id', userId as any)
+      .eq('post_id', postId as any)
       .maybeSingle();
       
     if (error) {

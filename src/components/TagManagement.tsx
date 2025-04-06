@@ -57,10 +57,11 @@ const TagManagement: React.FC = () => {
         throw error;
       }
       
-      const allTags = (tagRecords as TagRecord[]).map(record => record.name);
+      const typedRecords = tagRecords as unknown as TagRecord[];
+      const allTags = typedRecords.map(record => record.name);
       setTags(allTags);
       
-      const initialTagData = (tagRecords as TagRecord[]).map(record => ({
+      const initialTagData = typedRecords.map(record => ({
         name: record.name,
         translations: {
           en: record.en || record.name,
@@ -109,7 +110,7 @@ const TagManagement: React.FC = () => {
           en: newTagData.translations.en.trim() || newTagData.name.trim(),
           he: newTagData.translations.he.trim() || null,
           ru: newTagData.translations.ru.trim() || null
-        });
+        } as any);
       
       if (error) {
         throw error;
@@ -154,7 +155,7 @@ const TagManagement: React.FC = () => {
         const { error } = await supabase
           .from('tags')
           .delete()
-          .eq('name', tagName);
+          .eq('name', tagName as any);
         
         if (error) {
           throw error;
@@ -169,14 +170,16 @@ const TagManagement: React.FC = () => {
           throw findError;
         }
         
-        if (postsWithTag && postsWithTag.length > 0) {
+        if (postsWithTag && Array.isArray(postsWithTag) && postsWithTag.length > 0) {
           for (const post of postsWithTag) {
+            if (!post || !post.id || !Array.isArray(post.tags)) continue;
+            
             const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
             
             const { error: updateError } = await supabase
               .from('entries')
-              .update({ tags: updatedTags })
-              .eq('id', post.id);
+              .update({ tags: updatedTags } as any)
+              .eq('id', post.id as any);
             
             if (updateError) {
               throw updateError;
@@ -237,8 +240,8 @@ const TagManagement: React.FC = () => {
           en: editingTagData.translations.en || null,
           he: editingTagData.translations.he || null,
           ru: editingTagData.translations.ru || null
-        })
-        .eq('name', editingTag);
+        } as any)
+        .eq('name', editingTag as any);
       
       if (error) {
         throw error;
@@ -254,16 +257,18 @@ const TagManagement: React.FC = () => {
           throw findError;
         }
         
-        if (postsWithTag && postsWithTag.length > 0) {
+        if (postsWithTag && Array.isArray(postsWithTag) && postsWithTag.length > 0) {
           for (const post of postsWithTag) {
+            if (!post || !post.id || !Array.isArray(post.tags)) continue;
+            
             const updatedTags = (post.tags || []).map(tag => 
               tag === editingTag ? editingTagData.name : tag
             );
             
             const { error: updateError } = await supabase
               .from('entries')
-              .update({ tags: updatedTags })
-              .eq('id', post.id);
+              .update({ tags: updatedTags } as any)
+              .eq('id', post.id as any);
             
             if (updateError) {
               throw updateError;

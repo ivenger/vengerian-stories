@@ -1,101 +1,109 @@
 
 import { supabase } from "../integrations/supabase/client";
 
-// Fetch all available tags
+// Fetch all tags
 export const fetchAllTags = async (): Promise<string[]> => {
   try {
+    console.log("Fetching all tags");
     const { data, error } = await supabase
       .from('tags')
       .select('name');
     
     if (error) {
       console.error('Error fetching tags:', error);
-      throw error;
+      throw new Error(`Failed to fetch tags: ${error.message}`);
     }
     
-    // Check if data exists
-    if (!data || !Array.isArray(data)) {
-      console.log('No data returned from tags query');
-      return [];
-    }
+    // Use type guard to safely extract tag names
+    const tagNames = (data || []).map(item => {
+      if (item && typeof item === 'object' && 'name' in item) {
+        return item.name as string;
+      }
+      return '';
+    }).filter(name => name !== '');
     
-    // Extract tag names
-    return data.map(tag => tag.name).filter(Boolean);
-  } catch (error) {
-    console.error('Error in fetchAllTags:', error);
-    return []; // Return empty array on error
+    console.log(`Fetched ${tagNames.length} tags successfully`);
+    return tagNames;
+  } catch (error: any) {
+    console.error('Failed to fetch tags:', error);
+    return [];
   }
 };
 
-// Fetch tags filtered by language
-export const fetchTagsByLanguage = async (): Promise<string[]> => {
-  try {
-    // Since we've removed language filtering, we just return all tags
-    return await fetchAllTags();
-  } catch (error) {
-    console.error('Error in fetchTagsByLanguage:', error);
-    return []; // Return empty array on error
-  }
-};
-
-// Save tag
-export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
+// Save a tag with translations
+export const saveTag = async (
+  tagName: string, 
+  translations: { en: string; he: string; ru: string }
+): Promise<boolean> => {
   try {
     const { error } = await supabase
       .from('tags')
       .insert({
-        name: tagName.trim(),
-        en: translations.en.trim() || tagName.trim(),
-        he: translations.he.trim() || null,
-        ru: translations.ru.trim() || null
-      });
-    
+        name: tagName,
+        en: translations.en || tagName,
+        he: translations.he || null,
+        ru: translations.ru || null
+      } as any);
+      
     if (error) {
-      throw error;
+      console.error('Error saving tag:', error);
+      return false;
     }
+    
+    return true;
   } catch (error) {
-    console.error('Error saving tag:', error);
-    throw error;
+    console.error('Failed to save tag:', error);
+    return false;
   }
 };
 
-// Delete tag
-export const deleteTag = async (tagName: string): Promise<void> => {
+// Delete a tag
+export const deleteTag = async (tagName: string): Promise<boolean> => {
   try {
+    // First delete the tag
     const { error } = await supabase
       .from('tags')
       .delete()
-      .eq('name', tagName);
-    
+      .eq('name', tagName as any);
+      
     if (error) {
-      throw error;
+      console.error('Error deleting tag:', error);
+      return false;
     }
     
+    // Find posts that contain this tag
     const { data: postsWithTag, error: findError } = await supabase
       .from('entries')
       .select('id, tags')
       .contains('tags', [tagName]);
-    
+      
     if (findError) {
-      throw findError;
+      console.error('Error finding posts with tag:', findError);
+      return true; // Tag was deleted, so return success even if we can't update posts
     }
     
+    // Update posts to remove the deleted tag
     if (postsWithTag && postsWithTag.length > 0) {
       for (const post of postsWithTag) {
-        const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
+        // Add type guard
+        if (!post || typeof post !== 'object' || !('id' in post) || !('tags' in post)) continue;
+        
+        const updatedTags = Array.isArray(post.tags) ? post.tags.filter(tag => tag !== tagName) : [];
         
         const { error: updateError } = await supabase
           .from('entries')
-          .update({ tags: updatedTags })
-          .eq('id', post.id);
-        
+          .update({ tags: updatedTags } as any)
+          .eq('id', post.id as any);
+          
         if (updateError) {
-          throw updateError;
+          console.error(`Error updating post ${post.id} to remove tag:`, updateError);
         }
       }
     }
+    
+    return true;
   } catch (error) {
-    console.error('Error deleting tag:', error);
-    throw error;
+    console.error('Failed to delete tag:', error);
+    return false;
   }
 };

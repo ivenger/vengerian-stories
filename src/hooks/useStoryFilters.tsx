@@ -142,26 +142,12 @@ export const useStoryFilters = (user: User | null) => {
     const fetchReadPosts = async () => {
       try {
         console.log("Fetching reading history for user:", user.id);
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id);
-          
-        if (error) {
-          if (error.code === '406') {
-            console.warn("useStoryFilters: 406 Not Acceptable error when fetching reading history - continuing without reading history");
-            if (isMountedRef.current) {
-              setReadPostIds([]);
-            }
-          } else {
-            console.error("useStoryFilters: Error fetching reading history:", error);
-          }
-          return;
-        }
         
-        console.log("Reading history fetched:", data?.length || 0, "items");
+        // Use the service function instead of direct query
+        const readPostIds = await readingHistoryService.getReadPostIds(user.id);
+        
         if (isMountedRef.current) {
-          setReadPostIds((data || []).map(item => item.post_id));
+          setReadPostIds(readPostIds);
         }
       } catch (err) {
         console.error("Error fetching reading history:", err);

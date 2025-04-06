@@ -1,6 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { User } from '@supabase/supabase-js';
+import { readingHistoryService } from '@/services/blogService';
 
 export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
@@ -17,21 +19,12 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
 
       console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id)
-          .eq('post_id', postId)
-          .maybeSingle();
-
-        if (error) {
-          console.error("useReadingTracker: Error checking read status:", error);
-          return;
-        }
-
+        // Use the service function instead of direct query
+        const hasRead = await readingHistoryService.hasReadPost(postId, user.id);
+        
         if (isMounted) {
-          console.log(`ReadingTracker: Read status is ${!!data}`);
-          setIsRead(!!data);
+          console.log(`ReadingTracker: Read status is ${hasRead}`);
+          setIsRead(hasRead);
         }
       } catch (readErr) {
         console.error("ReadingTracker: Error checking read status:", readErr);
@@ -58,27 +51,11 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
 
       try {
         console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
-        // Insert into reading history
-        const { error } = await supabase
-          .from('reading_history')
-          .upsert({ 
-            user_id: user.id, 
-            post_id: postId,
-            read_at: new Date().toISOString()
-          }, { 
-            onConflict: 'user_id,post_id' 
-          });
+        
+        // Use the service function instead of direct insert
+        const success = await readingHistoryService.markPostAsRead(postId, user.id);
 
-        if (error) {
-          if (error.code === '406') {
-            console.warn("ReadingTracker: 406 Not Acceptable error when marking as read - skipping");
-            return;
-          }
-          console.error("ReadingTracker: Error marking post as read:", error);
-          return;
-        }
-
-        if (isMounted) {
+        if (isMounted && success) {
           console.log("ReadingTracker: Successfully marked post as read");
           setIsRead(true);
         }

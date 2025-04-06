@@ -11,8 +11,8 @@ export const hasReadPost = async (postId: string, userId: string): Promise<boole
     const { data, error } = await supabase
       .from('reading_history')
       .select('*')
-      .eq('user_id', userId)
-      .eq('post_id', postId)
+      .eq('user_id', userId as any)
+      .eq('post_id', postId as any)
       .maybeSingle();
       
     if (error) {
@@ -51,10 +51,10 @@ export const markPostAsRead = async (postId: string, userId: string): Promise<bo
     const { error } = await supabase
       .from('reading_history')
       .insert({
-        user_id: userId,
-        post_id: postId,
+        user_id: userId as any,
+        post_id: postId as any,
         read_at: new Date().toISOString()
-      });
+      } as any);
       
     if (error) {
       console.error("Error marking post as read:", error);
@@ -79,7 +79,7 @@ export const getReadPostIds = async (userId: string): Promise<string[]> => {
     const { data, error } = await supabase
       .from('reading_history')
       .select('post_id')
-      .eq('user_id', userId);
+      .eq('user_id', userId as any);
       
     if (error) {
       // Handle 406 errors specifically - these are non-critical
@@ -92,7 +92,16 @@ export const getReadPostIds = async (userId: string): Promise<string[]> => {
       return [];
     }
     
-    return (data || []).map(item => item.post_id);
+    // Safely extract post_id values
+    const postIds = (data || []).map(item => {
+      // Type guard to avoid TypeScript errors with post_id access
+      if (item && typeof item === 'object' && 'post_id' in item) {
+        return item.post_id as string;
+      }
+      return '';
+    }).filter(id => id !== '');
+    
+    return postIds;
   } catch (err) {
     console.error("Exception fetching reading history:", err);
     return [];

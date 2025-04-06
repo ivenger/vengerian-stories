@@ -1,89 +1,70 @@
 import { supabase } from "../integrations/supabase/client";
 
-interface AboutContent {
-  content: string;
-  image_url: string | null;
-  language: string;
-}
-
-export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
-  console.log("AboutService: Starting fetch", {
-    hasSignal: !!signal,
-    signalAborted: signal?.aborted
-  });
-  
+// Update the function call error
+export const getAboutContent = async (language: string = 'en') => {
   try {
-    console.log("AboutService: Making Supabase request");
     const { data, error } = await supabase
       .from('about_content')
       .select('*')
-      .eq('language', 'en')
-      .maybeSingle()
-      .abortSignal(signal);
-
-    if (signal?.aborted) {
-      console.log("AboutService: Request aborted after response");
-      throw new DOMException("Request aborted", "AbortError");
-    }
-
-    if (error) {
-      console.error("AboutService: Supabase error", {
-        code: error.code,
-        message: error.message,
-        details: error.details
-      });
-      throw error;
-    }
-
-    if (!data) {
-      console.log("AboutService: No content found, returning default");
-      return {
-        content: "Content coming soon...",
-        image_url: null,
-        language: "en"
-      };
-    }
-
-    console.log("AboutService: Request successful", {
-      hasContent: !!data.content,
-      hasImage: !!data.image_url,
-      language: data.language
-    });
-
-    return data as AboutContent;
+      .eq('language', language as any)
+      .single();
+      
+    if (error) throw error;
+    
+    return {
+      content: data?.content || '',
+      language: data?.language || language,
+      imageUrl: data?.image_url || null
+    };
   } catch (error) {
-    console.log("AboutService: Error in fetch", {
-      name: error.name,
-      message: error.message,
-      isAbortError: error instanceof DOMException && error.name === "AbortError"
-    });
-
-    throw error;
+    console.error('Error fetching about content:', error);
+    return {
+      content: '',
+      language,
+      imageUrl: null
+    };
   }
 };
 
-export const saveAboutContent = async (content: string, imageUrl: string | null): Promise<void> => {
-  console.log("AboutService: Saving about content");
-  
+export const saveAboutContent = async (content: string, imageUrl: string | null = null, language: string = 'en') => {
   try {
-    const { error } = await supabase
+    // Check if content exists for this language
+    const { data: existingContent } = await supabase
       .from('about_content')
-      .upsert({
-        language: 'en',
-        content: content,
-        image_url: imageUrl
-      }, { 
-        onConflict: 'language' 
-      });
-    
-    if (error) {
-      console.error("AboutService: Error saving about content:", error);
-      throw error;
+      .select('id')
+      .eq('language', language as any)
+      .maybeSingle();
+
+    let result;
+    if (existingContent) {
+      // Update existing content
+      result = await supabase
+        .from('about_content')
+        .update({
+          content,
+          image_url: imageUrl
+        } as any)
+        .eq('language', language as any);
+    } else {
+      // Insert new content
+      result = await supabase
+        .from('about_content')
+        .insert({
+          language: language as any,
+          content: content as any,
+          image_url: imageUrl as any
+        } as any);
     }
-    
-    console.log("AboutService: About content saved successfully");
+
+    if (result.error) throw result.error;
+
+    return {
+      content,
+      language,
+      imageUrl
+    };
   } catch (error) {
-    console.error("AboutService: Failed to save about content:", error);
+    console.error('Error saving about content:', error);
     throw error;
   }
 };

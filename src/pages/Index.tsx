@@ -1,69 +1,61 @@
 
-import React from "react";
-import Navigation from "../components/Navigation";
-import MultilingualTitle from "../components/MultilingualTitle";
-import FilterDialog from "../components/FilterDialog";
-import ActiveFilters from "../components/ActiveFilters";
-import StoriesList from "../components/StoriesList";
-import { useStoryFilters } from "../hooks/useStoryFilters";
+// Import useState and the readingHistoryService
+import { useState, useEffect } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import Navigation from "@/components/Navigation";
+import StoriesList from "@/components/StoriesList";
+import { useStoryFilters } from "@/hooks/useStoryFilters";
+import Footer from "@/components/Footer";
+import ActiveFilters from "@/components/ActiveFilters";
+import FilterDialog from "@/components/FilterDialog";
+import { readingHistoryService } from "@/services/blogService";
 
 const Index = () => {
-  // Use our custom hook to handle all filter logic
-  const {
-    posts,
-    loading,
-    error,
-    allTags,
-    selectedTags,
-    showUnreadOnly,
-    toggleTag,
-    toggleUnreadFilter,
-    clearFilters,
-    hasActiveFilters,
-    loadPosts
-  } = useStoryFilters();
-  
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 text-center relative">
-          <MultilingualTitle />
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-gray-600">
-              Короткое, длиннее и странное
-            </p>
-            
-            <FilterDialog 
-              allTags={allTags}
-              selectedTags={selectedTags}
-              toggleTag={toggleTag}
-              clearFilters={clearFilters}
-              hasActiveFilters={hasActiveFilters}
-              showUnreadOnly={showUnreadOnly}
-              toggleUnreadFilter={toggleUnreadFilter}
-            />
-          </div>
-          
-          <ActiveFilters 
-            selectedTags={selectedTags}
-            toggleTag={toggleTag}
-            clearFilters={clearFilters}
-            hasActiveFilters={hasActiveFilters}
-          />
-        </div>
+  const { user } = useAuth();
+  const storyFilters = useStoryFilters(user);  // Pass user as required argument
+  const [showFilters, setShowFilters] = useState(false);
 
-        <div className="max-w-3xl mx-auto">
-          <StoriesList 
-            posts={posts} 
-            loading={loading} 
-            error={error}
-            hasActiveFilters={hasActiveFilters} 
-            clearFilters={clearFilters}
-            onRetry={loadPosts}
+  const toggleFiltersDialog = () => {
+    setShowFilters(!showFilters);
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Navigation />
+      
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <ActiveFilters 
+            hasActiveFilters={storyFilters.hasActiveFilters}
+            selectedTags={storyFilters.selectedTags} 
+            onToggleTag={storyFilters.toggleTag}
+            showUnreadOnly={storyFilters.showUnreadOnly}
+            onToggleUnreadFilter={storyFilters.toggleUnreadFilter}
+            onClearFilters={storyFilters.clearFilters}
+            onOpenFiltersDialog={toggleFiltersDialog}
+          />
+          
+          <FilterDialog 
+            isOpen={showFilters}
+            onClose={() => setShowFilters(false)}
+            allTags={storyFilters.allTags}
+            selectedTags={storyFilters.selectedTags}
+            onToggleTag={storyFilters.toggleTag}
+            showUnreadOnly={storyFilters.showUnreadOnly}
+            onToggleUnreadFilter={storyFilters.toggleUnreadFilter}
+            onClearFilters={storyFilters.clearFilters}
           />
         </div>
+        
+        <StoriesList 
+          posts={storyFilters.posts} 
+          loading={storyFilters.loading} 
+          error={storyFilters.error} 
+          onReload={() => storyFilters.loadPosts(true)} 
+        />
       </main>
+      
+      <Footer />
     </div>
   );
 };

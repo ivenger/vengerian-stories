@@ -43,7 +43,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     fetch: fetchWithRetry
-  },
-  // Add better error logging
-  debug: process.env.NODE_ENV === 'development'
+  }
+  // Removed the debug property which was causing the error
 });

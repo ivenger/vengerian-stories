@@ -4,4 +4,6 @@ export * from './postService';
 export * from './tagService';
 export * from './aboutService';
 export * from './imageService';
-export * from './readingHistoryService';
+// Import reading history service functions specifically to avoid name conflicts
+import * as readingHistoryService from './readingHistoryService';
+export { readingHistoryService };

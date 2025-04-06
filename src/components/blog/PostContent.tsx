@@ -46,6 +46,8 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
             language={post.language?.[0] || 'English'}
             tags={post.tags || []}
             imageUrl={null} // Don't pass the image URL here as it's already shown in PostHeader
+            title={post.title} // Add the missing required prop
+            date={post.date} // Add the missing required prop
           />
         </div>
       </div>
