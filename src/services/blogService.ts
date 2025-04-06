@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 import { fetchAllTags as fetchAllTagsOriginal } from "./tagService";
@@ -36,18 +35,31 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
 
 // Fetch a single blog post by ID
 export const fetchPostById = async (id: string): Promise<BlogEntry | null> => {
-  const { data, error } = await supabase
-    .from('entries')
-    .select('*')
-    .eq('id', id)
-    .maybeSingle();
+  console.log(`blogService: Fetching post with ID: ${id}`);
   
-  if (error) {
-    console.error(`Error fetching post with ID ${id}:`, error);
-    throw error;
+  try {
+    const { data, error } = await supabase
+      .from('entries')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    
+    if (error) {
+      console.error(`blogService: Error fetching post with ID ${id}:`, error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.log(`blogService: No post found with ID: ${id}`);
+      return null;
+    }
+    
+    console.log(`blogService: Successfully fetched post: ${data.title}`);
+    return data as BlogEntry;
+  } catch (err) {
+    console.error(`blogService: Exception in fetchPostById for ID ${id}:`, err);
+    throw err;
   }
-  
-  return data as BlogEntry;
 };
 
 // Save a blog post (create or update)
@@ -104,14 +116,15 @@ export const fetchFilteredPosts = async (
   tags?: string[]
 ): Promise<BlogEntry[]> => {
   try {
-    console.log("Filtering posts with tags:", tags);
+    console.log("fetchFilteredPosts started with tags:", tags);
     
     let query = supabase
       .from('entries')
       .select('*')
       .eq('status', 'published');
     
-    if (Array.isArray(tags) && tags.length > 0) {
+    if (tags && Array.isArray(tags) && tags.length > 0) {
+      console.log("Applying tag filter with tags:", tags);
       query = query.overlaps('tags', tags);
     }
     
@@ -211,6 +224,8 @@ export const deleteTag = async (tagName: string): Promise<void> => {
 // Fetch about content
 export const fetchAboutContent = async (): Promise<{ content: string; image_url: string | null; language?: string }> => {
   try {
+    console.log("Fetching about content from Supabase");
+    
     const { data, error } = await supabase
       .from('about_content')
       .select('content, image_url, language')
@@ -221,6 +236,7 @@ export const fetchAboutContent = async (): Promise<{ content: string; image_url:
       throw error;
     }
     
+    console.log("About content retrieved:", data);
     return data || { content: "", image_url: null, language: "English" };
   } catch (error) {
     console.error('Error in fetchAboutContent:', error);

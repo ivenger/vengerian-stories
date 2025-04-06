@@ -1,39 +1,61 @@
 
 import React, { useState, useEffect } from "react";
 import { Pencil } from "lucide-react";
-import { useAuth } from "@clerk/clerk-react";
 import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/blogService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
+import { useAuth } from "../components/AuthProvider";
+import { Spinner } from "@/components/ui/spinner";
 
 const About: React.FC = () => {
   const [content, setContent] = useState("");
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { isSignedIn, isLoaded } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
+    let isMounted = true;
+    
     const loadAboutContent = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+        console.log("Fetching about content...");
+        
         const data = await fetchAboutContent();
         
-        if (typeof data === 'string') {
-          setContent(data);
-        } else {
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
+        // Only update state if component is still mounted
+        if (isMounted) {
+          console.log("About content fetched successfully:", data);
+          
+          if (typeof data === 'string') {
+            setContent(data);
+          } else {
+            setContent(data.content || "");
+            setImageUrl(data.image_url);
+          }
+          setIsLoading(false);
         }
       } catch (error) {
         console.error("Error loading about content:", error);
-        setContent("About content could not be loaded. Please try again later.");
-      } finally {
-        setIsLoading(false);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setError("About content could not be loaded. Please try again later.");
+          setContent("");
+          setIsLoading(false);
+        }
       }
     };
 
     loadAboutContent();
+    
+    // Cleanup function to prevent state updates on unmounted component
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const formatContent = (text: string) => {
@@ -50,11 +72,22 @@ const About: React.FC = () => {
       <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-sm">
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+            <Spinner size="lg" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-8 text-red-500">
+            <p>{error}</p>
+            <Button 
+              onClick={() => window.location.reload()} 
+              variant="outline"
+              className="mt-4"
+            >
+              Try Again
+            </Button>
           </div>
         ) : (
           <div>
-            {isLoaded && isSignedIn && (
+            {!authLoading && user && (
               <div className="flex justify-end mb-4">
                 <Link to="/admin/about">
                   <Button 

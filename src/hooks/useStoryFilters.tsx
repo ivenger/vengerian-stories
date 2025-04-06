@@ -64,13 +64,18 @@ export const useStoryFilters = () => {
     
     const fetchReadPosts = async () => {
       try {
+        console.log("Fetching reading history for user:", user.id);
         const { data, error } = await supabase
           .from('reading_history')
           .select('*')
           .eq('user_id', user.id);
           
-        if (error) throw error;
+        if (error) {
+          console.error("Error fetching reading history:", error);
+          throw error;
+        }
         
+        console.log("Reading history fetched:", data?.length || 0, "items");
         setReadPostIds((data || []).map(item => item.post_id));
       } catch (err) {
         console.error("Error fetching reading history:", err);
@@ -85,8 +90,9 @@ export const useStoryFilters = () => {
   useEffect(() => {
     const loadTags = async () => {
       try {
-        setError(null);
+        console.log("Fetching all tags...");
         const tags = await fetchAllTags();
+        console.log("Tags fetched successfully:", tags);
         setAllTags(tags);
       } catch (error) {
         console.error("Failed to load tags:", error);
@@ -98,28 +104,33 @@ export const useStoryFilters = () => {
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async () => {
+    console.log("loadPosts called with filters:", { 
+      selectedTags, 
+      showUnreadOnly, 
+      userLoggedIn: !!user 
+    });
+    
+    setLoading(true);
+    setError(null);
+    
     try {
-      setLoading(true);
-      setError(null);
-      
-      let tagsParam = undefined;
-      
-      // Only use tags filter if there are actually selected tags
-      if (selectedTags.length > 0) {
-        tagsParam = selectedTags;
-      }
+      const tagsParam = selectedTags.length > 0 ? selectedTags : undefined;
       
       console.log("Filtering posts with tags:", tagsParam);
       
       const filteredPosts = await fetchFilteredPosts(tagsParam);
+      console.log(`Received ${filteredPosts.length} posts from API`);
       
       // Apply read/unread filter if enabled
-      const postsAfterReadFilter = showUnreadOnly && user
-        ? filteredPosts.filter(post => !readPostIds.includes(post.id))
-        : filteredPosts;
+      let postsAfterReadFilter = filteredPosts;
+      
+      if (showUnreadOnly && user) {
+        console.log("Filtering for unread posts, read IDs:", readPostIds);
+        postsAfterReadFilter = filteredPosts.filter(post => !readPostIds.includes(post.id));
+        console.log(`${postsAfterReadFilter.length} posts after unread filter`);
+      }
         
       setPosts(postsAfterReadFilter);
-      setLoading(false);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       setError(
@@ -128,6 +139,8 @@ export const useStoryFilters = () => {
           : "Failed to load stories. Please try again later."
       );
       setPosts([]);
+    } finally {
+      console.log("Setting loading to false");
       setLoading(false);
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds]);
