@@ -19,13 +19,19 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         const { data, error } = await supabase
           .from('reading_history')
-          .select('user_id, post_id') // Specify columns explicitly
+          .select('id, user_id, post_id, read_at')
           .eq('user_id', user.id)
           .eq('post_id', postId)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
-          console.error("useReadingTracker: Error checking read status:", error);
+        if (error) {
+          if (error.code === '406') {
+            console.warn("ReadingTracker: 406 Not Acceptable error when checking read status - continuing");
+            return;
+          }
+          if (error.code !== 'PGRST116') { // PGRST116 is "No rows returned"
+            console.error("useReadingTracker: Error checking read status:", error);
+          }
         } else if (isMounted) {
           console.log(`ReadingTracker: Read status is ${!!data}`);
           setIsRead(!!data);
@@ -67,6 +73,10 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           });
 
         if (error) {
+          if (error.code === '406') {
+            console.warn("ReadingTracker: 406 Not Acceptable error when marking as read - skipping");
+            return;
+          }
           console.error("ReadingTracker: Error marking post as read:", error);
           return;
         }

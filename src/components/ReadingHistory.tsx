@@ -26,19 +26,19 @@ const ReadingHistory = () => {
         setLoading(true);
         setError(null);
         
-        // Fetch all published blog posts
+        // Fetch all published blog posts with explicit columns
         const { data: posts, error: postsError } = await supabase
           .from("entries")
-          .select("*")
+          .select("id, title, title_language, content, excerpt, date, language, status, image_url, created_at, updated_at, translations, tags")
           .eq("status", "published")
           .order("created_at", { ascending: false });
           
         if (postsError) throw postsError;
         
-        // Fetch reading history
+        // Fetch reading history with explicit column selection
         const { data: history, error: historyError } = await supabase
           .from("reading_history")
-          .select("*")
+          .select("id, user_id, post_id, read_at")
           .eq("user_id", user.id);
           
         if (historyError) {
@@ -49,7 +49,24 @@ const ReadingHistory = () => {
             throw historyError;
           }
         } else {
-          setAllPosts(posts || []);
+          // Map the posts to BlogEntry type
+          const mappedPosts = (posts || []).map((post): BlogEntry => ({
+            id: post.id,
+            title: post.title,
+            title_language: post.title_language || ['en'],
+            content: post.content || '',
+            excerpt: post.excerpt,
+            date: post.date,
+            language: post.language || ['English'],
+            status: post.status || 'published',
+            image_url: post.image_url,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+            translations: post.translations || [],
+            tags: post.tags || []
+          }));
+          
+          setAllPosts(mappedPosts);
           setReadPosts((history as ReadingHistoryItem[] || []).map(item => item.post_id));
         }
       } catch (err: any) {

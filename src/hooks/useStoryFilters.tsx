@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { User } from '@supabase/supabase-js';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from 'date-fns';
 
 // Helper function to apply filters - defined outside the hook to avoid circular dependencies
 const applyFiltersToData = (
@@ -41,8 +43,7 @@ const applyFiltersToData = (
   return filteredPosts;
 };
 
-export const useStoryFilters = () => {
-  const { user, refreshSession } = useAuth();
+export const useStoryFilters = (user: User | null) => {
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,7 +133,7 @@ export const useStoryFilters = () => {
         console.log("Fetching reading history for user:", user.id);
         const { data, error } = await supabase
           .from('reading_history')
-          .select('*')
+          .select('id, user_id, post_id, read_at')
           .eq('user_id', user.id);
           
         if (error) {
@@ -202,6 +203,21 @@ export const useStoryFilters = () => {
       setPosts(filteredPosts);
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds]);
+
+  // Define refreshSession function
+  const refreshSession = async () => {
+    try {
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("Failed to refresh session:", error);
+        return false;
+      }
+      return true;
+    } catch (err) {
+      console.error("Error refreshing session:", err);
+      return false;
+    }
+  };
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
