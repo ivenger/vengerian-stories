@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BlogEntry } from '../types/blogTypes';
 import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../components/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -18,7 +18,12 @@ export const useStoryFilters = () => {
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
   const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
-
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  
+  // Max number of retries
+  const MAX_RETRIES = 3;
+  
   // Load saved filters from localStorage on initial render
   useEffect(() => {
     const savedTags = localStorage.getItem('selectedTags');
@@ -74,7 +79,8 @@ export const useStoryFilters = () => {
           
         if (error) {
           console.error("Error fetching reading history:", error);
-          throw error;
+          // Don't set error state as this is non-critical
+          return;
         }
         
         console.log("Reading history fetched:", data?.length || 0, "items");
@@ -104,13 +110,25 @@ export const useStoryFilters = () => {
     loadTags();
   }, []);
 
+  // Implement exponential backoff for retries
+  const getBackoffDelay = (retryAttempt: number) => {
+    // Start with a 2 second delay and double each time, max 30 seconds
+    const baseDelay = 2000;
+    const delay = Math.min(baseDelay * Math.pow(2, retryAttempt), 30000);
+    // Add a bit of randomness to avoid all clients retrying at the same time
+    return delay + (Math.random() * 1000);
+  };
+
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
+    if (isRetrying) return; // Avoid multiple retries happening simultaneously
+    
     console.log("loadPosts called with filters:", { 
       selectedTags, 
       showUnreadOnly, 
       userLoggedIn: !!user,
-      forceRefresh
+      forceRefresh,
+      retryCount
     });
     
     setLoading(true);
@@ -131,6 +149,9 @@ export const useStoryFilters = () => {
       
       // Apply filters
       applyFilters(allPosts);
+      
+      // Reset retry count on success
+      setRetryCount(0);
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       
@@ -141,24 +162,53 @@ export const useStoryFilters = () => {
         if (user) {
           const refreshed = await refreshSession();
           if (refreshed) {
-            // If refresh successful, try loading posts again
+            // If refresh successful, try loading posts again without incrementing retry count
             console.log("Session refreshed, retrying post load");
-            return loadPosts(false);
+            setIsRetrying(true);
+            setTimeout(() => {
+              setIsRetrying(false);
+              loadPosts(false);
+            }, 1000);
+            return;
           }
         }
       }
       
-      setError(
-        error?.message === "TypeError: Failed to fetch" 
-          ? "Network error. Please check your connection and try again." 
-          : "Failed to load stories. Please try again later."
-      );
-      setPosts([]);
+      // Check if we should retry
+      if (retryCount < MAX_RETRIES && error?.message?.includes('Failed to fetch')) {
+        const nextRetryCount = retryCount + 1;
+        const backoffDelay = getBackoffDelay(retryCount);
+        
+        console.log(`Retry ${nextRetryCount}/${MAX_RETRIES} scheduled in ${backoffDelay}ms`);
+        setRetryCount(nextRetryCount);
+        
+        setError(`Network error. Retrying in ${Math.round(backoffDelay/1000)} seconds...`);
+        setIsRetrying(true);
+        
+        // Schedule retry with backoff
+        setTimeout(() => {
+          setIsRetrying(false);
+          loadPosts(false);
+        }, backoffDelay);
+      } else {
+        // We've exhausted retries or it's not a network error
+        setError(
+          error?.message === "TypeError: Failed to fetch" 
+            ? "Network error. Please check your connection and try again." 
+            : "Failed to load stories. Please try again later."
+        );
+        setPosts([]);
+        // Reset retry count
+        setRetryCount(0);
+      }
     } finally {
-      console.log("Setting loading to false");
-      setLoading(false);
+      // Only set loading to false if we're not scheduling a retry
+      if (!isRetrying) {
+        console.log("Setting loading to false");
+        setLoading(false);
+      }
     }
-  }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession]);
+  }, [selectedTags, showUnreadOnly, user, readPostIds, refreshSession, retryCount, isRetrying]);
 
   // Extract the filtering logic to a separate function for reuse
   const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
@@ -191,20 +241,20 @@ export const useStoryFilters = () => {
 
   // When filters change, apply them to the original posts
   useEffect(() => {
-    if (originalPosts.length > 0 && !loading) {
+    if (originalPosts.length > 0 && !loading && !isRetrying) {
       console.log("Filters changed, applying to cached posts");
       applyFilters(originalPosts);
     }
-  }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading]);
+  }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading, isRetrying]);
 
   // Fetch posts on initial load
   useEffect(() => {
     loadPosts();
     
-    // Set up a refresh timer to avoid stale data
+    // Set up a refresh timer to avoid stale data, but with a longer interval
     const refreshTimer = setInterval(() => {
       const now = Date.now();
-      if (now - lastLoad > 5 * 60 * 1000) {  // 5 minutes
+      if (now - lastLoad > 10 * 60 * 1000) {  // 10 minutes (increased from 5)
         console.log("It's been a while since posts were loaded, refreshing");
         loadPosts(true);
       }
@@ -232,6 +282,7 @@ export const useStoryFilters = () => {
     console.log("Clearing all filters");
     setSelectedTags([]);
     setShowUnreadOnly(false);
+    setRetryCount(0);
     
     // Immediately apply empty filters to show all posts
     if (originalPosts.length > 0) {
