@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,12 +23,16 @@ export function useAuthProvider() {
     try {
       console.log("Checking admin role for user:", userId);
       
+      // Log the exact RPC invocation details
+      console.log("Invoking RPC function 'is_admin' with parameters:", { user_id: userId });
+
       // Make the RPC call to check if the user is an admin
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
         // Log error but don't throw - prevent authentication from breaking
         console.error("Error checking admin role:", error);
+        console.error("RPC call details: user_id:", userId, "error code:", error.code, "message:", error.message);
         
         // Handle specific error cases
         if (error.code === '500') {
@@ -44,6 +47,7 @@ export function useAuthProvider() {
       return Boolean(data);
     } catch (err) {
       console.error("Failed to check user role:", err);
+      console.error("Exception details: user_id:", userId, "error:", err);
       // Default to non-admin on error
       return false;
     }
