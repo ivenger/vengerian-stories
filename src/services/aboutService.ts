@@ -36,6 +36,7 @@ export const saveAboutContent = async (contentData: { content: string; image_url
       .eq('language', 'en')  // Default to English content
       .maybeSingle();
     
+    // Add the required language field to the content data
     const fullContentData = {
       ...contentData,
       language: 'en'  // Add the required language field
@@ -60,7 +61,7 @@ export const saveAboutContent = async (contentData: { content: string; image_url
       console.log("AboutService: Creating new about content record");
       const { error } = await supabase
         .from('about_content')
-        .insert(fullContentData);
+        .insert([fullContentData]);
       
       if (error) {
         console.error("AboutService: Error creating about content:", error);
