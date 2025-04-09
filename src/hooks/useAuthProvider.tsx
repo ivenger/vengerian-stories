@@ -192,6 +192,21 @@ export function useAuthProvider() {
     };
   }, [toast, refreshSession]);
 
+  useEffect(() => {
+    const handleFocus = async () => {
+        console.log(`[${new Date().toISOString()}] Window focused. Checking session state.`);
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error || !session) {
+            console.error(`[${new Date().toISOString()}] No session found on focus. Error:`, error);
+        } else {
+            console.log(`[${new Date().toISOString()}] Session restored:`, session);
+        }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");

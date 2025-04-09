@@ -412,6 +412,7 @@ export const useStoryFilters = (user: User | null) => {
     const handleVisibilityChange = async () => {
         if (document.visibilityState === 'visible') {
             console.log(`[${new Date().toISOString()}] App became visible. Checking user session state:`, user);
+            console.log(`[${new Date().toISOString()}] Checking localStorage for session:`, localStorage.getItem('supabase.auth.token'));
             if (user) {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error || !session) {
