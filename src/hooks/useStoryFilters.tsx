@@ -218,16 +218,18 @@ export const useStoryFilters = (user: User | null) => {
 
   // Define refreshSession function
   const refreshSession = async () => {
+    console.log(`[${new Date().toISOString()}] Attempting to refresh session`);
     try {
-      const { error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error("Failed to refresh session:", error);
-        return false;
-      }
-      return true;
+        const { error } = await supabase.auth.refreshSession();
+        if (error) {
+            console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
+            return false;
+        }
+        console.log(`[${new Date().toISOString()}] Session refreshed successfully`);
+        return true;
     } catch (err) {
-      console.error("Error refreshing session:", err);
-      return false;
+        console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
+        return false;
     }
   };
 
@@ -405,6 +407,28 @@ export const useStoryFilters = (user: User | null) => {
       }
     };
   }, [loadPosts, lastLoad]);
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+        if (document.visibilityState === 'visible') {
+            console.log(`[${new Date().toISOString()}] App became visible. Checking user session state:`, user);
+            if (user) {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error || !session) {
+                    console.error(`[${new Date().toISOString()}] No active session found. Error:`, error);
+                } else {
+                    console.log(`[${new Date().toISOString()}] Active session found. Session details:`, session);
+                }
+            }
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+}, [user]);
 
   const toggleTag = (tag: string) => {
     console.log(`Toggling tag: ${tag}`);
