@@ -10,7 +10,21 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     detectSessionInUrl: true,
     storageKey: 'vengerian-stories-auth',
-    storage: window.localStorage
+    storage: {
+      getItem: (key) => {
+        const value = localStorage.getItem(key);
+        console.log(`[${new Date().toISOString()}] Storage.getItem: ${key} =`, value);
+        return value;
+      },
+      setItem: (key, value) => {
+        console.log(`[${new Date().toISOString()}] Storage.setItem: ${key} =`, value);
+        localStorage.setItem(key, value);
+      },
+      removeItem: (key) => {
+        console.log(`[${new Date().toISOString()}] Storage.removeItem: ${key}`);
+        localStorage.removeItem(key);
+      }
+    }
   }
 });
 
