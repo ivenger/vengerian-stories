@@ -13,13 +13,17 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
   });
   
   try {
-    console.log("AboutService: Making Supabase request");
+    console.log("AboutService: Making Supabase request with token", {
+      token: localStorage.getItem('supabase.auth.token'),
+    });
     const { data, error } = await supabase
       .from('about_content')
       .select('*')
       .eq('language', 'en')
       .maybeSingle()
       .abortSignal(signal);
+
+    console.log("AboutService: Supabase response", { data, error });
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
@@ -47,6 +51,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     console.log("AboutService: Request successful", {
       hasContent: !!data.content,
       hasImage: !!data.image_url,
+      language: data.language
+    });
+
+    console.log("AboutService: All content loaded successfully", {
+      content: data.content,
+      image_url: data.image_url,
       language: data.language
     });
 

@@ -207,6 +207,25 @@ export function useAuthProvider() {
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+        if (document.visibilityState === 'visible') {
+            console.log(`[${new Date().toISOString()}] App became visible.`);
+            const storedToken = localStorage.getItem('supabase.auth.token');
+            console.log(`[${new Date().toISOString()}] LocalStorage token:`, storedToken);
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (error || !session) {
+                console.error(`[${new Date().toISOString()}] No active session found (or error) on visibility.`, error);
+            } else {
+                console.log(`[${new Date().toISOString()}] Session restored:`, session);
+            }
+        }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");
