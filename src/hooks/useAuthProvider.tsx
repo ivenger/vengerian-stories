@@ -226,6 +226,35 @@ export function useAuthProvider() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  useEffect(() => {
+    const logTokenHistory = () => {
+        const token = localStorage.getItem('supabase.auth.token');
+        console.log(`[${new Date().toISOString()}] Current token in localStorage:`, token);
+    };
+
+    // Log token history on app focus
+    const handleFocus = () => {
+        console.log(`[${new Date().toISOString()}] Window focused. Logging token history.`);
+        logTokenHistory();
+    };
+
+    // Log token history on visibility change
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            console.log(`[${new Date().toISOString()}] App became visible. Logging token history.`);
+            logTokenHistory();
+        }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+}, []);
+
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");
