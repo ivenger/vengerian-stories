@@ -7,14 +7,19 @@ interface AboutContent {
 }
 
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
-  console.log("AboutService: Starting fetch", {
-    hasSignal: !!signal,
-    signalAborted: signal?.aborted
-  });
-  
+  console.log("AboutService: Starting fetch", { hasSignal: !!signal, signalAborted: signal?.aborted });
+
+  // Ensure session is restored before making the request
+  const { data: { session }, error } = await supabase.auth.getSession();
+  if (error || !session) {
+    console.error("AboutService: Failed to restore session", error);
+    throw new Error("Session restoration failed");
+  }
+  console.log("AboutService: Session restored before request", session);
+
   try {
     console.log("AboutService: Making Supabase request with token", {
-      token: localStorage.getItem('supabase.auth.token'),
+      token: localStorage.getItem('vengerian-stories-auth'),
     });
     const { data, error } = await supabase
       .from('about_content')
@@ -61,14 +66,9 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     });
 
     return data as AboutContent;
-  } catch (error) {
-    console.log("AboutService: Error in fetch", {
-      name: error.name,
-      message: error.message,
-      isAbortError: error instanceof DOMException && error.name === "AbortError"
-    });
-
-    throw error;
+  } catch (err) {
+    console.error("AboutService: Error during fetch", err);
+    throw err;
   }
 };
 
