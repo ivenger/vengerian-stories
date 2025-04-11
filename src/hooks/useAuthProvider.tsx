@@ -255,6 +255,35 @@ export function useAuthProvider() {
     };
 }, []);
 
+  useEffect(() => {
+    const logNavigationBehavior = () => {
+        const token = localStorage.getItem('vengerian-stories-auth');
+        console.log(`[${new Date().toISOString()}] Navigation check - Current token in localStorage:`, token);
+    };
+
+    // Log token on app focus
+    const handleFocus = () => {
+        console.log(`[${new Date().toISOString()}] App focused. Logging navigation behavior.`);
+        logNavigationBehavior();
+    };
+
+    // Log token on visibility change
+    const handleVisibilityChange = () => {
+        if (document.visibilityState === 'visible') {
+            console.log(`[${new Date().toISOString()}] App became visible. Logging navigation behavior.`);
+            logNavigationBehavior();
+        }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+        window.removeEventListener('focus', handleFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+}, []);
+
   const signOut = async () => {
     try {
       console.log("Attempting to sign out");
