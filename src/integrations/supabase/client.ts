@@ -14,4 +14,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-console.log(`[${new Date().toISOString()}] Supabase client initialized with autoRefreshToken and persistSession.`);
+console.log(`[${new Date().toISOString()}] Supabase client initialized with persistSession and autoRefreshToken.`);
