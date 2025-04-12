@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,10 +95,21 @@ export function useAuthProvider() {
           setSession(null);
           setIsAdmin(false);
         } else if (!newSession && event !== 'SIGNED_OUT') {
-          const recovered = await recoverSession();
-          if (!recovered && isMounted) {
-            setSession(null);
-            setIsAdmin(false);
+          // Fix: Instead of comparing event !== "SIGNED_OUT" which causes a type error,
+          // We'll check if session is missing and recovery is needed for specific events
+          const needsRecovery = ["INITIAL_SESSION", "PASSWORD_RECOVERY", "MFA_CHALLENGE_VERIFIED"].includes(event);
+          
+          if (needsRecovery) {
+            const recovered = await recoverSession();
+            if (!recovered && isMounted) {
+              setSession(null);
+              setIsAdmin(false);
+            }
+          } else {
+            if (isMounted) {
+              setSession(null);
+              setIsAdmin(false);
+            }
           }
         }
 
