@@ -30,94 +30,84 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
   }
   
   try {
-    console.log("AboutService: Executing query with 7s timeout");
-    
-    // Set a timeout for this specific query
+    // Set a timeout to log a warning if the query takes too long
     const timeoutId = setTimeout(() => {
-      console.error("AboutService: Query timed out after 7 seconds");
-    }, 7000);
-    
-    // Execute the simple, direct query without Promise.race
-    console.log("AboutService: Sending request to Supabase");
-    
-    // Log auth state before query
+      console.log("AboutService: Query taking longer than expected (5 seconds)");
+    }, 5000);
+
+    // Log session information for debugging
     const { data: sessionData } = await supabase.auth.getSession();
-    console.log("AboutService: Auth session before query:", 
-      sessionData?.session ? "Valid session" : "No session", 
-      { hasUser: !!sessionData?.session?.user }
-    );
-    
-    // Execute the actual query
-    const { data, error } = await supabase
-      .from('about_content')
-      .select('*')
-      .eq('language', 'en')
-      .maybeSingle();
-    
-    // Clear timeout since we got a response
-    clearTimeout(timeoutId);
-    
-    console.log("AboutService: Query completed", { 
-      hasData: !!data, 
-      hasError: !!error,
-      resultStatus: data ? 'success' : (error ? 'error' : 'empty'),
-      timestamp: new Date().toISOString()
+    console.log("AboutService: Auth session before query:", {
+      hasSession: !!sessionData?.session,
+      hasUser: !!sessionData?.session?.user,
+      userId: sessionData?.session?.user?.id || 'none',
+      email: sessionData?.session?.user?.email || 'none',
+      expiresAt: sessionData?.session?.expires_at ? new Date(sessionData.session.expires_at * 1000).toISOString() : 'none'
     });
 
+    console.log("AboutService: Executing simple query with 10s timeout");
+    
+    // Create a safety timeout promise that will reject after 10 seconds
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Query timeout exceeded")), 10000);
+    });
+    
+    // Race between the actual query and the timeout
+    const result = await Promise.race([
+      supabase
+        .from('about_content')
+        .select('*')
+        .eq('language', 'en')
+        .maybeSingle(),
+      timeoutPromise
+    ]);
+    
+    clearTimeout(timeoutId);
+    
     // Check if the request was aborted during execution
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
       throw new DOMException("Request aborted", "AbortError");
     }
 
-    if (error) {
-      console.error("AboutService: Supabase error", { 
-        error,
-        code: error.code,
-        details: error.details,
-        hint: error.hint,
-        message: error.message
-      });
-      throw error;
-    }
+    // Since we raced with a timeout, we need to check if we got the actual response
+    if ('data' in result && 'error' in result) {
+      const { data, error } = result;
+      
+      if (error) {
+        console.error("AboutService: Supabase error", error);
+        throw error;
+      }
 
-    if (!data) {
-      console.log("AboutService: No content found, returning default");
-      return {
-        content: "",
-        image_url: null,
-        language: "en"
-      };
-    }
+      if (!data) {
+        console.log("AboutService: No content found, returning default");
+        return {
+          content: "",
+          image_url: null,
+          language: "en"
+        };
+      }
 
-    console.log("AboutService: Request successful", {
-      dataReceived: !!data,
-      dataSnippet: data ? { 
+      console.log("AboutService: Request successful", {
         contentLength: data.content?.length || 0,
-        hasImage: !!data.image_url,
-        language: data.language
-      } : null,
-      timestamp: new Date().toISOString()
-    });
+        hasImage: !!data.image_url
+      });
 
-    return {
-      content: data.content || "",
-      image_url: data.image_url,
-      language: data.language
-    };
+      return {
+        content: data.content || "",
+        image_url: data.image_url,
+        language: data.language
+      };
+    } else {
+      // This is likely the timeoutPromise that won the race
+      throw new Error("Unexpected response format");
+    }
   } catch (err) {
     // Don't log AbortError as an error since it's expected behavior
-    if (err.name === 'AbortError') {
-      console.log("AboutService: Request aborted", {
-        timestamp: new Date().toISOString()
-      });
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      console.log("AboutService: Request aborted");
     } else {
-      console.error("AboutService: Error during fetch", {
-        error: err,
-        message: err.message,
-        stack: err.stack,
-        timestamp: new Date().toISOString()
-      });
+      console.error("AboutService: Error during fetch", err);
     }
     throw err;
   } finally {
@@ -134,31 +124,45 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
   try {
     // Add timeout protection for save operation
     const timeoutId = setTimeout(() => {
-      console.log("AboutService: Save operation taking longer than expected (7 seconds)");
-    }, 7000);
+      console.log("AboutService: Save operation taking longer than expected (5 seconds)");
+    }, 5000);
     
     // Log auth state before save
     const { data: sessionData } = await supabase.auth.getSession();
-    console.log("AboutService: Auth session before save:", 
-      sessionData?.session ? "Valid session" : "No session", 
-      { hasUser: !!sessionData?.session?.user }
-    );
+    console.log("AboutService: Auth session before save:", {
+      hasSession: !!sessionData?.session,
+      hasUser: !!sessionData?.session?.user,
+      userId: sessionData?.session?.user?.id || 'none'
+    });
     
-    const { error } = await supabase
-      .from('about_content')
-      .upsert({
-        language: 'en',
-        content: content,
-        image_url: imageUrl
-      }, { 
-        onConflict: 'language' 
-      });
+    // Set up a safety timeout promise
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error("Save operation timeout exceeded")), 10000);
+    });
+    
+    // Race between the actual save operation and the timeout
+    const result = await Promise.race([
+      supabase
+        .from('about_content')
+        .upsert({
+          language: 'en',
+          content: content,
+          image_url: imageUrl
+        }, { 
+          onConflict: 'language' 
+        }),
+      timeoutPromise
+    ]);
     
     clearTimeout(timeoutId);
     
-    if (error) {
-      console.error("AboutService: Error saving about content:", error);
-      throw error;
+    // Since we raced with a timeout, we need to check if we got the actual response
+    if ('error' in result) {
+      const { error } = result;
+      if (error) {
+        console.error("AboutService: Error saving about content:", error);
+        throw error;
+      }
     }
     
     console.log("AboutService: About content saved successfully");

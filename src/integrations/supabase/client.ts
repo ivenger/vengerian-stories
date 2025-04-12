@@ -7,6 +7,8 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 // Set reasonable global timeout - longer than individual query timeouts
 const GLOBAL_TIMEOUT_MS = 15000; 
+// Log requests to debug authentication and network issues
+const DEBUG_REQUESTS = true;
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -53,6 +55,8 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'x-client-info': `@supabase/js@latest`
     },
     fetch: (url, options) => {
+      const requestId = Math.random().toString(36).substring(2, 10);
+      
       // Create a controller that will abort the fetch after GLOBAL_TIMEOUT_MS
       const controller = new AbortController();
       const signal = options?.signal || null;
@@ -64,6 +68,10 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         } else {
           signal.addEventListener('abort', () => controller.abort());
         }
+      }
+      
+      if (DEBUG_REQUESTS) {
+        console.log(`[${new Date().toISOString()}] Supabase request ${requestId} starting: ${options?.method || 'GET'} ${url.toString()}`);
       }
       
       // Set our own timeout
@@ -80,10 +88,26 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         ...options?.headers,
       };
       
+      if (DEBUG_REQUESTS) {
+        console.log(`[${new Date().toISOString()}] Supabase request ${requestId} headers:`, headers);
+      }
+      
       return fetch(url, {
         ...options,
         headers,
         signal: controller.signal,
+      })
+      .then(response => {
+        if (DEBUG_REQUESTS) {
+          console.log(`[${new Date().toISOString()}] Supabase request ${requestId} completed with status: ${response.status}`);
+        }
+        return response;
+      })
+      .catch(error => {
+        if (DEBUG_REQUESTS) {
+          console.log(`[${new Date().toISOString()}] Supabase request ${requestId} failed:`, error);
+        }
+        throw error;
       })
       .finally(() => {
         clearTimeout(timeoutId);
