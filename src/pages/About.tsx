@@ -22,7 +22,9 @@ const About: React.FC = () => {
   const fetchControllerRef = useRef<AbortController | null>(null);
   const isFirstMount = useRef(true);
   const mountCountRef = useRef(0);
-
+  useEffect(() => {
+    fetchAttempts.current = 0; // Reset fetch attempts
+  }, []);
   // Main effect for loading content
   useEffect(() => {
     console.log("About: Component mounting", {
