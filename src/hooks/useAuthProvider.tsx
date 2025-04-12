@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+
+import { useState, useEffect, useCallback } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -9,11 +10,11 @@ export function useAuthProvider() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const recoveryAttempts = useRef(0);
-  const maxRecoveryAttempts = 3;
 
-  const checkUserRole = useCallback(async (userId: string) => {
-    if (!userId) return false;
+  const checkUserRole = async (userId: string) => {
+    if (!userId) {
+      return false;
+    }
     
     try {
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
@@ -28,46 +29,13 @@ export function useAuthProvider() {
       console.error("Failed to check user role:", err);
       return false;
     }
-  }, []);
-
-  const recoverSession = useCallback(async () => {
-    if (recoveryAttempts.current >= maxRecoveryAttempts) {
-      console.log("Max recovery attempts reached");
-      return false;
-    }
-
-    try {
-      recoveryAttempts.current++;
-      console.log(`Attempting session recovery (attempt ${recoveryAttempts.current})`);
-      
-      const { data: { session: recoveredSession }, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Session recovery error:", error);
-        return false;
-      }
-
-      if (recoveredSession?.user) {
-        console.log("Session recovered successfully");
-        setSession(recoveredSession);
-        const adminStatus = await checkUserRole(recoveredSession.user.id);
-        setIsAdmin(adminStatus);
-        return true;
-      }
-      
-      return false;
-    } catch (err) {
-      console.error("Session recovery failed:", err);
-      return false;
-    }
-  }, [checkUserRole]);
+  };
 
   // Handle auth state changes and session management
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
-    recoveryAttempts.current = 0;
 
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -75,10 +43,6 @@ export function useAuthProvider() {
         console.log("Auth state changed:", event, newSession?.user?.email || "no user");
 
         if (!isMounted) return;
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed successfully');
-        }
 
         if (newSession?.user) {
           setSession(newSession);
@@ -92,16 +56,9 @@ export function useAuthProvider() {
             console.error("Error checking admin status:", roleError);
             if (isMounted) setIsAdmin(false);
           }
-        } else if (event === 'SIGNED_OUT') {
+        } else {
           setSession(null);
           setIsAdmin(false);
-        } else if (!newSession && event !== 'SIGNED_OUT') {
-          // Possible connection issue - attempt recovery
-          const recovered = await recoverSession();
-          if (!recovered && isMounted) {
-            setSession(null);
-            setIsAdmin(false);
-          }
         }
 
         if (isMounted) setLoading(false);
@@ -132,9 +89,10 @@ export function useAuthProvider() {
         return;
       }
 
+      console.log("Current session:", currentSession ? `exists for ${currentSession.user.email}` : "none");
+      setSession(currentSession);
+
       if (currentSession?.user) {
-        console.log("Current session:", `exists for ${currentSession.user.email}`);
-        setSession(currentSession);
         try {
           const adminStatus = await checkUserRole(currentSession.user.id);
           if (isMounted) {
@@ -144,8 +102,6 @@ export function useAuthProvider() {
           console.error("Error checking initial admin status:", roleError);
           if (isMounted) setIsAdmin(false);
         }
-      } else {
-        console.log("No active session found");
       }
 
       if (isMounted) setLoading(false);
@@ -161,11 +117,13 @@ export function useAuthProvider() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [toast, checkUserRole, recoverSession]);
+  }, [toast]);
 
   const signOut = async () => {
     try {
       setLoading(true);
+      
+      // Perform the signout operation
       const { error: signOutError } = await supabase.auth.signOut();
       
       if (signOutError) {
