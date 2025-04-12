@@ -28,26 +28,28 @@ export const useSessionRefresh = () => {
     console.log(`[${new Date().toISOString()}] Attempting to refresh session`);
     
     try {
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-            console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
-            refreshInProgress.current = false;
-            return false;
-        }
-        
-        console.log(`[${new Date().toISOString()}] Session refreshed successfully`);
-        lastRefreshTime.current = Date.now();
-        refreshInProgress.current = false;
-        return true;
-    } catch (err) {
-        console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
+      const { error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
         refreshInProgress.current = false;
         return false;
+      }
+      
+      console.log(`[${new Date().toISOString()}] Session refreshed successfully`);
+      lastRefreshTime.current = Date.now();
+      refreshInProgress.current = false;
+      return true;
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
+      refreshInProgress.current = false;
+      return false;
     }
   }, []);
   
   // Add effect to refresh session when navigating to a page
   useEffect(() => {
+    let timeoutIds: number[] = [];
+
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         console.log(`[${new Date().toISOString()}] Page became visible, checking session state`);
@@ -60,13 +62,16 @@ export const useSessionRefresh = () => {
           try {
             // Add timeout protection to prevent hanging
             const sessionPromise = supabase.auth.getSession();
-            const timeoutPromise = new Promise((_, reject) => {
-              setTimeout(() => {
-                reject(new Error('Session check timed out'));
-              }, 2000);
-            });
             
-            const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+            const timeoutId = window.setTimeout(() => {
+              console.log(`[${new Date().toISOString()}] Session check timed out after 2 seconds`);
+            }, 2000);
+            
+            timeoutIds.push(timeoutId);
+            
+            const { data } = await sessionPromise;
+            
+            window.clearTimeout(timeoutId);
             
             if (data?.session) {
               console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
@@ -78,10 +83,7 @@ export const useSessionRefresh = () => {
             console.error(`[${new Date().toISOString()}] Error checking session:`, err);
             
             // If session check failed, try refreshing the session as a fallback
-            if (err.message === 'Session check timed out') {
-              console.log(`[${new Date().toISOString()}] Session check timed out, attempting refresh`);
-              await refreshSession();
-            }
+            await refreshSession();
           }
         }
       }
@@ -106,6 +108,8 @@ export const useSessionRefresh = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
+      // Clear any pending timeouts
+      timeoutIds.forEach(id => window.clearTimeout(id));
     };
   }, [refreshSession, shouldRefreshSession]);
 

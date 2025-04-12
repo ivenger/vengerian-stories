@@ -34,68 +34,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     console.log("AboutService: Preparing Supabase request", queryDetails);
     
-    // Get authentication headers for logging - Using a timeout to prevent potential deadlocks
-    let authHeaders: { hasAuthToken: boolean; authorization?: string } = { hasAuthToken: false };
-    let sessionData = null;
-
-    try {
-      console.log("AboutService: About to check auth session", { 
-        timestamp: new Date().toISOString()
-      });
-      
-      // Use a promise with timeout to prevent hanging on auth check
-      const sessionPromise = new Promise(async (resolve) => {
-        try {
-          const session = await supabase.auth.getSession();
-          resolve(session);
-        } catch (err) {
-          console.error("AboutService: Error in getSession:", err);
-          resolve(null); 
-        }
-      });
-      
-      // Add a timeout to the auth check
-      const timeoutPromise = new Promise((resolve) => {
-        setTimeout(() => {
-          console.log("AboutService: Auth check timed out after 2 seconds");
-          resolve(null);
-        }, 2000);
-      });
-      
-      // Race the session fetch against a timeout
-      sessionData = await Promise.race([sessionPromise, timeoutPromise]);
-      
-      if (sessionData && sessionData.data && sessionData.data.session) {
-        authHeaders = {
-          authorization: `Bearer ${sessionData.data.session.access_token}`,
-          hasAuthToken: true
-        };
-        console.log("AboutService: Session retrieved successfully", {
-          hasSession: true,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        console.log("AboutService: No active session found", {
-          timestamp: new Date().toISOString()
-        });
-      }
-    } catch (authErr) {
-      console.error("AboutService: Failed to get auth session", authErr);
-    }
-
-    console.log("AboutService: Request authentication details", {
-      isAuthenticated: !!(sessionData?.data?.session),
-      headers: { ...authHeaders, 'apikey': '[REDACTED]' },
-      timestamp: new Date().toISOString()
-    });
-    
-    // Check again for abort signal after auth check
-    if (signal?.aborted) {
-      console.log("AboutService: Request aborted after auth check");
-      throw new DOMException("Request aborted", "AbortError");
-    }
-    
-    // Create the query first
+    // Create the query first - don't wait for auth check
     const query = supabase
       .from('about_content')
       .select('*')
@@ -111,7 +50,6 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       requestHeaders: {
         'apikey': '[REDACTED]',
         'Content-Type': 'application/json',
-        'Authorization': authHeaders.hasAuthToken ? 'Bearer [REDACTED]' : 'None',
         'Prefer': 'return=representation'
       },
       timestamp: new Date().toISOString()
