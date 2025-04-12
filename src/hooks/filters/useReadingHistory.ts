@@ -1,7 +1,8 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
+import { useSessionRefresh } from './useSessionRefresh';
 
 /**
  * Hook to fetch and manage reading history for a user
@@ -9,19 +10,37 @@ import { supabase } from "@/integrations/supabase/client";
 export const useReadingHistory = (user: User | null) => {
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const isMounted = useRef(true);
+  const hasLoaded = useRef(false);
+  const { shouldRefreshSession, refreshSession } = useSessionRefresh();
+
+  useEffect(() => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) {
       setReadPostIds([]);
+      hasLoaded.current = false;
       return;
     }
     
-    let isMounted = true;
     setLoading(true);
     
     const fetchReadPosts = async () => {
       try {
-        console.log("Fetching reading history for user:", user.id);
+        console.log(`[${new Date().toISOString()}] Fetching reading history for user:`, user.id);
+        
+        // Check if session needs refresh before making the request
+        if (shouldRefreshSession()) {
+          console.log(`[${new Date().toISOString()}] Refreshing session before fetching reading history`);
+          await refreshSession();
+        }
+        
         const { data, error } = await supabase
           .from('reading_history')
           .select('id, user_id, post_id, read_at')
@@ -29,24 +48,25 @@ export const useReadingHistory = (user: User | null) => {
           
         if (error) {
           if (error.code === '406') {
-            console.warn("useReadingHistory: 406 Not Acceptable error - continuing without reading history");
-            if (isMounted) {
+            console.warn(`[${new Date().toISOString()}] useReadingHistory: 406 Not Acceptable error - continuing without reading history`);
+            if (isMounted.current) {
               setReadPostIds([]);
             }
           } else {
-            console.error("useReadingHistory: Error fetching reading history:", error);
+            console.error(`[${new Date().toISOString()}] useReadingHistory: Error fetching reading history:`, error);
           }
           return;
         }
         
-        console.log("Reading history fetched:", data?.length || 0, "items");
-        if (isMounted) {
+        console.log(`[${new Date().toISOString()}] Reading history fetched:`, data?.length || 0, "items");
+        if (isMounted.current) {
           setReadPostIds((data || []).map(item => item.post_id));
+          hasLoaded.current = true;
         }
       } catch (err) {
-        console.error("Error fetching reading history:", err);
+        console.error(`[${new Date().toISOString()}] Error fetching reading history:`, err);
       } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setLoading(false);
         }
       }
@@ -54,13 +74,24 @@ export const useReadingHistory = (user: User | null) => {
     
     fetchReadPosts();
     
-    return () => {
-      isMounted = false;
+    // Also refresh data when the page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user && isMounted.current) {
+        console.log(`[${new Date().toISOString()}] Page visible, refreshing reading history`);
+        fetchReadPosts();
+      }
     };
-  }, [user]);
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, shouldRefreshSession, refreshSession]);
 
   return {
     readPostIds,
-    loading
+    loading,
+    hasLoaded: hasLoaded.current
   };
 };
