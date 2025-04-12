@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye } from 'lucide-react';
@@ -32,8 +33,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
         const { data, error } = await supabase
           .from('reading_history')
           .select('*')
-          .eq('user_id', user.id)
-          .eq('post_id', post.id)
+          .eq('user_id', user.id as string)
+          .eq('post_id', post.id as string)
           .maybeSingle();
           
         if (error) {

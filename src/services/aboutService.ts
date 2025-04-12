@@ -28,7 +28,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     const query = supabase
       .from('about_content')
       .select('*')
-      .eq('language', 'en')
+      .eq('language', 'en' as string)
       .maybeSingle();
     
     console.log("AboutService: Query prepared, about to execute", {
@@ -86,7 +86,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
-    return data as AboutContent;
+    // Explicitly cast the data to ensure type safety
+    return {
+      content: data.content || "",
+      image_url: data.image_url,
+      language: data.language
+    };
   } catch (err) {
     console.error("AboutService: Error during fetch", {
       error: err,
@@ -105,10 +110,10 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
     const { error } = await supabase
       .from('about_content')
       .upsert({
-        language: 'en',
+        language: 'en' as string,
         content: content,
         image_url: imageUrl
-      }, { 
+      } as any, { 
         onConflict: 'language' 
       });
     

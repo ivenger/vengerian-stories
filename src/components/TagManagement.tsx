@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { fetchAllTags, saveTag, deleteTag } from '../services/blogService';
+import { fetchAllTags, saveTag, deleteTag } from '../services/tagService';
 import { useToast } from '../hooks/use-toast';
 import { Tag, Plus, Trash2, Save, X } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
@@ -57,19 +58,21 @@ const TagManagement: React.FC = () => {
         throw error;
       }
       
-      const allTags = (tagRecords as TagRecord[]).map(record => record.name);
-      setTags(allTags);
-      
-      const initialTagData = (tagRecords as TagRecord[]).map(record => ({
-        name: record.name,
-        translations: {
-          en: record.en || record.name,
-          he: record.he || "",
-          ru: record.ru || ""
-        }
-      }));
-      
-      setTagData(initialTagData);
+      if (tagRecords) {
+        const allTags = tagRecords.map((record: any) => record.name as string);
+        setTags(allTags);
+        
+        const initialTagData = tagRecords.map((record: any) => ({
+          name: record.name as string,
+          translations: {
+            en: record.en as string || record.name as string,
+            he: record.he as string || "",
+            ru: record.ru as string || ""
+          }
+        }));
+        
+        setTagData(initialTagData);
+      }
     } catch (error) {
       console.error('Error loading tags:', error);
       toast({
@@ -102,14 +105,16 @@ const TagManagement: React.FC = () => {
     }
 
     try {
+      const insertData = {
+        name: newTagData.name.trim(),
+        en: newTagData.translations.en.trim() || newTagData.name.trim(),
+        he: newTagData.translations.he.trim() || null,
+        ru: newTagData.translations.ru.trim() || null
+      };
+      
       const { error } = await supabase
         .from('tags')
-        .insert({
-          name: newTagData.name.trim(),
-          en: newTagData.translations.en.trim() || newTagData.name.trim(),
-          he: newTagData.translations.he.trim() || null,
-          ru: newTagData.translations.ru.trim() || null
-        });
+        .insert(insertData as any);
       
       if (error) {
         throw error;
@@ -154,7 +159,7 @@ const TagManagement: React.FC = () => {
         const { error } = await supabase
           .from('tags')
           .delete()
-          .eq('name', tagName);
+          .eq('name', tagName as string);
         
         if (error) {
           throw error;
@@ -169,13 +174,14 @@ const TagManagement: React.FC = () => {
           throw findError;
         }
         
-        if (postsWithTag && postsWithTag.length > 0) {
+        if (postsWithTag) {
           for (const post of postsWithTag) {
-            const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
+            const postTags = post.tags || [];
+            const updatedTags = postTags.filter((tag: string) => tag !== tagName);
             
             const { error: updateError } = await supabase
               .from('entries')
-              .update({ tags: updatedTags })
+              .update({ tags: updatedTags } as any)
               .eq('id', post.id);
             
             if (updateError) {
@@ -230,15 +236,17 @@ const TagManagement: React.FC = () => {
     if (!editingTagData) return;
     
     try {
+      const updateData = {
+        name: editingTagData.name,
+        en: editingTagData.translations.en || null,
+        he: editingTagData.translations.he || null,
+        ru: editingTagData.translations.ru || null
+      };
+      
       const { error } = await supabase
         .from('tags')
-        .update({
-          name: editingTagData.name,
-          en: editingTagData.translations.en || null,
-          he: editingTagData.translations.he || null,
-          ru: editingTagData.translations.ru || null
-        })
-        .eq('name', editingTag);
+        .update(updateData as any)
+        .eq('name', editingTag as string);
       
       if (error) {
         throw error;
@@ -254,15 +262,16 @@ const TagManagement: React.FC = () => {
           throw findError;
         }
         
-        if (postsWithTag && postsWithTag.length > 0) {
+        if (postsWithTag) {
           for (const post of postsWithTag) {
-            const updatedTags = (post.tags || []).map(tag => 
+            const postTags = post.tags || [];
+            const updatedTags = postTags.map((tag: string) => 
               tag === editingTag ? editingTagData.name : tag
             );
             
             const { error: updateError } = await supabase
               .from('entries')
-              .update({ tags: updatedTags })
+              .update({ tags: updatedTags } as any)
               .eq('id', post.id);
             
             if (updateError) {

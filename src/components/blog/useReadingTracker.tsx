@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { User } from '@supabase/supabase-js';
@@ -20,8 +21,8 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         const { data, error } = await supabase
           .from('reading_history')
           .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id)
-          .eq('post_id', postId)
+          .eq('user_id', user.id as string)
+          .eq('post_id', postId as string)
           .maybeSingle();
 
         if (error) {
@@ -62,10 +63,10 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         const { error } = await supabase
           .from('reading_history')
           .upsert({ 
-            user_id: user.id, 
-            post_id: postId,
+            user_id: user.id as string, 
+            post_id: postId as string,
             read_at: new Date().toISOString()
-          }, { 
+          } as any, { 
             onConflict: 'user_id,post_id' 
           });
 

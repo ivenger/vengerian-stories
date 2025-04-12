@@ -144,8 +144,8 @@ export const useStoryFilters = (user: User | null) => {
         console.log("Fetching reading history for user:", user.id);
         const { data, error } = await supabase
           .from('reading_history')
-          .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id);
+          .select('post_id')
+          .eq('user_id', user.id as string);
           
         if (error) {
           if (error.code === '406') {
@@ -159,9 +159,12 @@ export const useStoryFilters = (user: User | null) => {
           return;
         }
         
-        console.log("Reading history fetched:", data?.length || 0, "items");
-        if (isMountedRef.current) {
-          setReadPostIds((data || []).map(item => item.post_id));
+        if (data && Array.isArray(data)) {
+          const readPostIds = data.map(item => item.post_id as string);
+          console.log("Reading history fetched:", readPostIds.length, "items");
+          if (isMountedRef.current) {
+            setReadPostIds(readPostIds);
+          }
         }
       } catch (err) {
         console.error("Error fetching reading history:", err);
