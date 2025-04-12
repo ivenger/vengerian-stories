@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +17,7 @@ export function useAuthProvider() {
     if (!userId) return false;
     
     try {
+      // Make sure we're using the correct parameter name for the is_admin function
       const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
       
       if (error) {
