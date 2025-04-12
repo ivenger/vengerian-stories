@@ -35,7 +35,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     console.log("AboutService: Preparing Supabase request", queryDetails);
     
     // Get authentication headers for logging - Using a timeout to prevent potential deadlocks
-    let authHeaders = { hasAuthToken: false };
+    let authHeaders: { hasAuthToken: boolean; authorization?: string } = { hasAuthToken: false };
     let sessionData = null;
 
     try {
