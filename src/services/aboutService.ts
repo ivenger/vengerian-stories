@@ -34,13 +34,6 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     console.log("AboutService: Preparing Supabase request", queryDetails);
     
-    // Create the query first - don't wait for auth check
-    const query = supabase
-      .from('about_content')
-      .select('*')
-      .eq('language', 'en')
-      .maybeSingle();
-    
     // Use hardcoded URL for logging
     const supabaseUrl = "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
     
@@ -62,9 +55,37 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       });
     }
     
-    // Execute the query
+    // Execute the query with timeout protection
     console.log("AboutService: Executing Supabase query...");
-    const { data, error } = await query;
+    
+    // Create a timeout promise that will reject after 5 seconds
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        console.log("AboutService: Query execution timed out after 5 seconds");
+        reject(new Error("Query timeout exceeded"));
+      }, 5000);
+      
+      // Clean up the timeout if the signal is aborted
+      if (signal) {
+        signal.addEventListener('abort', () => clearTimeout(timeoutId));
+      }
+    });
+    
+    // Create the actual query
+    const queryPromise = supabase
+      .from('about_content')
+      .select('*')
+      .eq('language', 'en')
+      .maybeSingle();
+    
+    // Race between the query and the timeout
+    const { data, error } = await Promise.race([
+      queryPromise,
+      timeoutPromise.then(() => {
+        throw new Error("Query timed out");
+      })
+    ]);
+    
     console.log("AboutService: Query completed", { 
       hasData: !!data, 
       hasError: !!error,
@@ -135,7 +156,15 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
   console.log("AboutService: Saving about content");
   
   try {
-    const { error } = await supabase
+    // Add timeout protection for save operation
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        console.log("AboutService: Save operation timed out after 5 seconds");
+        reject(new Error("Save operation timeout exceeded"));
+      }, 5000);
+    });
+    
+    const savePromise = supabase
       .from('about_content')
       .upsert({
         language: 'en',
@@ -144,6 +173,13 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
       }, { 
         onConflict: 'language' 
       });
+    
+    const { error } = await Promise.race([
+      savePromise,
+      timeoutPromise.then(() => {
+        throw new Error("Save operation timed out");
+      })
+    ]);
     
     if (error) {
       console.error("AboutService: Error saving about content:", error);

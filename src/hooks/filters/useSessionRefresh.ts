@@ -28,9 +28,19 @@ export const useSessionRefresh = () => {
     console.log(`[${new Date().toISOString()}] Attempting to refresh session`);
     
     try {
-      const { error } = await supabase.auth.refreshSession();
-      if (error) {
-        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
+      // Add a timeout to prevent hanging
+      const timeoutPromise = new Promise<{error?: Error}>((_, reject) => {
+        setTimeout(() => reject(new Error('Session refresh timeout')), 3000);
+      });
+      
+      // Race between the actual refresh and the timeout
+      const result = await Promise.race([
+        supabase.auth.refreshSession(),
+        timeoutPromise
+      ]);
+      
+      if (result.error) {
+        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, result.error);
         refreshInProgress.current = false;
         return false;
       }
@@ -49,63 +59,70 @@ export const useSessionRefresh = () => {
   // Add effect to refresh session when navigating to a page
   useEffect(() => {
     let timeoutIds: number[] = [];
+    let mounted = true;
 
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible') {
-        console.log(`[${new Date().toISOString()}] Page became visible, checking session state`);
-        
-        if (shouldRefreshSession()) {
-          console.log(`[${new Date().toISOString()}] Refreshing session due to navigation`);
-          await refreshSession();
-        } else {
-          // Even if we don't need a full refresh, validate the session
-          try {
-            // Add timeout protection to prevent hanging
-            const sessionPromise = supabase.auth.getSession();
-            
-            const timeoutId = window.setTimeout(() => {
-              console.log(`[${new Date().toISOString()}] Session check timed out after 2 seconds`);
-            }, 2000);
-            
-            timeoutIds.push(timeoutId);
-            
-            const { data } = await sessionPromise;
-            
+      if (!mounted || document.visibilityState !== 'visible') return;
+      
+      console.log(`[${new Date().toISOString()}] Page became visible, checking session state`);
+      
+      if (shouldRefreshSession()) {
+        console.log(`[${new Date().toISOString()}] Refreshing session due to navigation`);
+        await refreshSession();
+      } else {
+        // Lightweight session check that doesn't block other operations
+        try {
+          const timeoutId = window.setTimeout(() => {
+            console.log(`[${new Date().toISOString()}] Session check timed out after 2 seconds`);
+          }, 2000);
+          
+          timeoutIds.push(timeoutId);
+          
+          // Use a non-blocking approach
+          supabase.auth.getSession().then(({ data }) => {
+            if (!mounted) return;
             window.clearTimeout(timeoutId);
             
             if (data?.session) {
               console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
             } else {
               console.log(`[${new Date().toISOString()}] Session missing or invalid, triggering refresh`);
-              await refreshSession();
+              refreshSession();
             }
-          } catch (err) {
+          }).catch(err => {
+            if (!mounted) return;
             console.error(`[${new Date().toISOString()}] Error checking session:`, err);
-            
-            // If session check failed, try refreshing the session as a fallback
-            await refreshSession();
-          }
+            refreshSession();
+          });
+        } catch (err) {
+          if (!mounted) return;
+          console.error(`[${new Date().toISOString()}] Error in session check:`, err);
         }
       }
     };
     
-    // Initial refresh when component mounts
-    if (shouldRefreshSession()) {
-      refreshSession();
-    }
+    // Initial refresh when component mounts, but with delay to avoid blocking page load
+    const initialCheckTimeoutId = setTimeout(() => {
+      if (shouldRefreshSession() && mounted) {
+        refreshSession();
+      }
+    }, 1000);
+    
+    timeoutIds.push(initialCheckTimeoutId);
     
     // Add event listeners for visibility changes (navigating back to page)
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Also set an interval to periodically check the session status
     const intervalId = setInterval(() => {
-      if (shouldRefreshSession() && document.visibilityState === 'visible') {
+      if (shouldRefreshSession() && document.visibilityState === 'visible' && mounted) {
         console.log(`[${new Date().toISOString()}] Periodic session check triggered`);
         refreshSession();
       }
     }, 60 * 1000); // Check every minute
     
     return () => {
+      mounted = false;
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
       // Clear any pending timeouts
