@@ -20,71 +20,42 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     throw new DOMException("Request aborted", "AbortError");
   }
 
+  // Set up abort signal listener
+  const onAbort = () => {
+    console.log("AboutService: Abort signal triggered during fetch");
+  };
+  
+  if (signal) {
+    signal.addEventListener('abort', onAbort);
+  }
+  
   try {
-    // Prepare query details for logging
-    const tableName = 'about_content';
-    const filter = { language: 'en' };
-    const queryDetails = {
-      method: 'SELECT',
-      table: tableName,
-      filter: filter,
-      returnType: 'maybeSingle',
-      timestamp: new Date().toISOString()
-    };
-
-    console.log("AboutService: Preparing Supabase request", queryDetails);
+    console.log("AboutService: Executing query with 7s timeout");
     
-    // Use hardcoded URL for logging
-    const supabaseUrl = "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
+    // Set a timeout for this specific query
+    const timeoutId = setTimeout(() => {
+      console.error("AboutService: Query timed out after 7 seconds");
+    }, 7000);
     
-    console.log("AboutService: Query prepared, about to execute", {
-      query: `SELECT * FROM ${tableName} WHERE language = 'en'`,
-      url: `${supabaseUrl}/rest/v1/${tableName}?select=*&language=eq.en`,
-      requestHeaders: {
-        'apikey': '[REDACTED]',
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
-      timestamp: new Date().toISOString()
-    });
-
-    // Set up abort signal listener before executing query
-    if (signal) {
-      signal.addEventListener('abort', () => {
-        console.log("AboutService: Abort signal triggered");
-      });
-    }
+    // Execute the simple, direct query without Promise.race
+    console.log("AboutService: Sending request to Supabase");
     
-    // Execute the query with timeout protection
-    console.log("AboutService: Executing Supabase query...");
+    // Log auth state before query
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("AboutService: Auth session before query:", 
+      sessionData?.session ? "Valid session" : "No session", 
+      { hasUser: !!sessionData?.session?.user }
+    );
     
-    // Create a timeout promise that will reject after 5 seconds
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const timeoutId = setTimeout(() => {
-        console.log("AboutService: Query execution timed out after 5 seconds");
-        reject(new Error("Query timeout exceeded"));
-      }, 5000);
-      
-      // Clean up the timeout if the signal is aborted
-      if (signal) {
-        signal.addEventListener('abort', () => clearTimeout(timeoutId));
-      }
-    });
-    
-    // Create the actual query
-    const queryPromise = supabase
+    // Execute the actual query
+    const { data, error } = await supabase
       .from('about_content')
       .select('*')
       .eq('language', 'en')
       .maybeSingle();
     
-    // Race between the query and the timeout
-    const { data, error } = await Promise.race([
-      queryPromise,
-      timeoutPromise.then(() => {
-        throw new Error("Query timed out");
-      })
-    ]);
+    // Clear timeout since we got a response
+    clearTimeout(timeoutId);
     
     console.log("AboutService: Query completed", { 
       hasData: !!data, 
@@ -93,7 +64,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
-    // Final check after query completes
+    // Check if the request was aborted during execution
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
       throw new DOMException("Request aborted", "AbortError");
@@ -149,6 +120,11 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       });
     }
     throw err;
+  } finally {
+    // Clean up abort listener
+    if (signal) {
+      signal.removeEventListener('abort', onAbort);
+    }
   }
 };
 
@@ -157,14 +133,18 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
   
   try {
     // Add timeout protection for save operation
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => {
-        console.log("AboutService: Save operation timed out after 5 seconds");
-        reject(new Error("Save operation timeout exceeded"));
-      }, 5000);
-    });
+    const timeoutId = setTimeout(() => {
+      console.log("AboutService: Save operation taking longer than expected (7 seconds)");
+    }, 7000);
     
-    const savePromise = supabase
+    // Log auth state before save
+    const { data: sessionData } = await supabase.auth.getSession();
+    console.log("AboutService: Auth session before save:", 
+      sessionData?.session ? "Valid session" : "No session", 
+      { hasUser: !!sessionData?.session?.user }
+    );
+    
+    const { error } = await supabase
       .from('about_content')
       .upsert({
         language: 'en',
@@ -174,12 +154,7 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
         onConflict: 'language' 
       });
     
-    const { error } = await Promise.race([
-      savePromise,
-      timeoutPromise.then(() => {
-        throw new Error("Save operation timed out");
-      })
-    ]);
+    clearTimeout(timeoutId);
     
     if (error) {
       console.error("AboutService: Error saving about content:", error);

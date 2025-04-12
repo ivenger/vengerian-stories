@@ -5,6 +5,9 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2YWxnc3Zta3JxendmY3h2YnhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjI1MjcsImV4cCI6MjA1NzU5ODUyN30.v2iTZuy6PwIorHwEyfFes0fcM9gZtUyTuHCHTkCupuE";
 
+// Set reasonable global timeout - longer than individual query timeouts
+const GLOBAL_TIMEOUT_MS = 15000; 
+
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
@@ -45,15 +48,41 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     }
   },
   global: {
-    // Set reasonable timeouts for all requests
+    headers: {
+      'x-client-info': `@supabase/js@latest`
+    },
     fetch: (url, options) => {
+      // Create a controller that will abort the fetch after GLOBAL_TIMEOUT_MS
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      const signal = options?.signal || null;
+      
+      // If there's an existing signal, listen to it to propagate abort
+      if (signal) {
+        if (signal.aborted) {
+          controller.abort();
+        } else {
+          signal.addEventListener('abort', () => controller.abort());
+        }
+      }
+      
+      // Set our own timeout
+      const timeoutId = setTimeout(() => {
+        console.log(`Global fetch timeout (${GLOBAL_TIMEOUT_MS}ms) exceeded for URL: ${url}`);
+        controller.abort();
+      }, GLOBAL_TIMEOUT_MS);
       
       return fetch(url, {
         ...options,
-        signal: controller.signal
-      }).finally(() => clearTimeout(timeoutId));
+        signal: controller.signal,
+        // Add cache control to avoid caching issues
+        headers: {
+          ...options?.headers,
+          'Cache-Control': 'no-cache',
+        }
+      })
+      .finally(() => {
+        clearTimeout(timeoutId);
+      });
     }
   }
 });
