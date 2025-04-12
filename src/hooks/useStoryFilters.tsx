@@ -2,74 +2,70 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts, fetchAllTags } from '../services/blogService';
-import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "../components/AuthProvider";
+import { fetchFilteredPosts } from '../services/blogService';
+import { useToast } from "./use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { format } from 'date-fns';
+import { applyFiltersToData, getBackoffDelay } from './filters/filterUtils';
+import { useReadingHistory } from './filters/useReadingHistory';
+import { useSessionRefresh } from './filters/useSessionRefresh';
+import { useTagsManagement } from './filters/useTagsManagement';
 
-// Helper function to apply filters - defined outside the hook to avoid circular dependencies
-const applyFiltersToData = (
-  postsToFilter: BlogEntry[],
-  selectedTags: string[],
-  showUnreadOnly: boolean,
-  readPostIds: string[],
-  user: any | null
-) => {
-  console.log("Applying filters to posts", {
-    totalPosts: postsToFilter.length,
-    selectedTags,
-    showUnreadOnly,
-    readIdsCount: readPostIds.length
-  });
-  
-  let filteredPosts = [...postsToFilter];
-  
-  if (selectedTags.length > 0) {
-    console.log("Filtering by tags:", selectedTags);
-    filteredPosts = filteredPosts.filter(post => {
-      if (!post.tags) return false;
-      return selectedTags.some(tag => post.tags?.includes(tag));
-    });
-    console.log(`${filteredPosts.length} posts after tag filtering`);
-  }
-  
-  // Apply read/unread filter if enabled
-  if (showUnreadOnly && user) {
-    console.log("Filtering for unread posts, read IDs count:", readPostIds.length);
-    filteredPosts = filteredPosts.filter(post => !readPostIds.includes(post.id));
-    console.log(`${filteredPosts.length} posts after unread filter`);
-  }
-  
-  return filteredPosts;
-};
+// Max number of retries
+const MAX_RETRIES = 3;
 
 export const useStoryFilters = (user: User | null) => {
   const [posts, setPosts] = useState<BlogEntry[]>([]);
+  const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [showUnreadOnly, setShowUnreadOnly] = useState(false);
-  const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const { toast } = useToast();
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
-  const [originalPosts, setOriginalPosts] = useState<BlogEntry[]>([]);
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   
+  // Custom hooks
+  const { readPostIds } = useReadingHistory(user);
+  const { refreshSession } = useSessionRefresh();
+  const { allTags, selectedTags, toggleTag, clearTags } = useTagsManagement();
+  
   // Use refs to track state changes and prevent unnecessary renders
-  const loadedRef = useRef(false);
-  const filtersRef = useRef({ tags: selectedTags, unreadOnly: showUnreadOnly });
-  const fetchInProgressRef = useRef(false);
   const isMountedRef = useRef(true);
+  const loadedRef = useRef(false);
+  const fetchInProgressRef = useRef(false);
   const pageKey = useRef(Math.random().toString(36).substring(7));
   const refreshTimerRef = useRef<NodeJS.Timeout>();
+  const filtersRef = useRef({ tags: selectedTags, unreadOnly: showUnreadOnly });
 
-  // Max number of retries
-  const MAX_RETRIES = 3;
-  
-  // Reset mounted state and cleanup on unmount
+  // Load saved unread filter from localStorage on initial render
+  useEffect(() => {
+    const savedUnreadFilter = localStorage.getItem('showUnreadOnly');
+    
+    if (savedUnreadFilter && user) {
+      try {
+        setShowUnreadOnly(JSON.parse(savedUnreadFilter));
+      } catch (e) {
+        console.error("Error parsing saved unread filter:", e);
+        localStorage.removeItem('showUnreadOnly');
+      }
+    }
+  }, [user]);
+
+  // Save unread filter to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      if (user) {
+        localStorage.setItem('showUnreadOnly', JSON.stringify(showUnreadOnly));
+      }
+    } catch (e) {
+      console.error("Error saving unread filter to localStorage:", e);
+    }
+    
+    // Update filters ref to track changes
+    filtersRef.current = { tags: selectedTags, unreadOnly: showUnreadOnly };
+  }, [showUnreadOnly, user, selectedTags]);
+
+  // Component lifecycle management
   useEffect(() => {
     console.log("StoryFilters: Component mounted with key", pageKey.current);
     isMountedRef.current = true;
@@ -95,112 +91,6 @@ export const useStoryFilters = (user: User | null) => {
       setIsRetrying(false);
     };
   }, []);
-  
-  // Load saved filters from localStorage on initial render
-  useEffect(() => {
-    const savedTags = localStorage.getItem('selectedTags');
-    const savedUnreadFilter = localStorage.getItem('showUnreadOnly');
-    
-    if (savedTags) {
-      try {
-        setSelectedTags(JSON.parse(savedTags));
-      } catch (e) {
-        console.error("Error parsing saved tags:", e);
-        localStorage.removeItem('selectedTags');
-      }
-    }
-    
-    if (savedUnreadFilter && user) {
-      try {
-        setShowUnreadOnly(JSON.parse(savedUnreadFilter));
-      } catch (e) {
-        console.error("Error parsing saved unread filter:", e);
-        localStorage.removeItem('showUnreadOnly');
-      }
-    }
-  }, [user]);
-
-  // Save filters to localStorage whenever they change
-  useEffect(() => {
-    try {
-      localStorage.setItem('selectedTags', JSON.stringify(selectedTags));
-      
-      if (user) {
-        localStorage.setItem('showUnreadOnly', JSON.stringify(showUnreadOnly));
-      }
-    } catch (e) {
-      console.error("Error saving filters to localStorage:", e);
-    }
-    
-    // Update filters ref to track changes
-    filtersRef.current = { tags: selectedTags, unreadOnly: showUnreadOnly };
-  }, [selectedTags, showUnreadOnly, user]);
-
-  // Fetch reading history if user is logged in
-  useEffect(() => {
-    if (!user || !isMountedRef.current) return;
-    
-    const fetchReadPosts = async () => {
-      try {
-        console.log("Fetching reading history for user:", user.id);
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id);
-          
-        if (error) {
-          if (error.code === '406') {
-            console.warn("useStoryFilters: 406 Not Acceptable error when fetching reading history - continuing without reading history");
-            if (isMountedRef.current) {
-              setReadPostIds([]);
-            }
-          } else {
-            console.error("useStoryFilters: Error fetching reading history:", error);
-          }
-          return;
-        }
-        
-        console.log("Reading history fetched:", data?.length || 0, "items");
-        if (isMountedRef.current) {
-          setReadPostIds((data || []).map(item => item.post_id));
-        }
-      } catch (err) {
-        console.error("Error fetching reading history:", err);
-        // Non-critical, don't set error state
-      }
-    };
-    
-    fetchReadPosts();
-  }, [user]);
-
-  // Fetch all available tags
-  useEffect(() => {
-    const loadTags = async () => {
-      if (!isMountedRef.current) return;
-      try {
-        console.log("Fetching all tags...");
-        const tags = await fetchAllTags();
-        console.log("Tags fetched successfully:", tags);
-        if (isMountedRef.current) {
-          setAllTags(tags);
-        }
-      } catch (error) {
-        console.error("Failed to load tags:", error);
-        // Don't set error state for tags failure as it's not critical
-      }
-    };
-    
-    loadTags();
-  }, []);
-
-  // Implement exponential backoff for retries
-  const getBackoffDelay = (retryAttempt: number) => {
-    // Start with a 2 second delay and double each time, max 30 seconds
-    const baseDelay = 2000;
-    const delay = Math.min(baseDelay * Math.pow(2, retryAttempt), 30000);
-    // Add a bit of randomness to avoid all clients retrying at the same time
-    return delay + (Math.random() * 1000);
-  };
 
   // Use the pre-defined helper function through a callback
   const applyFilters = useCallback((postsToFilter: BlogEntry[]) => {
@@ -216,23 +106,6 @@ export const useStoryFilters = (user: User | null) => {
       setPosts(filteredPosts);
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds]);
-
-  // Define refreshSession function
-  const refreshSession = async () => {
-    console.log(`[${new Date().toISOString()}] Attempting to refresh session`);
-    try {
-        const { error } = await supabase.auth.refreshSession();
-        if (error) {
-            console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
-            return false;
-        }
-        console.log(`[${new Date().toISOString()}] Session refreshed successfully`);
-        return true;
-    } catch (err) {
-        console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
-        return false;
-    }
-  };
 
   // Fetch posts based on selected filters
   const loadPosts = useCallback(async (forceRefresh = false) => {
@@ -384,12 +257,6 @@ export const useStoryFilters = (user: User | null) => {
     }
   }, [selectedTags, showUnreadOnly, applyFilters, originalPosts, loading, isRetrying]);
 
-  // Reset loadedRef when user changes to force a new fetch
-  // Also reset when component mounts
-  useEffect(() => {
-    loadedRef.current = false;
-  }, [user]);
-
   // Set up refresh timer
   useEffect(() => {
     if (!isMountedRef.current) return;
@@ -409,47 +276,37 @@ export const useStoryFilters = (user: User | null) => {
     };
   }, [loadPosts, lastLoad]);
 
+  // Handle page visibility changes
   useEffect(() => {
     const handleVisibilityChange = async () => {
-        if (document.visibilityState === 'visible') {
-            console.log(`[${new Date().toISOString()}] App became visible. Checking user session state:`, user);
-            console.log(`[${new Date().toISOString()}] Checking localStorage for session:`, localStorage.getItem('supabase.auth.token'));
-            if (user) {
-                const { data: { session }, error } = await supabase.auth.getSession();
-                if (error || !session) {
-                    console.error(`[${new Date().toISOString()}] No active session found. Error:`, error);
-                } else {
-                    console.log(`[${new Date().toISOString()}] Active session found. Session details:`, session);
-                }
-            }
+      if (document.visibilityState === 'visible') {
+        console.log(`[${new Date().toISOString()}] App became visible. Checking user session state:`, user);
+        console.log(`[${new Date().toISOString()}] Checking localStorage for session:`, localStorage.getItem('supabase.auth.token'));
+        if (user) {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          if (error || !session) {
+            console.error(`[${new Date().toISOString()}] No active session found. Error:`, error);
+          } else {
+            console.log(`[${new Date().toISOString()}] Active session found. Session details:`, session);
+          }
         }
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-}, [user]);
+  }, [user]);
 
-  const toggleTag = (tag: string) => {
-    console.log(`Toggling tag: ${tag}`);
-    setSelectedTags(prev => {
-      if (prev.includes(tag)) {
-        return prev.filter(t => t !== tag);
-      } else {
-        return [...prev, tag];
-      }
-    });
-  };
-  
   const toggleUnreadFilter = () => {
     setShowUnreadOnly(!showUnreadOnly);
   };
 
   const clearFilters = () => {
     console.log("Clearing all filters");
-    setSelectedTags([]);
+    clearTags();
     setShowUnreadOnly(false);
     setRetryCount(0);
     
