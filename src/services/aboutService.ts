@@ -51,9 +51,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       .eq('language', 'en')
       .maybeSingle();
     
+    // Get the config from the client directly to access the URL
+    const { supabaseUrl } = supabase.getClientConfig();
+    
     console.log("AboutService: Query prepared, about to execute", {
       query: `SELECT * FROM ${tableName} WHERE language = 'en'`,
-      url: `${supabase.supabaseUrl}/rest/v1/${tableName}?select=*&language=eq.en`,
+      url: `${supabaseUrl}/rest/v1/${tableName}?select=*&language=eq.en`,
       timestamp: new Date().toISOString()
     });
 
