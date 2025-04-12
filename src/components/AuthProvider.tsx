@@ -9,6 +9,8 @@ export const useAuth = () => {
   return React.useContext(AuthContext);
 };
 
+console.log('AuthProvider - Session in localStorage:', localStorage.getItem('supabase.auth.token'));
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useAuthProvider();
 
