@@ -17,15 +17,35 @@ export function useAuthProvider() {
     if (!userId) return false;
     
     try {
-      // Make sure we're using the correct parameter name for the is_admin function
-      const { data, error } = await supabase.rpc('is_admin', { user_id: userId });
+      console.log(`Checking admin role for user: ${userId}`);
       
-      if (error) {
-        console.error("Error checking admin role:", error);
+      // First try using the RPC approach
+      const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', { 
+        user_id: userId 
+      });
+      
+      if (!rpcError) {
+        console.log(`RPC admin check result:`, rpcData);
+        return rpcData === true;
+      }
+      
+      console.log(`RPC admin check failed, falling back to direct query: ${rpcError.message}`);
+      
+      // Fallback: Query the user_roles table directly
+      const { data: rolesData, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle();
+        
+      if (rolesError) {
+        console.error("Error checking user role via direct query:", rolesError);
         return false;
       }
       
-      return data === true;
+      console.log(`Direct query admin check result:`, rolesData);
+      return rolesData !== null;
     } catch (err) {
       console.error("Failed to check user role:", err);
       return false;
@@ -139,6 +159,7 @@ export function useAuthProvider() {
         try {
           const adminStatus = await checkUserRole(currentSession.user.id);
           if (isMounted) {
+            console.log(`User ${currentSession.user.email} admin status:`, adminStatus);
             setIsAdmin(adminStatus);
           }
         } catch (roleError) {

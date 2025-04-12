@@ -1,173 +1,96 @@
+import { supabase } from "@/integrations/supabase/client";
 
-import { supabase } from "../integrations/supabase/client";
+/**
+ * Fetches about page content from Supabase
+ * @param signal Optional AbortSignal for cancelling the request
+ * @param language Optional language filter
+ */
+export async function fetchAboutContent(signal?: AbortSignal, language?: string) {
+  console.log(`AboutService: Fetching content with language: ${language || 'default'}`);
+  
+  try {
+    const queryStartTime = Date.now();
+    console.log(`AboutService: Starting query at ${new Date().toISOString()}`);
 
-export interface AboutContent {
-  content: string;
-  image_url: string | null;
-  language: string;
+    // Set up a query timeout that's shorter than the global timeout
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Query timeout - taking too long to respond"));
+      }, 5000); // 5 second timeout
+    });
+
+    // Create a query builder but don't execute yet
+    let query = supabase
+      .from('about_content')
+      .select('*');
+      
+    if (language) {
+      query = query.eq('language', language);
+    }
+    
+    // Add ordering by updated_at to get the most recent content first
+    query = query.order('updated_at', { ascending: false });
+    
+    // Create a promise that will execute the query
+    const queryPromise = query.maybeSingle();
+    
+    // Race between the query and the timeout
+    const { data, error } = await Promise.race([
+      queryPromise,
+      timeoutPromise.then(() => {
+        throw new Error("Query timeout");
+      })
+    ]) as any;
+    
+    const queryEndTime = Date.now();
+    console.log(`AboutService: Query completed in ${queryEndTime - queryStartTime}ms`);
+
+    if (error) {
+      console.error("AboutService: Error fetching about content:", error);
+      throw error;
+    }
+    
+    if (!data) {
+      console.log("AboutService: No content found for the about page");
+      return null;
+    }
+
+    console.log("AboutService: Content fetched successfully");
+    return data;
+  } catch (error: any) {
+    console.error(`AboutService: Failed to fetch about content:`, error);
+    if (error.message?.includes('timeout')) {
+      throw new Error(`The request to fetch about page content timed out. Please try again.`);
+    }
+    throw new Error(`Failed to fetch about page content: ${error.message}`);
+  }
 }
 
-export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
-  console.log("AboutService: Starting fetch", { 
-    hasSignal: !!signal, 
-    signalAborted: signal?.aborted,
-    timestamp: new Date().toISOString()
-  });
-
-  // Immediately check if the request is already aborted
-  if (signal?.aborted) {
-    console.log("AboutService: Request aborted before starting");
-    throw new DOMException("Request aborted", "AbortError");
-  }
-
-  // Set up abort signal listener
-  const onAbort = () => {
-    console.log("AboutService: Abort signal triggered during fetch");
-  };
-  
-  if (signal) {
-    signal.addEventListener('abort', onAbort);
-  }
-  
+/**
+ * Updates about page content
+ * @param content Content text in markdown format
+ * @param language Content language
+ * @param imageUrl Optional image URL
+ */
+export async function updateAboutContent(content: string, language: string, imageUrl?: string) {
   try {
-    // Set a timeout to log a warning if the query takes too long
-    const timeoutId = setTimeout(() => {
-      console.log("AboutService: Query taking longer than expected (5 seconds)");
-    }, 5000);
+    console.log(`AboutService: Updating content for language: ${language}`);
+    
+    const { data, error } = await supabase
+      .from('about_content')
+      .upsert({ content, language, image_url: imageUrl }, { onConflict: 'language' })
+      .select()
+      .single();
 
-    // Log session information for debugging
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log("AboutService: Auth session before query:", {
-      hasSession: !!sessionData?.session,
-      hasUser: !!sessionData?.session?.user,
-      userId: sessionData?.session?.user?.id || 'none',
-      email: sessionData?.session?.user?.email || 'none',
-      expiresAt: sessionData?.session?.expires_at ? new Date(sessionData.session.expires_at * 1000).toISOString() : 'none'
-    });
-
-    console.log("AboutService: Executing simple query with 10s timeout");
-    
-    // Create a safety timeout promise that will reject after 10 seconds
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Query timeout exceeded")), 10000);
-    });
-    
-    // Race between the actual query and the timeout
-    const result = await Promise.race([
-      supabase
-        .from('about_content')
-        .select('*')
-        .eq('language', 'en')
-        .maybeSingle(),
-      timeoutPromise
-    ]);
-    
-    clearTimeout(timeoutId);
-    
-    // Check if the request was aborted during execution
-    if (signal?.aborted) {
-      console.log("AboutService: Request aborted after response");
-      throw new DOMException("Request aborted", "AbortError");
+    if (error) {
+      console.error("AboutService: Error updating about content:", error);
+      throw error;
     }
 
-    // Since we raced with a timeout, we need to check if we got the actual response
-    if ('data' in result && 'error' in result) {
-      const { data, error } = result;
-      
-      if (error) {
-        console.error("AboutService: Supabase error", error);
-        throw error;
-      }
-
-      if (!data) {
-        console.log("AboutService: No content found, returning default");
-        return {
-          content: "",
-          image_url: null,
-          language: "en"
-        };
-      }
-
-      console.log("AboutService: Request successful", {
-        contentLength: data.content?.length || 0,
-        hasImage: !!data.image_url
-      });
-
-      return {
-        content: data.content || "",
-        image_url: data.image_url,
-        language: data.language
-      };
-    } else {
-      // This is likely the timeoutPromise that won the race
-      throw new Error("Unexpected response format");
-    }
-  } catch (err) {
-    // Don't log AbortError as an error since it's expected behavior
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      console.log("AboutService: Request aborted");
-    } else {
-      console.error("AboutService: Error during fetch", err);
-    }
-    throw err;
-  } finally {
-    // Clean up abort listener
-    if (signal) {
-      signal.removeEventListener('abort', onAbort);
-    }
+    console.log("AboutService: Content updated successfully");
+    return data;
+  } catch (error: any) {
+    console.error(`AboutService: Failed to update about content:`, error);
+    throw new Error(`Failed to update about page content: ${error.message}`);
   }
-};
-
-export const saveAboutContent = async (content: string, imageUrl: string | null): Promise<void> => {
-  console.log("AboutService: Saving about content");
-  
-  try {
-    // Add timeout protection for save operation
-    const timeoutId = setTimeout(() => {
-      console.log("AboutService: Save operation taking longer than expected (5 seconds)");
-    }, 5000);
-    
-    // Log auth state before save
-    const { data: sessionData } = await supabase.auth.getSession();
-    console.log("AboutService: Auth session before save:", {
-      hasSession: !!sessionData?.session,
-      hasUser: !!sessionData?.session?.user,
-      userId: sessionData?.session?.user?.id || 'none'
-    });
-    
-    // Set up a safety timeout promise
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error("Save operation timeout exceeded")), 10000);
-    });
-    
-    // Race between the actual save operation and the timeout
-    const result = await Promise.race([
-      supabase
-        .from('about_content')
-        .upsert({
-          language: 'en',
-          content: content,
-          image_url: imageUrl
-        }, { 
-          onConflict: 'language' 
-        }),
-      timeoutPromise
-    ]);
-    
-    clearTimeout(timeoutId);
-    
-    // Since we raced with a timeout, we need to check if we got the actual response
-    if ('error' in result) {
-      const { error } = result;
-      if (error) {
-        console.error("AboutService: Error saving about content:", error);
-        throw error;
-      }
-    }
-    
-    console.log("AboutService: About content saved successfully");
-  } catch (error) {
-    console.error("AboutService: Failed to save about content:", error);
-    throw error;
-  }
-};
+}
