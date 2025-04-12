@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchAboutContent, AboutContent } from "../services/aboutService";
+import { fetchAboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";

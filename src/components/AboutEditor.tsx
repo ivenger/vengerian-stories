@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Image, Save, X, FileImage, RefreshCw } from "lucide-react";
-import { fetchAboutContent, saveAboutContent } from "../services/aboutService";
+import { fetchAboutContent, updateAboutContent } from "../services/aboutService";
 import { fetchBucketImages } from "../services/imageService";
 import { useToast } from "../hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -121,7 +122,7 @@ const AboutEditor: React.FC = () => {
       setIsSaving(true);
       console.log("AboutEditor: Saving about content");
       
-      await saveAboutContent(content, imageUrl);
+      await updateAboutContent(content, "en", imageUrl);
       
       if (!isMountedRef.current) return;
       
