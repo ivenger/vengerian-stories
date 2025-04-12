@@ -49,6 +49,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   },
   global: {
     headers: {
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
       'x-client-info': `@supabase/js@latest`
     },
     fetch: (url, options) => {
@@ -71,14 +72,18 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         controller.abort();
       }, GLOBAL_TIMEOUT_MS);
       
+      // Ensure default headers are set
+      const headers = {
+        'apikey': SUPABASE_PUBLISHABLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Cache-Control': 'no-cache',
+        ...options?.headers,
+      };
+      
       return fetch(url, {
         ...options,
+        headers,
         signal: controller.signal,
-        // Add cache control to avoid caching issues
-        headers: {
-          ...options?.headers,
-          'Cache-Control': 'no-cache',
-        }
       })
       .finally(() => {
         clearTimeout(timeoutId);
