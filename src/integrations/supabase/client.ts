@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -11,7 +12,4 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-console.log("Supabase Client: Initialized with config", {
-  url: process.env.SUPABASE_URL,
-  key: process.env.SUPABASE_KEY,
-});
+console.log("Supabase client initialized with default session handling");
