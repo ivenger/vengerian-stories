@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 
 interface AboutContent {
@@ -9,18 +10,8 @@ interface AboutContent {
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
   console.log("AboutService: Starting fetch", { hasSignal: !!signal, signalAborted: signal?.aborted });
 
-  // Ensure session is restored before making the request
-  const { data: { session }, error } = await supabase.auth.getSession();
-  if (error || !session) {
-    console.error("AboutService: Failed to restore session", error);
-    throw new Error("Session restoration failed");
-  }
-  console.log("AboutService: Session restored before request", session);
-
   try {
-    console.log("AboutService: Making Supabase request with token", {
-      token: localStorage.getItem('vengerian-stories-auth'),
-    });
+    console.log("AboutService: Making Supabase request");
     const { data, error } = await supabase
       .from('about_content')
       .select('*')
@@ -53,17 +44,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       };
     }
 
-    console.log("AboutService: Request successful", {
-      hasContent: !!data.content,
-      hasImage: !!data.image_url,
-      language: data.language
-    });
-
-    console.log("AboutService: All content loaded successfully", {
-      content: data.content,
-      image_url: data.image_url,
-      language: data.language
-    });
+    console.log("AboutService: Request successful");
 
     return data as AboutContent;
   } catch (err) {

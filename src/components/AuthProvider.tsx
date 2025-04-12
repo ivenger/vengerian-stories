@@ -12,7 +12,6 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useAuthProvider();
 
-  // Add log to see what the current admin status is
   console.log("AuthProvider - auth state:", { 
     isAuthenticated: !!auth.user,
     userEmail: auth.user?.email,

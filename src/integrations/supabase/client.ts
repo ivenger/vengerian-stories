@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -7,25 +8,8 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    storageKey: 'vengerian-stories-auth',
-    storage: {
-      getItem: (key) => {
-        const value = localStorage.getItem(key);
-        console.log(`[${new Date().toISOString()}] Storage.getItem: ${key} =`, value);
-        return value;
-      },
-      setItem: (key, value) => {
-        console.log(`[${new Date().toISOString()}] Storage.setItem: ${key} =`, value);
-        localStorage.setItem(key, value);
-      },
-      removeItem: (key) => {
-        console.log(`[${new Date().toISOString()}] Storage.removeItem: ${key}`);
-        localStorage.removeItem(key);
-      }
-    }
+    autoRefreshToken: true
   }
 });
 
-console.log(`[${new Date().toISOString()}] Supabase client initialized with persistSession and autoRefreshToken.`);
+console.log("Supabase client initialized with default session handling");
