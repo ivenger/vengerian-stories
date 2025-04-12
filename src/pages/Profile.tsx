@@ -13,6 +13,7 @@ import { Clock, BookOpen, User as UserIcon, Shield, UserCheck } from "lucide-rea
 import ReadingHistory from "../components/ReadingHistory";
 import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
+import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
 
 const Profile = () => {
   const { user, isAdmin } = useAuth();
@@ -20,6 +21,7 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
+  const { refreshSession } = useSessionRefresh();
   
   // Log whether this user is admin for debugging
   useEffect(() => {
@@ -32,6 +34,10 @@ const Profile = () => {
     const loadUserDetails = async () => {
       try {
         setLoading(true);
+        
+        // Ensure session is fresh before making the request
+        await refreshSession();
+        
         // Get user metadata
         const { data, error } = await supabase.auth.getUser();
         
@@ -52,7 +58,21 @@ const Profile = () => {
     };
     
     loadUserDetails();
-  }, [user, toast]);
+    
+    // Set up page visibility change handler
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log("Profile page became visible, refreshing user details");
+        loadUserDetails();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, toast, refreshSession]);
 
   // Get display name based on auth method
   const getDisplayName = () => {

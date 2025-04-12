@@ -55,6 +55,15 @@ export const useSessionRefresh = () => {
         if (shouldRefreshSession()) {
           console.log(`[${new Date().toISOString()}] Refreshing session due to navigation`);
           await refreshSession();
+        } else {
+          // Even if we don't need a full refresh, validate the session
+          const { data } = await supabase.auth.getSession();
+          if (data?.session) {
+            console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
+          } else {
+            console.log(`[${new Date().toISOString()}] Session missing or invalid, triggering refresh`);
+            await refreshSession();
+          }
         }
       }
     };
@@ -67,8 +76,17 @@ export const useSessionRefresh = () => {
     // Add event listeners for visibility changes (navigating back to page)
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
+    // Also set an interval to periodically check the session status
+    const intervalId = setInterval(() => {
+      if (shouldRefreshSession() && document.visibilityState === 'visible') {
+        console.log(`[${new Date().toISOString()}] Periodic session check triggered`);
+        refreshSession();
+      }
+    }, 60 * 1000); // Check every minute
+    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
     };
   }, [refreshSession, shouldRefreshSession]);
 

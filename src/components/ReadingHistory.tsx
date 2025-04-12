@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
+import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
+import { shouldRetryRequest } from "@/hooks/filters/filterUtils";
 
 const ReadingHistory = () => {
   const { user } = useAuth();
@@ -17,6 +18,9 @@ const ReadingHistory = () => {
   const [readPosts, setReadPosts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { refreshSession } = useSessionRefresh();
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
 
   useEffect(() => {
     if (!user) return;
@@ -26,6 +30,13 @@ const ReadingHistory = () => {
         setLoading(true);
         setError(null);
         
+        // Check if we need to refresh the session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log("ReadingHistory: No active session found, refreshing...");
+          await refreshSession();
+        }
+        
         // Fetch all published blog posts with explicit columns
         const { data: posts, error: postsError } = await supabase
           .from("entries")
@@ -33,7 +44,20 @@ const ReadingHistory = () => {
           .eq("status", "published")
           .order("created_at", { ascending: false });
           
-        if (postsError) throw postsError;
+        if (postsError) {
+          // Check if we should retry due to auth/connection issues
+          if (shouldRetryRequest(postsError) && retryCount < maxRetries) {
+            console.log(`ReadingHistory: Retrying posts fetch (attempt ${retryCount + 1}/${maxRetries})`);
+            setRetryCount(prev => prev + 1);
+            await refreshSession();
+            setTimeout(fetchData, 1000); // Retry after a short delay
+            return;
+          }
+          throw postsError;
+        }
+        
+        // Reset retry count on success
+        setRetryCount(0);
         
         // Fetch reading history with explicit column selection
         const { data: history, error: historyError } = await supabase
@@ -76,7 +100,21 @@ const ReadingHistory = () => {
     };
     
     fetchData();
-  }, [user]);
+    
+    // Also refresh data when the page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        console.log(`ReadingHistory: Page visible, refreshing data`);
+        fetchData();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, refreshSession]);
 
   if (loading) {
     return (
