@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 
 export interface AboutContent {
@@ -58,6 +57,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     console.log("AboutService: Query prepared, about to execute", {
       query: `SELECT * FROM ${tableName} WHERE language = 'en'`,
       url: `${supabaseUrl}/rest/v1/${tableName}?select=*&language=eq.en`,
+      requestHeaders: {
+        'apikey': '[REDACTED]',
+        'Content-Type': 'application/json',
+        'Authorization': authHeaders.hasAuthToken ? 'Bearer [REDACTED]' : 'None',
+        'Prefer': 'return=representation'
+      },
       timestamp: new Date().toISOString()
     });
 
