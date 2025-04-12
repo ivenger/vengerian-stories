@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
-import { ReadingHistoryItem } from "../types/readingHistory";
 
 const ReadingHistory = () => {
   const { user } = useAuth();

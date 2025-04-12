@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { BlogEntry } from '../types/blogTypes';
@@ -274,9 +275,9 @@ export const useStoryFilters = (user: User | null) => {
         await refreshSession();
       }
       
-      // Always fetch all posts first
+      // Always fetch all posts first - pass selectedTags if we have them
       console.log("Fetching all posts");
-      const allPosts = await fetchFilteredPosts();
+      const allPosts = await fetchFilteredPosts(selectedTags.length > 0 ? selectedTags : undefined);
       console.log(`Received ${allPosts.length} total posts from API`);
       
       // Bail out if component unmounted during fetch
