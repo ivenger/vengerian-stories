@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 
 interface AboutContent {
@@ -28,7 +27,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     const query = supabase
       .from('about_content')
       .select('*')
-      .eq('language', 'en' as string)
+      .eq('language', 'en')
       .maybeSingle();
     
     console.log("AboutService: Query prepared, about to execute", {
@@ -58,7 +57,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
-      throw new DOMException("Request aborted", "AbortError");
+      return;
     }
 
     if (error) {
@@ -72,13 +71,9 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       throw error;
     }
 
-    if (!data) {
+    if (!data || data.length === 0) {
       console.log("AboutService: No content found, returning default");
-      return {
-        content: "",
-        image_url: null,
-        language: "en"
-      };
+      return {};
     }
 
     console.log("AboutService: Request successful", {
@@ -86,12 +81,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
-    // Explicitly cast the data to ensure type safety
-    return {
-      content: data.content || "",
-      image_url: data.image_url,
-      language: data.language
-    };
+    return data as AboutContent;
   } catch (err) {
     console.error("AboutService: Error during fetch", {
       error: err,
@@ -110,10 +100,10 @@ export const saveAboutContent = async (content: string, imageUrl: string | null)
     const { error } = await supabase
       .from('about_content')
       .upsert({
-        language: 'en' as string,
+        language: 'en',
         content: content,
         image_url: imageUrl
-      } as any, { 
+      }, { 
         onConflict: 'language' 
       });
     

@@ -20,7 +20,7 @@ export const fetchAllTags = async (): Promise<string[]> => {
     }
     
     // Extract tag names
-    return data.map((tag: any) => tag.name as string).filter(Boolean);
+    return data.map(tag => tag.name).filter(Boolean);
   } catch (error) {
     console.error('Error in fetchAllTags:', error);
     return []; // Return empty array on error
@@ -41,16 +41,14 @@ export const fetchTagsByLanguage = async (): Promise<string[]> => {
 // Save tag
 export const saveTag = async (tagName: string, translations: { en: string; he: string; ru: string }): Promise<void> => {
   try {
-    const insertData = {
-      name: tagName.trim(),
-      en: translations.en.trim() || tagName.trim(),
-      he: translations.he.trim() || null,
-      ru: translations.ru.trim() || null
-    };
-    
     const { error } = await supabase
       .from('tags')
-      .insert(insertData as any);
+      .insert({
+        name: tagName.trim(),
+        en: translations.en.trim() || tagName.trim(),
+        he: translations.he.trim() || null,
+        ru: translations.ru.trim() || null
+      });
     
     if (error) {
       throw error;
@@ -67,7 +65,7 @@ export const deleteTag = async (tagName: string): Promise<void> => {
     const { error } = await supabase
       .from('tags')
       .delete()
-      .eq('name', tagName as string);
+      .eq('name', tagName);
     
     if (error) {
       throw error;
@@ -82,14 +80,13 @@ export const deleteTag = async (tagName: string): Promise<void> => {
       throw findError;
     }
     
-    if (postsWithTag) {
+    if (postsWithTag && postsWithTag.length > 0) {
       for (const post of postsWithTag) {
-        const postTags = post.tags || [];
-        const updatedTags = postTags.filter((tag: string) => tag !== tagName);
+        const updatedTags = (post.tags || []).filter(tag => tag !== tagName);
         
         const { error: updateError } = await supabase
           .from('entries')
-          .update({ tags: updatedTags } as any)
+          .update({ tags: updatedTags })
           .eq('id', post.id);
         
         if (updateError) {

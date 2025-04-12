@@ -62,12 +62,14 @@ export function useAuthProvider() {
     }
   }, [checkUserRole]);
 
+  // Handle auth state changes and session management
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
     recoveryAttempts.current = 0;
 
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.email || "no user");
@@ -90,29 +92,21 @@ export function useAuthProvider() {
             console.error("Error checking admin status:", roleError);
             if (isMounted) setIsAdmin(false);
           }
-        } else if (event === "SIGNED_OUT" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+        } else if (event === 'SIGNED_OUT') {
           setSession(null);
           setIsAdmin(false);
-        } else if (!newSession) {
-          const eventsNeedingRecovery = ["INITIAL_SESSION", "PASSWORD_RECOVERY", "MFA_CHALLENGE_VERIFIED"];
-          const needsRecovery = eventsNeedingRecovery.includes(event as string);
-          
-          if (needsRecovery) {
-            const recovered = await recoverSession();
-            if (!recovered && isMounted) {
-              setSession(null);
-              setIsAdmin(false);
-            }
-          } else {
-            if (isMounted) {
-              setSession(null);
-              setIsAdmin(false);
-            }
+        } else if (!newSession && event !== 'SIGNED_OUT') {
+          // Possible connection issue - attempt recovery
+          const recovered = await recoverSession();
+          if (!recovered && isMounted) {
+            setSession(null);
+            setIsAdmin(false);
           }
         }
 
         if (isMounted) setLoading(false);
 
+        // Show toast for specific events
         if (event === 'SIGNED_IN') {
           toast({
             title: "Welcome back!",
@@ -127,6 +121,7 @@ export function useAuthProvider() {
       }
     );
 
+    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
       if (!isMounted) return;
 

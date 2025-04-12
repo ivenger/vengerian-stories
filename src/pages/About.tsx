@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -89,14 +88,7 @@ const About: React.FC = () => {
         }
 
         console.log("About: Content fetched successfully", { data });
-        if (typeof data.content === 'string') {
-          setContent(data.content);
-        } else {
-          // Handle the case where content might not be a string
-          setContent(data.content ? String(data.content) : "");
-        }
-        
-        setImageUrl(data.image_url);
+        setContent(data);
         fetchAttempts.current = 0;
       } catch (error) {
         console.log("About: Fetch error occurred", { error, currentAttempt: fetchAttempts.current });
@@ -106,7 +98,7 @@ const About: React.FC = () => {
             const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
             fetchAttempts.current += 1;
             console.log("About: Retrying fetch", { attempt: fetchAttempts.current, retryDelay });
-            setTimeout(loadAboutContent, retryDelay);
+            setTimeout(fetchContent, retryDelay);
           } else {
             console.log("About: Max retries reached, giving up", { attemptsMade: fetchAttempts.current });
           }
@@ -158,12 +150,7 @@ const About: React.FC = () => {
       .then(data => {
         if (isMountedRef.current) {
           console.log("About: Content fetched successfully on retry:", data);
-          // Make sure we're setting a string to content
-          if (typeof data.content === 'string') {
-            setContent(data.content);
-          } else {
-            setContent(data.content ? String(data.content) : "");
-          }
+          setContent(data.content || "");
           setImageUrl(data.image_url);
           setIsLoading(false);
         }
@@ -183,12 +170,8 @@ const About: React.FC = () => {
       });
   };
 
-  const formatContent = (text: string | unknown): string => {
+  const formatContent = (text: string) => {
     if (!text) return "";
-    // Make sure text is a string before calling replace
-    if (typeof text !== 'string') {
-      return String(text);
-    }
     let html = text.replace(/\n/g, "<br>");
     return html;
   };
