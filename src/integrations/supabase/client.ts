@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -38,8 +39,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       },
     }
   },
-  persistSession: true,
-  autoRefreshToken: true,
   realtime: {
     params: {
       eventsPerSecond: 10
@@ -55,19 +54,26 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Setup auto-reconnect for realtime
 let isReconnecting = false;
 
-supabase.realtime.on('disconnected', () => {
-  console.log('Lost connection to Supabase');
-  if (!isReconnecting) {
-    isReconnecting = true;
-    setTimeout(async () => {
-      try {
-        await supabase.realtime.connect();
-        console.log('Reconnected to Supabase');
-      } catch (error) {
-        console.error('Failed to reconnect:', error);
-      } finally {
-        isReconnecting = false;
-      }
-    }, 1000);
-  }
-});
+// Create a dedicated channel for connection status
+const connectionStatusChannel = supabase.channel('connection-status');
+
+// Listen for connection status changes
+connectionStatusChannel
+  .on('system', { event: 'disconnect' }, () => {
+    console.log('Lost connection to Supabase');
+    if (!isReconnecting) {
+      isReconnecting = true;
+      setTimeout(async () => {
+        try {
+          // Attempt to reconnect the channel
+          await connectionStatusChannel.subscribe();
+          console.log('Reconnected to Supabase');
+        } catch (error) {
+          console.error('Failed to reconnect:', error);
+        } finally {
+          isReconnecting = false;
+        }
+      }, 1000);
+    }
+  })
+  .subscribe();
