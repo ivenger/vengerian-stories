@@ -18,9 +18,29 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
   });
 
   try {
-    console.log("AboutService: Preparing Supabase request", {
-      table: 'about_content',
-      filter: { language: 'en' },
+    // Prepare query details for logging
+    const tableName = 'about_content';
+    const filter = { language: 'en' };
+    const queryDetails = {
+      method: 'SELECT',
+      table: tableName,
+      filter: filter,
+      returnType: 'maybeSingle',
+      timestamp: new Date().toISOString()
+    };
+
+    console.log("AboutService: Preparing Supabase request", queryDetails);
+    
+    // Get authentication headers for logging
+    const session = await supabase.auth.getSession();
+    const authHeaders = session.data.session ? {
+      authorization: `Bearer ${session.data.session.access_token}`,
+      hasAuthToken: true
+    } : { hasAuthToken: false };
+
+    console.log("AboutService: Request authentication details", {
+      isAuthenticated: !!session.data.session,
+      headers: { ...authHeaders, 'apikey': '[REDACTED]' },
       timestamp: new Date().toISOString()
     });
     
@@ -32,6 +52,8 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       .maybeSingle();
     
     console.log("AboutService: Query prepared, about to execute", {
+      query: `SELECT * FROM ${tableName} WHERE language = 'en'`,
+      url: `${supabase.supabaseUrl}/rest/v1/${tableName}?select=*&language=eq.en`,
       timestamp: new Date().toISOString()
     });
 
@@ -53,6 +75,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     console.log("AboutService: Query completed", { 
       hasData: !!data, 
       hasError: !!error,
+      resultStatus: data ? 'success' : (error ? 'error' : 'empty'),
       timestamp: new Date().toISOString()
     });
 
@@ -83,6 +106,11 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     console.log("AboutService: Request successful", {
       dataReceived: !!data,
+      dataSnippet: data ? { 
+        contentLength: data.content?.length || 0,
+        hasImage: !!data.image_url,
+        language: data.language
+      } : null,
       timestamp: new Date().toISOString()
     });
 
