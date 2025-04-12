@@ -34,15 +34,57 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     console.log("AboutService: Preparing Supabase request", queryDetails);
     
-    // Get authentication headers for logging
-    const session = await supabase.auth.getSession();
-    const authHeaders = session.data.session ? {
-      authorization: `Bearer ${session.data.session.access_token}`,
-      hasAuthToken: true
-    } : { hasAuthToken: false };
+    // Get authentication headers for logging - Using a timeout to prevent potential deadlocks
+    let authHeaders = { hasAuthToken: false };
+    let sessionData = null;
+
+    try {
+      console.log("AboutService: About to check auth session", { 
+        timestamp: new Date().toISOString()
+      });
+      
+      // Use a promise with timeout to prevent hanging on auth check
+      const sessionPromise = new Promise(async (resolve) => {
+        try {
+          const session = await supabase.auth.getSession();
+          resolve(session);
+        } catch (err) {
+          console.error("AboutService: Error in getSession:", err);
+          resolve(null); 
+        }
+      });
+      
+      // Add a timeout to the auth check
+      const timeoutPromise = new Promise((resolve) => {
+        setTimeout(() => {
+          console.log("AboutService: Auth check timed out after 2 seconds");
+          resolve(null);
+        }, 2000);
+      });
+      
+      // Race the session fetch against a timeout
+      sessionData = await Promise.race([sessionPromise, timeoutPromise]);
+      
+      if (sessionData && sessionData.data && sessionData.data.session) {
+        authHeaders = {
+          authorization: `Bearer ${sessionData.data.session.access_token}`,
+          hasAuthToken: true
+        };
+        console.log("AboutService: Session retrieved successfully", {
+          hasSession: true,
+          timestamp: new Date().toISOString()
+        });
+      } else {
+        console.log("AboutService: No active session found", {
+          timestamp: new Date().toISOString()
+        });
+      }
+    } catch (authErr) {
+      console.error("AboutService: Failed to get auth session", authErr);
+    }
 
     console.log("AboutService: Request authentication details", {
-      isAuthenticated: !!session.data.session,
+      isAuthenticated: !!(sessionData?.data?.session),
       headers: { ...authHeaders, 'apikey': '[REDACTED]' },
       timestamp: new Date().toISOString()
     });

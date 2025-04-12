@@ -58,7 +58,16 @@ export const useSessionRefresh = () => {
         } else {
           // Even if we don't need a full refresh, validate the session
           try {
-            const { data } = await supabase.auth.getSession();
+            // Add timeout protection to prevent hanging
+            const sessionPromise = supabase.auth.getSession();
+            const timeoutPromise = new Promise((_, reject) => {
+              setTimeout(() => {
+                reject(new Error('Session check timed out'));
+              }, 2000);
+            });
+            
+            const { data } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+            
             if (data?.session) {
               console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
             } else {
@@ -67,6 +76,12 @@ export const useSessionRefresh = () => {
             }
           } catch (err) {
             console.error(`[${new Date().toISOString()}] Error checking session:`, err);
+            
+            // If session check failed, try refreshing the session as a fallback
+            if (err.message === 'Session check timed out') {
+              console.log(`[${new Date().toISOString()}] Session check timed out, attempting refresh`);
+              await refreshSession();
+            }
           }
         }
       }
