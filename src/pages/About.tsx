@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Pencil, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
-import { fetchAboutContent } from "../services/aboutService";
+import { fetchAboutContent, AboutContent } from "../services/aboutService";
 import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";
@@ -22,9 +22,11 @@ const About: React.FC = () => {
   const fetchControllerRef = useRef<AbortController | null>(null);
   const isFirstMount = useRef(true);
   const mountCountRef = useRef(0);
+  
   useEffect(() => {
     fetchAttempts.current = 0; // Reset fetch attempts
   }, []);
+  
   // Main effect for loading content
   useEffect(() => {
     console.log("About: Component mounting", {
@@ -88,7 +90,8 @@ const About: React.FC = () => {
         }
 
         console.log("About: Content fetched successfully", { data });
-        setContent(data);
+        setContent(data.content);
+        setImageUrl(data.image_url);
         fetchAttempts.current = 0;
       } catch (error) {
         console.log("About: Fetch error occurred", { error, currentAttempt: fetchAttempts.current });
@@ -98,7 +101,7 @@ const About: React.FC = () => {
             const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
             fetchAttempts.current += 1;
             console.log("About: Retrying fetch", { attempt: fetchAttempts.current, retryDelay });
-            setTimeout(fetchContent, retryDelay);
+            setTimeout(loadAboutContent, retryDelay);
           } else {
             console.log("About: Max retries reached, giving up", { attemptsMade: fetchAttempts.current });
           }
@@ -133,7 +136,7 @@ const About: React.FC = () => {
       }
       fetchControllerRef.current = null;
     };
-  }, [toast, maxRetries]); // Removed content from dependencies
+  }, [toast, maxRetries]);
 
   const handleRetry = () => {
     console.log("About: Manual retry requested");

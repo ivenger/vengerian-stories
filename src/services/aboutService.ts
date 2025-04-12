@@ -1,6 +1,7 @@
+
 import { supabase } from "../integrations/supabase/client";
 
-interface AboutContent {
+export interface AboutContent {
   content: string;
   image_url: string | null;
   language: string;
@@ -57,7 +58,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
-      return;
+      throw new DOMException("Request aborted", "AbortError");
     }
 
     if (error) {
@@ -71,9 +72,13 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       throw error;
     }
 
-    if (!data || data.length === 0) {
+    if (!data) {
       console.log("AboutService: No content found, returning default");
-      return {};
+      return {
+        content: "",
+        image_url: null,
+        language: "en"
+      };
     }
 
     console.log("AboutService: Request successful", {
@@ -81,7 +86,11 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
-    return data as AboutContent;
+    return {
+      content: data.content || "",
+      image_url: data.image_url,
+      language: data.language
+    };
   } catch (err) {
     console.error("AboutService: Error during fetch", {
       error: err,
