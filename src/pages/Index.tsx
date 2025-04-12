@@ -6,9 +6,12 @@ import FilterDialog from "../components/FilterDialog";
 import ActiveFilters from "../components/ActiveFilters";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
+import { useAuth } from "../components/AuthProvider";
 
 const Index = () => {
-  // Use our custom hook to handle all filter logic
+  const { user } = useAuth();
+  
+  // Pass the user to the useStoryFilters hook
   const {
     posts,
     loading,
@@ -21,7 +24,7 @@ const Index = () => {
     clearFilters,
     hasActiveFilters,
     loadPosts
-  } = useStoryFilters();
+  } = useStoryFilters(user);
   
   return (
     <div className="min-h-screen bg-gray-50">

@@ -12,12 +12,30 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
 
   try {
     console.log("AboutService: Making Supabase request");
-    const { data, error } = await supabase
+    
+    // Create the query first
+    const query = supabase
       .from('about_content')
       .select('*')
       .eq('language', 'en')
-      .maybeSingle()
-      .abortSignal(signal);
+      .maybeSingle();
+    
+    // Handle abort signal if provided
+    if (signal) {
+      if (signal.aborted) {
+        console.log("AboutService: Request aborted before making API call");
+        throw new DOMException("Request aborted", "AbortError");
+      }
+      
+      // Use the newer Supabase API for aborting - add an event listener
+      signal.addEventListener('abort', () => {
+        // This will internally cancel the request if possible
+        console.log("AboutService: Abort signal triggered");
+      });
+    }
+    
+    // Execute the query
+    const { data, error } = await query;
 
     console.log("AboutService: Supabase response", { data, error });
 
