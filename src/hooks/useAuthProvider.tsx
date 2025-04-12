@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,14 +62,12 @@ export function useAuthProvider() {
     }
   }, [checkUserRole]);
 
-  // Handle auth state changes and session management
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
     recoveryAttempts.current = 0;
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.email || "no user");
@@ -96,11 +93,10 @@ export function useAuthProvider() {
         } else if (event === 'SIGNED_OUT') {
           setSession(null);
           setIsAdmin(false);
-        } else if (!newSession && event !== 'SIGNED_OUT') {
-          // Fix: Use proper type check instead of direct comparison
+        } else if (!newSession) { 
           const recoveryEvents = ['INITIAL_SESSION', 'PASSWORD_RECOVERY', 'MFA_CHALLENGE_VERIFIED', 'SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED'];
+          
           if (recoveryEvents.includes(event)) {
-            // Possible connection issue - attempt recovery
             const recovered = await recoverSession();
             if (!recovered && isMounted) {
               setSession(null);
@@ -111,7 +107,6 @@ export function useAuthProvider() {
 
         if (isMounted) setLoading(false);
 
-        // Show toast for specific events
         if (event === 'SIGNED_IN') {
           toast({
             title: "Welcome back!",
@@ -126,7 +121,6 @@ export function useAuthProvider() {
       }
     );
 
-    // Get initial session
     supabase.auth.getSession().then(async ({ data: { session: currentSession }, error: sessionError }) => {
       if (!isMounted) return;
 
