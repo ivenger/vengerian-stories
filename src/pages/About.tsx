@@ -71,12 +71,10 @@ const About: React.FC = () => {
       try {
         console.log("About: Initiating fetch request", {
           fetchAttempts: fetchAttempts.current,
-          signal: currentController.signal.aborted
+          signal: currentController.signal.aborted,
         });
 
         const data = await fetchAboutContent(currentController.signal);
-
-        // Check if the component is still mounted and this is still the current request
         if (!isMountedRef.current) {
           console.log("About: Fetch completed but component unmounted - discarding result");
           return;
@@ -87,64 +85,20 @@ const About: React.FC = () => {
           return;
         }
 
-        console.log("About: Content fetched successfully", {
-          hasContent: !!data.content,
-          hasImage: !!data.image_url
-        });
-
-        setContent(data.content || "");
-        setImageUrl(data.image_url);
-        setError(null);
+        console.log("About: Content fetched successfully", { data });
+        setContent(data);
         fetchAttempts.current = 0;
-      } catch (error: any) {
-        if (!isMountedRef.current) {
-          console.log("About: Error occurred but component unmounted - ignoring", error);
-          return;
-        }
-        
-        console.log("About: Fetch error occurred", {
-          errorName: error.name,
-          errorMessage: error.message,
-          isAborted: error.name === "AbortError",
-          currentAttempt: fetchAttempts.current
-        });
-
-        if (error.name === "AbortError") {
-          console.log("About: Request aborted - skipping error handling");
-          return;
-        }
+      } catch (error) {
+        console.log("About: Fetch error occurred", { error, currentAttempt: fetchAttempts.current });
 
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
-          console.error("About: Error loading about content:", error);
-
           if (fetchAttempts.current < maxRetries) {
             const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
             fetchAttempts.current += 1;
-
-            console.log("About: Scheduling retry", {
-              attempt: fetchAttempts.current,
-              maxRetries,
-              delay: retryDelay
-            });
-
-            setError(`Loading failed. Retrying in ${Math.round(retryDelay/1000)} seconds...`);
-
-            setTimeout(() => {
-              if (isMountedRef.current) {
-                console.log("About: Executing scheduled retry");
-                loadAboutContent();
-              } else {
-                console.log("About: Skipping scheduled retry - component unmounted");
-              }
-            }, retryDelay);
+            console.log("About: Retrying fetch", { attempt: fetchAttempts.current, retryDelay });
+            setTimeout(fetchContent, retryDelay);
           } else {
-            console.log("About: Max retries reached - showing error");
-            setError("Content could not be loaded. Please try again later.");
-            toast({
-              title: "Loading Error",
-              description: "Failed to load about content after multiple attempts.",
-              variant: "destructive"
-            });
+            console.log("About: Max retries reached, giving up", { attemptsMade: fetchAttempts.current });
           }
         }
       } finally {
