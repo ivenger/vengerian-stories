@@ -57,12 +57,16 @@ export const useSessionRefresh = () => {
           await refreshSession();
         } else {
           // Even if we don't need a full refresh, validate the session
-          const { data } = await supabase.auth.getSession();
-          if (data?.session) {
-            console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
-          } else {
-            console.log(`[${new Date().toISOString()}] Session missing or invalid, triggering refresh`);
-            await refreshSession();
+          try {
+            const { data } = await supabase.auth.getSession();
+            if (data?.session) {
+              console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
+            } else {
+              console.log(`[${new Date().toISOString()}] Session missing or invalid, triggering refresh`);
+              await refreshSession();
+            }
+          } catch (err) {
+            console.error(`[${new Date().toISOString()}] Error checking session:`, err);
           }
         }
       }

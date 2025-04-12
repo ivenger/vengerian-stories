@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 
 export interface AboutContent {
@@ -7,14 +8,17 @@ export interface AboutContent {
 }
 
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
-  console.log("About: First mount - resetting fetch state");
-  console.log("About: Starting content load", { fetchAttempts: 0, hasExistingController: false });
-  console.log("About: Initiating fetch request", { fetchAttempts: 0, signal: !!signal });
   console.log("AboutService: Starting fetch", { 
     hasSignal: !!signal, 
     signalAborted: signal?.aborted,
     timestamp: new Date().toISOString()
   });
+
+  // Immediately check if the request is already aborted
+  if (signal?.aborted) {
+    console.log("AboutService: Request aborted before starting");
+    throw new DOMException("Request aborted", "AbortError");
+  }
 
   try {
     // Prepare query details for logging
@@ -43,6 +47,12 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
     
+    // Check again for abort signal after auth check
+    if (signal?.aborted) {
+      console.log("AboutService: Request aborted after auth check");
+      throw new DOMException("Request aborted", "AbortError");
+    }
+    
     // Create the query first
     const query = supabase
       .from('about_content')
@@ -50,8 +60,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       .eq('language', 'en')
       .maybeSingle();
     
-    // Get the base URL from the Supabase client configuration
-    // Using environment configuration instead of getClientConfig()
+    // Use hardcoded URL for logging
     const supabaseUrl = "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
     
     console.log("AboutService: Query prepared, about to execute", {
@@ -66,13 +75,8 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
-    // Handle abort signal if provided
+    // Set up abort signal listener before executing query
     if (signal) {
-      if (signal.aborted) {
-        console.log("AboutService: Request aborted before making API call");
-        throw new DOMException("Request aborted", "AbortError");
-      }
-      
       signal.addEventListener('abort', () => {
         console.log("AboutService: Abort signal triggered");
       });
@@ -88,6 +92,7 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       timestamp: new Date().toISOString()
     });
 
+    // Final check after query completes
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
       throw new DOMException("Request aborted", "AbortError");
@@ -129,12 +134,19 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       language: data.language
     };
   } catch (err) {
-    console.error("AboutService: Error during fetch", {
-      error: err,
-      message: err.message,
-      stack: err.stack,
-      timestamp: new Date().toISOString()
-    });
+    // Don't log AbortError as an error since it's expected behavior
+    if (err.name === 'AbortError') {
+      console.log("AboutService: Request aborted", {
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      console.error("AboutService: Error during fetch", {
+        error: err,
+        message: err.message,
+        stack: err.stack,
+        timestamp: new Date().toISOString()
+      });
+    }
     throw err;
   }
 };
