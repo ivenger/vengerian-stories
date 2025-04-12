@@ -7,11 +7,67 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     persistSession: true,
-    autoRefreshToken: true
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: {
+      getItem: (key: string) => {
+        try {
+          return Promise.resolve(localStorage.getItem(key));
+        } catch (error) {
+          console.error('Error accessing localStorage:', error);
+          return Promise.resolve(null);
+        }
+      },
+      setItem: (key: string, value: string) => {
+        try {
+          localStorage.setItem(key, value);
+          return Promise.resolve();
+        } catch (error) {
+          console.error('Error setting localStorage:', error);
+          return Promise.resolve();
+        }
+      },
+      removeItem: (key: string) => {
+        try {
+          localStorage.removeItem(key);
+          return Promise.resolve();
+        } catch (error) {
+          console.error('Error removing from localStorage:', error);
+          return Promise.resolve();
+        }
+      },
+    }
+  },
+  persistSession: true,
+  autoRefreshToken: true,
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
   }
 });
 
-console.log("Supabase Client: Initialized with config", {
-  url: process.env.SUPABASE_URL,
-  key: process.env.SUPABASE_KEY,
+// Add connection state monitoring
+supabase.auth.onAuthStateChange((event, session) => {
+  console.log('Supabase auth state changed:', event, session?.user?.email || 'no user');
+});
+
+// Setup auto-reconnect for realtime
+let isReconnecting = false;
+
+supabase.realtime.on('disconnected', () => {
+  console.log('Lost connection to Supabase');
+  if (!isReconnecting) {
+    isReconnecting = true;
+    setTimeout(async () => {
+      try {
+        await supabase.realtime.connect();
+        console.log('Reconnected to Supabase');
+      } catch (error) {
+        console.error('Failed to reconnect:', error);
+      } finally {
+        isReconnecting = false;
+      }
+    }, 1000);
+  }
 });
