@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -55,19 +56,31 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Setup auto-reconnect for realtime
 let isReconnecting = false;
 
-supabase.realtime.on('disconnected', () => {
-  console.log('Lost connection to Supabase');
-  if (!isReconnecting) {
-    isReconnecting = true;
-    setTimeout(async () => {
-      try {
-        await supabase.realtime.connect();
-        console.log('Reconnected to Supabase');
-      } catch (error) {
-        console.error('Failed to reconnect:', error);
-      } finally {
-        isReconnecting = false;
-      }
-    }, 1000);
-  }
-});
+// Use the channel API instead of the deprecated realtime.on method
+const channel = supabase.channel('connection_status');
+
+channel
+  .on('presence', { event: 'sync' }, () => {
+    console.log('Connected to Supabase realtime');
+  })
+  .on('presence', { event: 'join' }, () => {
+    console.log('Joined Supabase realtime channel');
+  })
+  .on('presence', { event: 'leave' }, () => {
+    console.log('Left Supabase realtime channel');
+    
+    if (!isReconnecting) {
+      isReconnecting = true;
+      setTimeout(async () => {
+        try {
+          await channel.subscribe();
+          console.log('Reconnected to Supabase');
+        } catch (error) {
+          console.error('Failed to reconnect:', error);
+        } finally {
+          isReconnecting = false;
+        }
+      }, 1000);
+    }
+  })
+  .subscribe();
