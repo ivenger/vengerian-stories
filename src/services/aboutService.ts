@@ -1,4 +1,3 @@
-
 import { supabase } from "../integrations/supabase/client";
 
 interface AboutContent {
@@ -8,11 +7,21 @@ interface AboutContent {
 }
 
 export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutContent> => {
-  console.log("AboutService: Starting fetch", { hasSignal: !!signal, signalAborted: signal?.aborted });
+  console.log("About: First mount - resetting fetch state");
+  console.log("About: Starting content load", { fetchAttempts: 0, hasExistingController: false });
+  console.log("About: Initiating fetch request", { fetchAttempts: 0, signal: !!signal });
+  console.log("AboutService: Starting fetch", { 
+    hasSignal: !!signal, 
+    signalAborted: signal?.aborted,
+    timestamp: new Date().toISOString()
+  });
 
   try {
-<<<<<<< HEAD
-    console.log("AboutService: Making Supabase request");
+    console.log("AboutService: Preparing Supabase request", {
+      table: 'about_content',
+      filter: { language: 'en' },
+      timestamp: new Date().toISOString()
+    });
     
     // Create the query first
     const query = supabase
@@ -21,6 +30,10 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       .eq('language', 'en')
       .maybeSingle();
     
+    console.log("AboutService: Query prepared, about to execute", {
+      timestamp: new Date().toISOString()
+    });
+
     // Handle abort signal if provided
     if (signal) {
       if (signal.aborted) {
@@ -28,35 +41,19 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
         throw new DOMException("Request aborted", "AbortError");
       }
       
-      // Use the newer Supabase API for aborting - add an event listener
       signal.addEventListener('abort', () => {
-        // This will internally cancel the request if possible
         console.log("AboutService: Abort signal triggered");
       });
     }
     
     // Execute the query
+    console.log("AboutService: Executing Supabase query...");
     const { data, error } = await query;
-=======
-    const session = await supabase.auth.getSession();
-    console.log("AboutService: Session restored before request", session);
-
-    if (!session) {
-      console.error("AboutService: No session found, aborting fetch");
-      throw new Error("No session available");
-    }
-
-    console.log("AboutService: Making Supabase request with token", {
-      token: session.access_token,
+    console.log("AboutService: Query completed", { 
+      hasData: !!data, 
+      hasError: !!error,
+      timestamp: new Date().toISOString()
     });
-
-    const { data, error } = await supabase
-      .from("about")
-      .select("*")
-      .abortSignal(signal);
->>>>>>> 127a7e6 (More logs)
-
-    console.log("AboutService: Supabase response", { data, error });
 
     if (signal?.aborted) {
       console.log("AboutService: Request aborted after response");
@@ -64,7 +61,13 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
     }
 
     if (error) {
-      console.error("AboutService: Supabase error", { error });
+      console.error("AboutService: Supabase error", { 
+        error,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+        message: error.message
+      });
       throw error;
     }
 
@@ -73,16 +76,19 @@ export const fetchAboutContent = async (signal?: AbortSignal): Promise<AboutCont
       return {};
     }
 
-<<<<<<< HEAD
-    console.log("AboutService: Request successful");
+    console.log("AboutService: Request successful", {
+      dataReceived: !!data,
+      timestamp: new Date().toISOString()
+    });
 
     return data as AboutContent;
-=======
-    console.log("AboutService: Request successful", { data });
-    return data;
->>>>>>> 127a7e6 (More logs)
   } catch (err) {
-    console.error("AboutService: Error during fetch", err);
+    console.error("AboutService: Error during fetch", {
+      error: err,
+      message: err.message,
+      stack: err.stack,
+      timestamp: new Date().toISOString()
+    });
     throw err;
   }
 };
