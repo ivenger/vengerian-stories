@@ -72,9 +72,10 @@ export const useSessionRefresh = () => {
       } else {
         // Lightweight session check that doesn't block other operations
         try {
+          // Fix: Explicitly cast setTimeout return value to number for TypeScript
           const timeoutId = window.setTimeout(() => {
             console.log(`[${new Date().toISOString()}] Session check timed out after 2 seconds`);
-          }, 2000);
+          }, 2000) as unknown as number;
           
           timeoutIds.push(timeoutId);
           
@@ -106,7 +107,7 @@ export const useSessionRefresh = () => {
       if (shouldRefreshSession() && mounted) {
         refreshSession();
       }
-    }, 1000);
+    }, 1000) as unknown as number;
     
     timeoutIds.push(initialCheckTimeoutId);
     
