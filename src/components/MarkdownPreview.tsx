@@ -13,7 +13,11 @@ interface MarkdownPreviewProps {
 
 // Function to convert markdown to HTML
 const getFormattedContent = (markdown: string): string => {
-  // This is a simple markdown parsing implementation
+  // Ensure markdown is a string before applying string methods
+  if (!markdown) {
+    return '';
+  }
+  
   let html = markdown;
   
   // Convert headers
@@ -46,18 +50,20 @@ const getFormattedContent = (markdown: string): string => {
 
 // Function to detect if text has Hebrew characters
 const hasHebrew = (text: string): boolean => {
+  if (!text) return false;
   return /[\u0590-\u05FF]/.test(text);
 };
 
 // Function to detect if text has Cyrillic characters
 const hasCyrillic = (text: string): boolean => {
+  if (!text) return false;
   return /[А-Яа-яЁё]/.test(text);
 };
 
 // Function to format date properly for RTL languages
 const formatDateForRTL = (date: string): string => {
   // If the date contains numbers and is in a format like "Month DD, YYYY"
-  if (/\d/.test(date)) {
+  if (date && /\d/.test(date)) {
     // Split into parts (assuming format like "Month DD, YYYY")
     const parts = date.split(/,\s*/);
     if (parts.length > 1) {
@@ -68,7 +74,7 @@ const formatDateForRTL = (date: string): string => {
       return `${monthDay}, ${year}`;
     }
   }
-  return date;
+  return date || '';
 };
 
 const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({ 
@@ -101,7 +107,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
             <div className="relative">
               <img 
                 src={imageUrl} 
-                alt={title} 
+                alt={title || ''} 
                 className="max-w-[300px] max-h-[300px] object-contain rounded-lg"
               />
               <div className="absolute bottom-0 left-0 right-0 text-xs p-1 text-gray-700 bg-white bg-opacity-75">
@@ -148,7 +154,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       <div 
         className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
         dir={isRtlContent ? 'rtl' : 'ltr'}
-        dangerouslySetInnerHTML={{ __html: getFormattedContent(content) }}
+        dangerouslySetInnerHTML={{ __html: getFormattedContent(content || '') }}
       />
     </article>
   );

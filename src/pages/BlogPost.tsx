@@ -40,6 +40,15 @@ const BlogPost = () => {
         // Only update state if component is still mounted
         if (isMounted) {
           console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
+          
+          // Check if we have a valid post with content
+          if (!postData || !postData.content) {
+            console.error("BlogPost: Post data is missing or incomplete");
+            setError("The post content appears to be empty or missing.");
+            setLoading(false);
+            return;
+          }
+          
           setPost(postData);
           setLoading(false);
         }
