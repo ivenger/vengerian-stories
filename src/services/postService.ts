@@ -1,3 +1,4 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
@@ -35,7 +36,7 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
       .from('entries')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle(); // Using maybeSingle instead of single to handle missing data gracefully
     
     if (error) {
       console.error('Error fetching post by ID:', error);
@@ -47,7 +48,13 @@ export const fetchPostById = async (id: string): Promise<BlogEntry> => {
       throw new Error(`Post with ID ${id} not found`);
     }
     
-    console.log('Post fetched successfully:', data.id);
+    // Log the actual post data for debugging
+    console.log('Post fetched successfully:', {
+      id: data.id,
+      title: data.title,
+      content: data.content ? `${data.content.slice(0, 50)}...` : 'No content'
+    });
+    
     return data as BlogEntry;
   } catch (error: any) {
     console.error(`Failed to fetch post with ID ${id}:`, error);

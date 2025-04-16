@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
@@ -12,6 +12,7 @@ import PostLoading from "@/components/blog/PostLoading";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [post, setPost] = useState<BlogEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +43,17 @@ const BlogPost = () => {
           console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
           
           // Check if we have a valid post with content
-          if (!postData || !postData.content) {
-            console.error("BlogPost: Post data is missing or incomplete");
+          if (!postData) {
+            console.error("BlogPost: Post data is missing");
+            setError("The post could not be found.");
+            setLoading(false);
+            return;
+          }
+          
+          if (!postData.content) {
+            console.error("BlogPost: Post content is missing");
             setError("The post content appears to be empty or missing.");
+            setPost(postData); // Still set the post so we can show metadata
             setLoading(false);
             return;
           }
@@ -52,11 +61,11 @@ const BlogPost = () => {
           setPost(postData);
           setLoading(false);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error("BlogPost: Error fetching post:", err);
         // Only update state if component is still mounted
         if (isMounted) {
-          setError("Failed to load the post. Please try again later.");
+          setError(err.message || "Failed to load the post. Please try again later.");
           setLoading(false);
           setPost(null);
         }
@@ -69,7 +78,7 @@ const BlogPost = () => {
     return () => {
       isMounted = false;
     };
-  }, [id]);
+  }, [id, navigate]);
 
   return (
     <div>

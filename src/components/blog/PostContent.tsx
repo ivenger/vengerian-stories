@@ -51,14 +51,20 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
         </div>
 
         <div className="prose max-w-none">
-          <MarkdownPreview 
-            title={safePost.title}
-            date={safePost.date}
-            language={safePost.language?.[0] || 'English'}
-            content={safePost.content}
-            tags={safePost.tags || []}
-            imageUrl={safePost.image_url || null}
-          />
+          {safePost.content ? (
+            <MarkdownPreview 
+              title={safePost.title}
+              date={safePost.date}
+              language={safePost.language?.[0] || 'English'}
+              content={safePost.content}
+              tags={safePost.tags || []}
+              imageUrl={safePost.image_url || null}
+            />
+          ) : (
+            <div className="bg-gray-50 p-6 rounded-lg text-center">
+              <p className="text-gray-500">The content for this post is not available.</p>
+            </div>
+          )}
         </div>
       </div>
     </article>
