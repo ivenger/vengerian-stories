@@ -1,6 +1,6 @@
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 

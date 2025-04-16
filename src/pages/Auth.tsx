@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Navigation from "../components/Navigation";
-import { useAuth } from "@/components/AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
 import MultilingualTitle from "../components/MultilingualTitle";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";

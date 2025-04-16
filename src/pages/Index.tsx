@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
@@ -6,12 +5,11 @@ import FilterDialog from "../components/FilterDialog";
 import ActiveFilters from "../components/ActiveFilters";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
-import { useAuth } from "../components/AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 const Index = () => {
   const { user } = useAuth();
   
-  // Pass the user to the useStoryFilters hook
   const {
     posts,
     loading,

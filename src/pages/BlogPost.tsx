@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
-import { useAuth } from "../components/AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
 import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";

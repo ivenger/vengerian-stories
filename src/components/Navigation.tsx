@@ -1,7 +1,8 @@
+
 import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
 import { Button } from "@/components/ui/button";
 
 const Navigation = () => {

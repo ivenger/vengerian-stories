@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -14,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { useAuth } from "./AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface FilterDialogProps {
   allTags: string[];
