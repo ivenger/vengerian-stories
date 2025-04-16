@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
-import { useAuth } from './AuthProvider';
+import { useAuth } from '@/hooks/auth/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BlogCardProps {
@@ -23,7 +23,6 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const { user } = useAuth();
   const [isRead, setIsRead] = useState(false);
   
-  // Check if the post has been read by the user
   useEffect(() => {
     if (!user) return;
     
@@ -50,14 +49,12 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     checkReadStatus();
   }, [user, post.id]);
 
-  // Determine layout direction based on language
   const isHebrewPost = post.language?.includes('Hebrew');
   const contentDirection = isHebrewPost ? 'flex-row-reverse' : 'flex-row';
 
   return (
     <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
-        {/* Read indicator for logged in users */}
         {user && (
           <div className={`absolute top-3 right-3 ${isRead ? 'text-green-500' : 'text-gray-200'}`}>
             <Eye size={18} />

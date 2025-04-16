@@ -1,8 +1,8 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 interface AboutContentProps {
   content: string;

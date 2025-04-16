@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
-import { useAuth } from "../components/AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -23,7 +22,6 @@ const Profile = () => {
   const [userDetails, setUserDetails] = useState<any>(null);
   const { refreshSession } = useSessionRefresh();
   
-  // Log whether this user is admin for debugging
   useEffect(() => {
     console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin);
   }, [user, isAdmin]);
@@ -35,10 +33,8 @@ const Profile = () => {
       try {
         setLoading(true);
         
-        // Ensure session is fresh before making the request
         await refreshSession();
         
-        // Get user metadata
         const { data, error } = await supabase.auth.getUser();
         
         if (error) {
@@ -59,7 +55,6 @@ const Profile = () => {
     
     loadUserDetails();
     
-    // Set up page visibility change handler
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         console.log("Profile page became visible, refreshing user details");
@@ -74,7 +69,6 @@ const Profile = () => {
     };
   }, [user, toast, refreshSession]);
 
-  // Get display name based on auth method
   const getDisplayName = () => {
     if (!userDetails) return '';
     

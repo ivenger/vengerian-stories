@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { fetchAboutContent } from "../services/aboutService";
 import MultilingualTitle from "@/components/MultilingualTitle";
-import { useAuth } from "../components/AuthProvider";
+import { useAuth } from "@/hooks/auth/useAuth";
 import Navigation from "../components/Navigation";
 import { useToast } from "@/hooks/use-toast";
 import AboutLoadingState from "@/components/about/AboutLoadingState";
