@@ -1,14 +1,11 @@
-
 import React, { useState, useEffect, useRef } from "react";
-import { Pencil, RefreshCw } from "lucide-react";
-import { Link } from "react-router-dom";
 import { fetchAboutContent } from "../services/aboutService";
-import { Button } from "@/components/ui/button";
 import MultilingualTitle from "@/components/MultilingualTitle";
 import { useAuth } from "../components/AuthProvider";
-import { Spinner } from "@/components/ui/spinner";
 import Navigation from "../components/Navigation";
 import { useToast } from "@/hooks/use-toast";
+import AboutLoadingState from "@/components/about/AboutLoadingState";
+import AboutContent from "@/components/about/AboutContent";
 
 const About: React.FC = () => {
   const [content, setContent] = useState("");
@@ -25,10 +22,9 @@ const About: React.FC = () => {
   const mountCountRef = useRef(0);
   
   useEffect(() => {
-    fetchAttempts.current = 0; // Reset fetch attempts
+    fetchAttempts.current = 0;
   }, []);
   
-  // Main effect for loading content
   useEffect(() => {
     console.log("About: Component mounting", {
       mountCount: ++mountCountRef.current,
@@ -174,12 +170,6 @@ const About: React.FC = () => {
       });
   };
 
-  const formatContent = (text: string) => {
-    if (!text) return "";
-    let html = text.replace(/\n/g, "<br>");
-    return html;
-  };
-
   return (
     <div>
       <Navigation />
@@ -188,59 +178,17 @@ const About: React.FC = () => {
         
         <div className="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-sm">
           {isLoading ? (
-            <div className="flex flex-col justify-center items-center h-64">
-              <Spinner 
-                size="lg" 
-                label={error ? error : "Loading content..."}
-              />
-            </div>
+            <AboutLoadingState error={error} onRetry={handleRetry} />
           ) : error && !error.includes("Retrying") ? (
-            <div className="text-center py-8">
-              <p className="text-red-500 mb-4">{error}</p>
-              <Button 
-                onClick={handleRetry} 
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw size={16} />
-                Try Again
-              </Button>
-            </div>
+            <AboutLoadingState error={error} onRetry={handleRetry} />
           ) : (
-            <div>
-              {!authLoading && user && isAdmin && (
-                <div className="flex justify-end mb-4">
-                  <Link to="/admin/about">
-                    <Button 
-                      variant="outline" 
-                      className="flex items-center text-sm"
-                    >
-                      <Pencil size={14} className="mr-1" />
-                      Edit About
-                    </Button>
-                  </Link>
-                </div>
-              )}
-
-              <div className="flex flex-col md:flex-row gap-6 items-start">
-                {imageUrl && (
-                  <div className="w-full md:w-1/3 flex-none mb-4 md:mb-0">
-                    <img 
-                      src={imageUrl} 
-                      alt="About" 
-                      className="w-full rounded-lg object-cover"
-                    />
-                  </div>
-                )}
-                
-                <div className={`flex-grow ${imageUrl ? 'w-full md:w-2/3' : 'w-full'}`}>
-                  <div 
-                    dangerouslySetInnerHTML={{ __html: formatContent(content) }} 
-                    className="prose max-w-none leading-relaxed"
-                  />
-                </div>
-              </div>
-            </div>
+            <AboutContent 
+              content={content}
+              imageUrl={imageUrl}
+              isAdmin={isAdmin}
+              user={user}
+              authLoading={authLoading}
+            />
           )}
         </div>
       </div>
