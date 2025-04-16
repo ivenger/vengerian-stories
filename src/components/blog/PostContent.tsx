@@ -53,7 +53,7 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
         <div className="prose max-w-none">
           {safePost.content ? (
             <MarkdownPreview 
-              title=""  {/* Pass empty title to avoid duplication */}
+              title="" {/* Pass empty title to avoid duplication */}
               date={safePost.date}
               language={safePost.language?.[0] || 'English'}
               content={safePost.content}
