@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, EyeOff } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { isPostRead } from '@/services/readingHistoryService';
 
 interface BlogCardProps {
   post: BlogEntry;
@@ -34,20 +34,11 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     const checkReadStatus = async () => {
       try {
         setIsLoading(true);
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('*')
-          .eq('user_id', user.id)
-          .eq('post_id', post.id)
-          .maybeSingle();
-          
-        if (error) {
-          console.error("BlogCard: Error checking read status:", error);
-        } else {
-          setIsRead(!!data);
-        }
+        // Use the service function instead of direct Supabase query
+        const readStatus = await isPostRead(user.id, post.id);
+        setIsRead(readStatus);
       } catch (err) {
-        console.error("Error checking post read status:", err);
+        console.error("BlogCard: Error checking post read status:", err);
       } finally {
         setIsLoading(false);
       }

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { fetchPostById } from "../services/postService";
+import { fetchPostById } from "../services/blogService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -9,6 +9,8 @@ import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
 import PostLoading from "@/components/blog/PostLoading";
+import { useToast } from "@/hooks/use-toast";
+import { markPostAsRead } from "@/services/readingHistoryService";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -17,7 +19,8 @@ const BlogPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { isRead } = useReadingTracker(id, user);
+  const { isRead, toggleReadStatus, isUpdating } = useReadingTracker(id, user);
+  const { toast } = useToast();
 
   useEffect(() => {
     let isMounted = true;
@@ -60,6 +63,17 @@ const BlogPost = () => {
           
           setPost(postData);
           setLoading(false);
+          
+          // Mark post as read if user is logged in
+          if (user && id) {
+            try {
+              console.log(`BlogPost: Marking post ${id} as read for user ${user.id}`);
+              await markPostAsRead(user.id, id);
+            } catch (readErr) {
+              console.error("BlogPost: Error marking post as read:", readErr);
+              // Don't show error to user as this is non-critical
+            }
+          }
         }
       } catch (err: any) {
         console.error("BlogPost: Error fetching post:", err);
@@ -78,7 +92,7 @@ const BlogPost = () => {
     return () => {
       isMounted = false;
     };
-  }, [id, navigate]);
+  }, [id, navigate, user]);
 
   return (
     <div>

@@ -15,7 +15,7 @@ interface PostContentProps {
   postId: string | undefined;
 }
 
-const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead: initialIsRead, user, postId }) => {
+const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, user, postId }) => {
   // Use the enhanced reading tracker
   const { isRead, isUpdating, toggleReadStatus } = useReadingTracker(postId, user);
 

@@ -1,11 +1,13 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
 import { User } from '@supabase/supabase-js';
+import { togglePostReadStatus } from "@/services/readingHistoryService";
+import { useToast } from "@/hooks/use-toast";
 
 export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const { toast } = useToast();
 
   // Check if post is already marked as read
   useEffect(() => {
@@ -19,24 +21,44 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
 
       console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
-        const { data, error } = await supabase
-          .from('reading_history')
-          .select('id, user_id, post_id, read_at')
-          .eq('user_id', user.id)
-          .eq('post_id', postId)
-          .maybeSingle();
+        setIsUpdating(true);
+        // Use the readingHistoryService instead of direct supabase query
+        const readStatus = await fetch(`/api/reading-status?userId=${user.id}&postId=${postId}`)
+          .catch(() => ({ ok: false }));
+        
+        if (!readStatus.ok) {
+          // Fallback to local implementation
+          const { data, error } = await import('@/integrations/supabase/client').then(({ supabase }) =>
+            supabase
+              .from('reading_history')
+              .select('id')
+              .eq('user_id', user.id)
+              .eq('post_id', postId)
+              .maybeSingle()
+          );
 
-        if (error) {
-          console.error("useReadingTracker: Error checking read status:", error);
-          return;
-        }
+          if (error) {
+            console.error("useReadingTracker: Error checking read status:", error);
+            return;
+          }
 
-        if (isMounted) {
-          console.log(`ReadingTracker: Read status is ${!!data}`);
-          setIsRead(!!data);
+          if (isMounted) {
+            console.log(`ReadingTracker: Read status is ${!!data}`);
+            setIsRead(!!data);
+          }
+        } else {
+          const result = await readStatus.json();
+          if (isMounted) {
+            console.log(`ReadingTracker: Read status from API is ${!!result.isRead}`);
+            setIsRead(!!result.isRead);
+          }
         }
       } catch (readErr) {
         console.error("ReadingTracker: Error checking read status:", readErr);
+      } finally {
+        if (isMounted) {
+          setIsUpdating(false);
+        }
       }
     };
 
@@ -61,29 +83,22 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         setIsUpdating(true);
         console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
-        // Insert into reading history
-        const { error } = await supabase
-          .from('reading_history')
-          .upsert({ 
-            user_id: user.id, 
-            post_id: postId,
-            read_at: new Date().toISOString()
-          }, { 
-            onConflict: 'user_id,post_id' 
-          });
+        
+        // Use the togglePostReadStatus function to mark as read
+        const success = await togglePostReadStatus(user.id, postId, true);
 
-        if (error) {
-          if (error.code === '406') {
-            console.warn("ReadingTracker: 406 Not Acceptable error when marking as read - skipping");
-            return;
-          }
-          console.error("ReadingTracker: Error marking post as read:", error);
+        if (!success) {
+          console.error("ReadingTracker: Error marking post as read");
           return;
         }
 
         if (isMounted) {
           console.log("ReadingTracker: Successfully marked post as read");
           setIsRead(true);
+          toast({
+            title: "Post marked as read",
+            description: "This post has been added to your reading history",
+          });
         }
       } catch (err) {
         console.error("ReadingTracker: Error in markAsRead:", err);
@@ -100,7 +115,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     return () => {
       isMounted = false;
     };
-  }, [postId, user, isRead, isUpdating]);
+  }, [postId, user, isRead, isUpdating, toast]);
 
   const toggleReadStatus = async () => {
     if (!user || !postId || isUpdating) return;
@@ -108,43 +123,33 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     try {
       setIsUpdating(true);
       
-      if (isRead) {
-        // Remove from reading history
-        console.log(`ReadingTracker: Removing read status for post ${postId}`);
-        const { error } = await supabase
-          .from('reading_history')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('post_id', postId);
-          
-        if (error) {
-          console.error("ReadingTracker: Error removing read status:", error);
-          return;
-        }
-        
-        setIsRead(false);
-      } else {
-        // Mark as read
-        console.log(`ReadingTracker: Manually marking post ${postId} as read`);
-        const { error } = await supabase
-          .from('reading_history')
-          .upsert({ 
-            user_id: user.id, 
-            post_id: postId,
-            read_at: new Date().toISOString()
-          }, { 
-            onConflict: 'user_id,post_id' 
-          });
-          
-        if (error) {
-          console.error("ReadingTracker: Error marking post as read:", error);
-          return;
-        }
-        
-        setIsRead(true);
+      // Use the togglePostReadStatus function from the service
+      const success = await togglePostReadStatus(user.id, postId, !isRead);
+      
+      if (!success) {
+        console.error("ReadingTracker: Error toggling read status");
+        toast({
+          title: "Error",
+          description: "Failed to update reading status",
+          variant: "destructive",
+        });
+        return;
       }
+      
+      setIsRead(!isRead);
+      toast({
+        title: isRead ? "Marked as unread" : "Marked as read",
+        description: isRead 
+          ? "This post has been removed from your reading history" 
+          : "This post has been added to your reading history",
+      });
     } catch (err) {
       console.error("ReadingTracker: Error in toggleReadStatus:", err);
+      toast({
+        title: "Error",
+        description: "Failed to update reading status",
+        variant: "destructive",
+      });
     } finally {
       setIsUpdating(false);
     }
