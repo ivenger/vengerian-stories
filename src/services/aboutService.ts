@@ -32,9 +32,8 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
     // Add ordering by updated_at to get the most recent content first
     query = query.order('updated_at', { ascending: false });
     
-    // Use single() instead of maybeSingle() to get the first result
-    // Changed from maybeSingle() to limit(1) to get just the first row
-    const queryPromise = query.limit(1).single();
+    // Execute the query and get the first row
+    const queryPromise = query.limit(1);
     
     // Race between the query and the timeout
     const { data, error } = await Promise.race([
@@ -52,13 +51,14 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
       throw error;
     }
     
-    if (!data) {
+    if (!data || data.length === 0) {
       console.log("AboutService: No content found for the about page");
       return null;
     }
 
-    console.log("AboutService: Content fetched successfully", data);
-    return data;
+    // Return the first row from the result array
+    console.log("AboutService: Content fetched successfully", data[0]);
+    return data[0];
   } catch (error: any) {
     console.error(`AboutService: Failed to fetch about content:`, error);
     if (error.message?.includes('timeout')) {

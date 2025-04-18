@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { fetchAboutContent } from "../services/aboutService";
 import MultilingualTitle from "@/components/MultilingualTitle";
@@ -86,11 +87,19 @@ const About: React.FC = () => {
           return;
         }
 
-        console.log("About: Content fetched successfully", { data });
-        setContent(data.content);
-        setImageUrl(data.image_url);
+        if (!data) {
+          console.log("About: No content received from service");
+          setContent("No content available.");
+          setImageUrl(null);
+        } else {
+          console.log("About: Content fetched successfully", { data });
+          setContent(data.content || "");
+          setImageUrl(data.image_url);
+        }
+        
+        setIsLoading(false);
         fetchAttempts.current = 0;
-      } catch (error) {
+      } catch (error: any) {
         console.log("About: Fetch error occurred", { error, currentAttempt: fetchAttempts.current });
 
         if (isMountedRef.current && fetchControllerRef.current === currentController) {
@@ -101,15 +110,9 @@ const About: React.FC = () => {
             setTimeout(loadAboutContent, retryDelay);
           } else {
             console.log("About: Max retries reached, giving up", { attemptsMade: fetchAttempts.current });
+            setError("Failed to load About content. Please try again later.");
+            setIsLoading(false);
           }
-        }
-      } finally {
-        if (isMountedRef.current && fetchControllerRef.current === currentController) {
-          console.log("About: Completing request", {
-            hasError: !!error,
-            attemptsMade: fetchAttempts.current
-          });
-          setIsLoading(false);
         }
       }
     };
@@ -150,8 +153,8 @@ const About: React.FC = () => {
       .then(data => {
         if (isMountedRef.current) {
           console.log("About: Content fetched successfully on retry:", data);
-          setContent(data.content || "");
-          setImageUrl(data.image_url);
+          setContent(data?.content || "");
+          setImageUrl(data?.image_url);
           setIsLoading(false);
         }
       })
