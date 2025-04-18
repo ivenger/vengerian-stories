@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -31,8 +32,9 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
     // Add ordering by updated_at to get the most recent content first
     query = query.order('updated_at', { ascending: false });
     
-    // Create a promise that will execute the query
-    const queryPromise = query.maybeSingle();
+    // Use single() instead of maybeSingle() to get the first result
+    // Changed from maybeSingle() to limit(1) to get just the first row
+    const queryPromise = query.limit(1).single();
     
     // Race between the query and the timeout
     const { data, error } = await Promise.race([
@@ -55,7 +57,7 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
       return null;
     }
 
-    console.log("AboutService: Content fetched successfully");
+    console.log("AboutService: Content fetched successfully", data);
     return data;
   } catch (error: any) {
     console.error(`AboutService: Failed to fetch about content:`, error);
