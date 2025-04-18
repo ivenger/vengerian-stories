@@ -22,36 +22,43 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
         setIsUpdating(true);
-        // Use the readingHistoryService instead of direct supabase query
-        const readStatus = await fetch(`/api/reading-status?userId=${user.id}&postId=${postId}`)
-          .catch(() => ({ ok: false }));
         
-        if (!readStatus.ok) {
-          // Fallback to local implementation
-          const { data, error } = await import('@/integrations/supabase/client').then(({ supabase }) =>
-            supabase
-              .from('reading_history')
-              .select('id')
-              .eq('user_id', user.id)
-              .eq('post_id', postId)
-              .maybeSingle()
-          );
-
-          if (error) {
-            console.error("useReadingTracker: Error checking read status:", error);
+        // Try to get read status from API
+        try {
+          const readStatus = await fetch(`/api/reading-status?userId=${user.id}&postId=${postId}`);
+          
+          if (readStatus.ok) {
+            const result = await readStatus.json();
+            if (isMounted) {
+              console.log(`ReadingTracker: Read status from API is ${!!result.isRead}`);
+              setIsRead(!!result.isRead);
+            }
+            setIsUpdating(false);
             return;
           }
+        } catch (apiError) {
+          console.log("ReadingTracker: API error, falling back to direct database check", apiError);
+          // Continue to fallback implementation
+        }
+        
+        // Fallback to local implementation
+        const { data, error } = await import('@/integrations/supabase/client').then(({ supabase }) =>
+          supabase
+            .from('reading_history')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('post_id', postId)
+            .maybeSingle()
+        );
 
-          if (isMounted) {
-            console.log(`ReadingTracker: Read status is ${!!data}`);
-            setIsRead(!!data);
-          }
-        } else {
-          const result = await readStatus.json();
-          if (isMounted) {
-            console.log(`ReadingTracker: Read status from API is ${!!result.isRead}`);
-            setIsRead(!!result.isRead);
-          }
+        if (error) {
+          console.error("useReadingTracker: Error checking read status:", error);
+          return;
+        }
+
+        if (isMounted) {
+          console.log(`ReadingTracker: Read status is ${!!data}`);
+          setIsRead(!!data);
         }
       } catch (readErr) {
         console.error("ReadingTracker: Error checking read status:", readErr);
