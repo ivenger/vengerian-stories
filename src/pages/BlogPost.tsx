@@ -4,7 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { fetchPostById } from "../services/postService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
-import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
@@ -89,7 +89,13 @@ const BlogPost = () => {
         ) : error || !post ? (
           <PostError error={error} />
         ) : (
-          <PostContent post={post} isUserLoggedIn={!!user} isRead={isRead} />
+          <PostContent 
+            post={post} 
+            isUserLoggedIn={!!user} 
+            isRead={isRead} 
+            user={user}
+            postId={id}
+          />
         )}
       </div>
     </div>

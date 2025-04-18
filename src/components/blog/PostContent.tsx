@@ -4,14 +4,21 @@ import { Calendar, Tag } from "lucide-react";
 import { BlogEntry } from "../../types/blogTypes";
 import MarkdownPreview from "../MarkdownPreview";
 import ReadStatus from "./ReadStatus";
+import { useReadingTracker } from "./useReadingTracker";
+import { User } from "@supabase/supabase-js";
 
 interface PostContentProps {
   post: BlogEntry;
   isUserLoggedIn: boolean;
   isRead: boolean;
+  user: User | null;
+  postId: string | undefined;
 }
 
-const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead }) => {
+const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead: initialIsRead, user, postId }) => {
+  // Use the enhanced reading tracker
+  const { isRead, isUpdating, toggleReadStatus } = useReadingTracker(postId, user);
+
   // Ensure post has all required fields or provide defaults
   const safePost = {
     ...post,
@@ -24,7 +31,13 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, isRead 
 
   return (
     <article className="bg-white rounded-lg shadow-md overflow-hidden relative max-w-4xl mx-auto">
-      {isUserLoggedIn && <ReadStatus isRead={isRead} />}
+      {isUserLoggedIn && (
+        <ReadStatus 
+          isRead={isRead} 
+          isUpdating={isUpdating}
+          onToggle={toggleReadStatus} 
+        />
+      )}
 
       <div className="p-8">
         <h1 className="text-3xl font-bold mb-4">{safePost.title}</h1>

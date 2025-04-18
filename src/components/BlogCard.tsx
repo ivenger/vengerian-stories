@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Tag, Eye } from 'lucide-react';
+import { Calendar, Tag, Eye, EyeOff } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
 import { useAuth } from '@/hooks/auth/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,12 +23,17 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const hasCyrillicText = hasCyrillic(post.title);
   const { user } = useAuth();
   const [isRead, setIsRead] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    if (!user) return;
+    if (!user || !post.id) {
+      setIsLoading(false);
+      return;
+    }
     
     const checkReadStatus = async () => {
       try {
+        setIsLoading(true);
         const { data, error } = await supabase
           .from('reading_history')
           .select('*')
@@ -37,12 +43,13 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
           
         if (error) {
           console.error("BlogCard: Error checking read status:", error);
-          return;
+        } else {
+          setIsRead(!!data);
         }
-        
-        setIsRead(!!data);
       } catch (err) {
         console.error("Error checking post read status:", err);
+      } finally {
+        setIsLoading(false);
       }
     };
     
@@ -56,8 +63,12 @@ const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
     <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
         {user && (
-          <div className={`absolute top-3 right-3 ${isRead ? 'text-green-500' : 'text-gray-200'}`}>
-            <Eye size={18} />
+          <div className={`absolute top-3 right-3 ${isLoading ? 'opacity-50' : ''}`}>
+            {isRead ? (
+              <Eye size={18} className="text-green-500" />
+            ) : (
+              <EyeOff size={18} className="text-gray-300" />
+            )}
           </div>
         )}
         
