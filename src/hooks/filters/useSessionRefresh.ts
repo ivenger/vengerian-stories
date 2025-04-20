@@ -38,27 +38,42 @@ export const useSessionRefresh = () => {
         return false;
       }
       
-      // Add a timeout to prevent hanging
-      const timeoutPromise = new Promise<{error?: Error}>((_, reject) => {
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise<{error: Error}>((_, reject) => {
         setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
       });
       
-      // Race between the actual refresh and the timeout
-      const { data, error } = await Promise.race([
-        supabase.auth.refreshSession(),
-        timeoutPromise
-      ]);
-      
-      if (error) {
-        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
+      try {
+        // Race between the actual refresh and the timeout
+        const result = await Promise.race([
+          supabase.auth.refreshSession(),
+          timeoutPromise
+        ]);
+        
+        // If the result is from the timeoutPromise (has only error property)
+        if ('error' in result && !('data' in result)) {
+          throw result.error;
+        }
+        
+        // Now we know it's the AuthResponse
+        const { data, error } = result;
+        
+        if (error) {
+          console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
+          refreshInProgress.current = false;
+          return false;
+        }
+        
+        console.log(`[${new Date().toISOString()}] Session refreshed successfully:`, !!data.session);
+        lastRefreshTime.current = Date.now();
+        refreshInProgress.current = false;
+        return !!data.session;
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Error in refresh race:`, err);
         refreshInProgress.current = false;
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] Session refreshed successfully:`, !!data.session);
-      lastRefreshTime.current = Date.now();
-      refreshInProgress.current = false;
-      return !!data.session;
     } catch (err) {
       console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
       refreshInProgress.current = false;
