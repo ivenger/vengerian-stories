@@ -10,10 +10,46 @@ export function useSession() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Handle session refresh attempts
+  const handleSessionRecovery = useCallback(async () => {
+    try {
+      console.log("Attempting to recover session");
+      // Check if we have auth data in localStorage
+      const tokenData = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
+      
+      if (!tokenData) {
+        console.log("No session data in localStorage to recover");
+        return false;
+      }
+      
+      // Attempt session refresh
+      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error("Failed to refresh session:", refreshError);
+        return false;
+      }
+      
+      if (data.session) {
+        console.log("Session recovered successfully");
+        setSession(data.session);
+        setError(null);
+        return true;
+      }
+      
+      return false;
+    } catch (err) {
+      console.error("Session recovery error:", err);
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
     setError(null);
+
+    console.log("useSession: Initializing auth state monitoring");
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
@@ -42,25 +78,45 @@ export function useSession() {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: currentSession }, error: sessionError }) => {
-      if (!isMounted) return;
+    // Initial session load
+    const initSession = async () => {
+      try {
+        console.log("useSession: Getting initial session");
+        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
 
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        setError("Failed to retrieve authentication session");
+        if (sessionError) {
+          console.error("Initial session error:", sessionError);
+          setError("Failed to retrieve authentication session");
+          
+          // Try to recover session if initial load fails
+          const recovered = await handleSessionRecovery();
+          if (!recovered) {
+            setLoading(false);
+          }
+          return;
+        }
+
+        console.log("Initial session loaded:", !!currentSession);
+        setSession(currentSession);
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error("Initial session exception:", err);
+        if (isMounted) {
+          setError("An unexpected error occurred while retrieving your session");
+          setLoading(false);
+        }
       }
+    };
 
-      setSession(currentSession);
-      setLoading(false);
-    });
+    initSession();
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [toast]);
+  }, [toast, handleSessionRecovery]);
 
   const signOut = async () => {
     try {

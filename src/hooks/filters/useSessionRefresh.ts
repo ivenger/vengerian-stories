@@ -21,34 +21,44 @@ export const useSessionRefresh = () => {
     // Don't attempt refresh if one is already in progress
     if (refreshInProgress.current) {
       console.log(`[${new Date().toISOString()}] Session refresh already in progress, skipping`);
-      return true;
+      return false;
     }
     
     refreshInProgress.current = true;
     console.log(`[${new Date().toISOString()}] Attempting to refresh session`);
     
     try {
-      // Add a timeout to prevent hanging
-      const timeoutPromise = new Promise<{error?: Error}>((_, reject) => {
-        setTimeout(() => reject(new Error('Session refresh timeout')), 3000);
-      });
+      // First check if we actually have a session to refresh
+      const { data: sessionData } = await supabase.auth.getSession();
       
-      // Race between the actual refresh and the timeout
-      const result = await Promise.race([
-        supabase.auth.refreshSession(),
-        timeoutPromise
-      ]);
-      
-      if (result.error) {
-        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, result.error);
+      // If no session exists, don't try to refresh
+      if (!sessionData?.session) {
+        console.log(`[${new Date().toISOString()}] No session to refresh`);
         refreshInProgress.current = false;
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] Session refreshed successfully`);
+      // Add a timeout to prevent hanging
+      const timeoutPromise = new Promise<{error?: Error}>((_, reject) => {
+        setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
+      });
+      
+      // Race between the actual refresh and the timeout
+      const { data, error } = await Promise.race([
+        supabase.auth.refreshSession(),
+        timeoutPromise
+      ]);
+      
+      if (error) {
+        console.error(`[${new Date().toISOString()}] Failed to refresh session:`, error);
+        refreshInProgress.current = false;
+        return false;
+      }
+      
+      console.log(`[${new Date().toISOString()}] Session refreshed successfully:`, !!data.session);
       lastRefreshTime.current = Date.now();
       refreshInProgress.current = false;
-      return true;
+      return !!data.session;
     } catch (err) {
       console.error(`[${new Date().toISOString()}] Error refreshing session:`, err);
       refreshInProgress.current = false;
@@ -69,43 +79,21 @@ export const useSessionRefresh = () => {
       if (shouldRefreshSession()) {
         console.log(`[${new Date().toISOString()}] Refreshing session due to navigation`);
         await refreshSession();
-      } else {
-        // Lightweight session check that doesn't block other operations
-        try {
-          // Fix: Explicitly cast setTimeout return value to number for TypeScript
-          const timeoutId = window.setTimeout(() => {
-            console.log(`[${new Date().toISOString()}] Session check timed out after 2 seconds`);
-          }, 2000) as unknown as number;
-          
-          timeoutIds.push(timeoutId);
-          
-          // Use a non-blocking approach
-          supabase.auth.getSession().then(({ data }) => {
-            if (!mounted) return;
-            window.clearTimeout(timeoutId);
-            
-            if (data?.session) {
-              console.log(`[${new Date().toISOString()}] Session is valid, last refreshed ${new Date(lastRefreshTime.current).toISOString()}`);
-            } else {
-              console.log(`[${new Date().toISOString()}] Session missing or invalid, triggering refresh`);
-              refreshSession();
-            }
-          }).catch(err => {
-            if (!mounted) return;
-            console.error(`[${new Date().toISOString()}] Error checking session:`, err);
-            refreshSession();
-          });
-        } catch (err) {
-          if (!mounted) return;
-          console.error(`[${new Date().toISOString()}] Error in session check:`, err);
-        }
       }
     };
     
-    // Initial refresh when component mounts, but with delay to avoid blocking page load
+    // Initial session check when component mounts, but with delay to avoid blocking page load
     const initialCheckTimeoutId = setTimeout(() => {
-      if (shouldRefreshSession() && mounted) {
-        refreshSession();
+      if (mounted) {
+        // Quick session check (non-refreshing)
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          console.log(`[${new Date().toISOString()}] Initial session check:`, !!session);
+          
+          // If session exists but should be refreshed, refresh it
+          if (session && shouldRefreshSession()) {
+            refreshSession();
+          }
+        });
       }
     }, 1000) as unknown as number;
     

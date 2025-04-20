@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -8,31 +9,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, BookOpen, User as UserIcon, Shield, UserCheck } from "lucide-react";
+import { Clock, BookOpen, User as UserIcon, Shield, UserCheck, RefreshCcw } from "lucide-react";
 import ReadingHistory from "../components/ReadingHistory";
 import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
+import { Button } from "@/components/ui/button";
 
 const Profile = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, session } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
   const { refreshSession } = useSessionRefresh();
+  const [refreshing, setRefreshing] = useState(false);
   
   useEffect(() => {
-    console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin);
-  }, [user, isAdmin]);
+    console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin, "Has session:", !!session);
+  }, [user, isAdmin, session]);
   
   useEffect(() => {
+    if (!user && !loading) {
+      console.log("Profile page - No user, redirecting to auth");
+      navigate("/auth");
+      return;
+    }
+
     if (!user) return;
 
     const loadUserDetails = async () => {
       try {
         setLoading(true);
         
+        // Make sure session is fresh
         await refreshSession();
         
         const { data, error } = await supabase.auth.getUser();
@@ -43,11 +53,18 @@ const Profile = () => {
         
         setUserDetails(data.user);
       } catch (error: any) {
+        console.error("Profile - Error loading user details:", error);
+        
         toast({
           title: "Error",
           description: error.message || "Failed to load user details",
           variant: "destructive"
         });
+        
+        // If we get an auth error, redirect to login
+        if (error.message?.includes("session") || error.message?.includes("auth")) {
+          navigate("/auth");
+        }
       } finally {
         setLoading(false);
       }
@@ -67,7 +84,7 @@ const Profile = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, toast, refreshSession]);
+  }, [user, toast, refreshSession, navigate, loading]);
 
   const getDisplayName = () => {
     if (!userDetails) return '';
@@ -86,6 +103,88 @@ const Profile = () => {
     
     return 'User';
   };
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const refreshed = await refreshSession();
+      if (refreshed) {
+        toast({
+          title: "Success",
+          description: "Session refreshed successfully",
+        });
+        
+        // Reload user details with fresh session
+        const { data, error } = await supabase.auth.getUser();
+        
+        if (error) {
+          throw error;
+        }
+        
+        setUserDetails(data.user);
+      } else {
+        toast({
+          title: "Warning",
+          description: "Session could not be refreshed. Please try logging in again.",
+        });
+        navigate("/auth");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to refresh session",
+        variant: "destructive"
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  // If we have a session issue, show a helpful message
+  if (!session && !loading && user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8">
+          <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+              <CardTitle className="text-2xl mb-1">Session Issue Detected</CardTitle>
+              <CardDescription>We're having trouble accessing your profile data</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <p>Your session appears to be invalid or expired. This can happen if you've been inactive for a while or cleared your browser cookies.</p>
+                
+                <div className="flex gap-4">
+                  <Button 
+                    onClick={handleManualRefresh} 
+                    disabled={refreshing}
+                    className="flex items-center gap-2"
+                  >
+                    {refreshing ? (
+                      <>
+                        <RefreshCcw className="h-4 w-4 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCcw className="h-4 w-4" />
+                        Refresh Session
+                      </>
+                    )}
+                  </Button>
+                  
+                  <Button variant="outline" onClick={() => navigate("/auth")}>
+                    Sign in again
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <ProtectedRoute>
@@ -108,6 +207,25 @@ const Profile = () => {
                       <><UserCheck size={14} className="mr-1" />Regular User</>
                     )}
                   </Badge>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleManualRefresh}
+                    disabled={refreshing}
+                    className="flex items-center gap-1 text-xs"
+                  >
+                    {refreshing ? (
+                      <>
+                        <RefreshCcw className="h-3 w-3 animate-spin" />
+                        Refreshing...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCcw className="h-3 w-3" />
+                        Refresh Session
+                      </>
+                    )}
+                  </Button>
                 </div>
               </div>
             </CardHeader>
@@ -141,7 +259,7 @@ const Profile = () => {
                     <div className="flex items-center text-gray-600 text-sm">
                       <Clock size={16} className="text-gray-500 mr-2" />
                       <span>
-                        Joined {new Date(userDetails?.created_at).toLocaleDateString()}
+                        Joined {userDetails?.created_at ? new Date(userDetails?.created_at).toLocaleDateString() : 'Unknown'}
                       </span>
                     </div>
                     
