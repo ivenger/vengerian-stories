@@ -19,7 +19,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [auth.user, auth.isAdmin, auth.loading, auth.session]);
 
-  // Attempt to refresh session when auth loading completes
+  // Attempt to refresh session when auth loading completes if no session is found
   useEffect(() => {
     if (!auth.loading && !auth.session) {
       console.log("AuthProvider - No active session after loading, checking local storage");

@@ -39,8 +39,11 @@ export const useSessionRefresh = () => {
       }
       
       // Create a timeout promise to prevent hanging
-      const timeoutPromise = new Promise<{error: Error}>((_, reject) => {
-        setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
+      const timeoutPromise = new Promise<{ error: Error, isTimeout: true }>((_, reject) => {
+        setTimeout(() => reject({ 
+          error: new Error('Session refresh timeout'), 
+          isTimeout: true 
+        }), 5000);
       });
       
       try {
@@ -50,12 +53,12 @@ export const useSessionRefresh = () => {
           timeoutPromise
         ]);
         
-        // If the result is from the timeoutPromise (has only error property)
-        if ('error' in result && !('data' in result)) {
+        // Check if result is from the timeout promise
+        if ('isTimeout' in result) {
           throw result.error;
         }
         
-        // Now we know it's the AuthResponse
+        // Now we know it's the AuthResponse from supabase
         const { data, error } = result;
         
         if (error) {

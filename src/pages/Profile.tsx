@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -12,8 +13,7 @@ import { Clock, BookOpen, User as UserIcon, Shield, UserCheck } from "lucide-rea
 import ReadingHistory from "../components/ReadingHistory";
 import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
-import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
-import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 
 const Profile = () => {
   const { user, isAdmin, session } = useAuth();
@@ -21,34 +21,31 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
-  const { refreshSession } = useSessionRefresh();
   
   useEffect(() => {
-    console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin, "Has session:", !!session);
+    console.log("Profile page - Auth state:", { 
+      user: user?.email, 
+      isAdmin, 
+      hasSession: !!session 
+    });
   }, [user, isAdmin, session]);
   
   useEffect(() => {
-    if (!user && !loading) {
-      console.log("Profile page - No user, redirecting to auth");
-      navigate("/auth");
-      return;
-    }
-
+    // Don't try to load profile if there's no authenticated user
     if (!user) return;
 
     const loadUserDetails = async () => {
       try {
         setLoading(true);
         
-        // Make sure session is fresh before loading user details
-        await refreshSession();
-        
+        // Fetch user details from Supabase
         const { data, error } = await supabase.auth.getUser();
         
         if (error) {
           throw error;
         }
         
+        console.log("Profile - User details loaded:", data.user.email);
         setUserDetails(data.user);
       } catch (error: any) {
         console.error("Profile - Error loading user details:", error);
@@ -59,8 +56,10 @@ const Profile = () => {
           variant: "destructive"
         });
         
-        // If we get an auth error, redirect to login
-        if (error.message?.includes("session") || error.message?.includes("auth")) {
+        // Only redirect if there's a specific auth error
+        if (error.message?.toLowerCase().includes('session') || 
+            error.message?.toLowerCase().includes('auth') || 
+            error.status === 401) {
           navigate("/auth");
         }
       } finally {
@@ -71,7 +70,7 @@ const Profile = () => {
     loadUserDetails();
     
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
+      if (document.visibilityState === 'visible' && user) {
         console.log("Profile page became visible, refreshing user details");
         loadUserDetails();
       }
@@ -82,7 +81,7 @@ const Profile = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user, toast, refreshSession, navigate, loading]);
+  }, [user, toast, navigate]);
 
   const getDisplayName = () => {
     if (!userDetails) return '';
@@ -102,7 +101,7 @@ const Profile = () => {
     return 'User';
   };
 
-  // If we have a session issue, show a helpful message
+  // If we have a session issue but there's a user, show a helpful message
   if (!session && !loading && user) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -118,9 +117,12 @@ const Profile = () => {
                 <p>Your session appears to be invalid or expired. Please sign in again to continue.</p>
                 
                 <div className="flex gap-4">
-                  <Button variant="outline" onClick={() => navigate("/auth")}>
+                  <button 
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    onClick={() => navigate("/auth")}
+                  >
                     Sign in again
-                  </Button>
+                  </button>
                 </div>
               </div>
             </CardContent>
@@ -157,17 +159,8 @@ const Profile = () => {
             
             <CardContent>
               {loading ? (
-                <div className="space-y-4">
-                  <Skeleton className="h-8 w-[250px]" />
-                  <Skeleton className="h-5 w-[180px]" />
-                  <Skeleton className="h-5 w-[200px]" />
-                  <div className="pt-4">
-                    <Skeleton className="h-8 w-full" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      <Skeleton className="h-32 w-full" />
-                      <Skeleton className="h-32 w-full" />
-                    </div>
-                  </div>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Spinner size="lg" variant="primary" label="Loading profile..." />
                 </div>
               ) : (
                 <div className="space-y-6">
