@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -9,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, BookOpen, User as UserIcon, Shield, UserCheck, RefreshCcw } from "lucide-react";
+import { Clock, BookOpen, User as UserIcon, Shield, UserCheck } from "lucide-react";
 import ReadingHistory from "../components/ReadingHistory";
 import { useToast } from "@/hooks/use-toast";
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -23,7 +22,6 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
   const { refreshSession } = useSessionRefresh();
-  const [refreshing, setRefreshing] = useState(false);
   
   useEffect(() => {
     console.log("Profile page - User:", user?.email, "Is Admin:", isAdmin, "Has session:", !!session);
@@ -42,7 +40,7 @@ const Profile = () => {
       try {
         setLoading(true);
         
-        // Make sure session is fresh
+        // Make sure session is fresh before loading user details
         await refreshSession();
         
         const { data, error } = await supabase.auth.getUser();
@@ -104,42 +102,6 @@ const Profile = () => {
     return 'User';
   };
 
-  const handleManualRefresh = async () => {
-    setRefreshing(true);
-    try {
-      const refreshed = await refreshSession();
-      if (refreshed) {
-        toast({
-          title: "Success",
-          description: "Session refreshed successfully",
-        });
-        
-        // Reload user details with fresh session
-        const { data, error } = await supabase.auth.getUser();
-        
-        if (error) {
-          throw error;
-        }
-        
-        setUserDetails(data.user);
-      } else {
-        toast({
-          title: "Warning",
-          description: "Session could not be refreshed. Please try logging in again.",
-        });
-        navigate("/auth");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to refresh session",
-        variant: "destructive"
-      });
-    } finally {
-      setRefreshing(false);
-    }
-  };
-
   // If we have a session issue, show a helpful message
   if (!session && !loading && user) {
     return (
@@ -153,27 +115,9 @@ const Profile = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <p>Your session appears to be invalid or expired. This can happen if you've been inactive for a while or cleared your browser cookies.</p>
+                <p>Your session appears to be invalid or expired. Please sign in again to continue.</p>
                 
                 <div className="flex gap-4">
-                  <Button 
-                    onClick={handleManualRefresh} 
-                    disabled={refreshing}
-                    className="flex items-center gap-2"
-                  >
-                    {refreshing ? (
-                      <>
-                        <RefreshCcw className="h-4 w-4 animate-spin" />
-                        Refreshing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCcw className="h-4 w-4" />
-                        Refresh Session
-                      </>
-                    )}
-                  </Button>
-                  
                   <Button variant="outline" onClick={() => navigate("/auth")}>
                     Sign in again
                   </Button>
@@ -199,7 +143,7 @@ const Profile = () => {
                   <CardTitle className="text-2xl mb-1">User Profile</CardTitle>
                   <CardDescription>Manage your account and view your reading history</CardDescription>
                 </div>
-                <div className="flex flex-col gap-2 items-end">
+                <div>
                   <Badge variant="outline" className={`${isAdmin ? 'bg-purple-100 text-purple-800 hover:bg-purple-100' : 'bg-blue-100 text-blue-800 hover:bg-blue-100'}`}>
                     {isAdmin ? (
                       <><Shield size={14} className="mr-1" />Administrator</>
@@ -207,25 +151,6 @@ const Profile = () => {
                       <><UserCheck size={14} className="mr-1" />Regular User</>
                     )}
                   </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={handleManualRefresh}
-                    disabled={refreshing}
-                    className="flex items-center gap-1 text-xs"
-                  >
-                    {refreshing ? (
-                      <>
-                        <RefreshCcw className="h-3 w-3 animate-spin" />
-                        Refreshing...
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCcw className="h-3 w-3" />
-                        Refresh Session
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
             </CardHeader>

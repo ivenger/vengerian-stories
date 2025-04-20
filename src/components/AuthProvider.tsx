@@ -3,7 +3,6 @@ import { ReactNode, useEffect } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import { useAuthProvider } from "../hooks/useAuthProvider";
 import { useSessionRefresh } from "../hooks/filters/useSessionRefresh";
-import { supabase } from "@/integrations/supabase/client";
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useAuthProvider();
