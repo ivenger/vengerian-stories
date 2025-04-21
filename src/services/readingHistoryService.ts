@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ReadingHistoryItem } from "@/types/readingHistory";
 
@@ -59,41 +58,44 @@ export const isPostRead = async (userId: string, postId: string): Promise<boolea
  */
 export const togglePostReadStatus = async (userId: string, postId: string, isRead: boolean): Promise<boolean> => {
   try {
-    console.log(`[${new Date().toISOString()}] readingHistoryService: Setting read status for post ${postId} to ${isRead}`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}`);
     
     if (isRead) {
       // Mark as read
+      const upsertPayload = {
+        user_id: userId,
+        post_id: postId,
+        read_at: new Date().toISOString()
+      };
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Upserting into reading_history:`, upsertPayload);
       const { error, data } = await supabase
         .from('reading_history')
-        .upsert({
-          user_id: userId,
-          post_id: postId,
-          read_at: new Date().toISOString()
-        }, {
+        .upsert(upsertPayload, {
           onConflict: 'user_id,post_id'
         });
-        
+      
       if (error) {
         console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as read:`, error);
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`, data);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read. Returned data:`, data);
       return true;
     } else {
       // Mark as unread (delete the record)
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Deleting from reading_history where user_id=${userId} and post_id=${postId}`);
       const { error, data } = await supabase
         .from('reading_history')
         .delete()
         .eq('user_id', userId)
         .eq('post_id', postId);
-        
+      
       if (error) {
         console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as unread:`, error);
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`, data);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread. Returned data:`, data);
       return true;
     }
   } catch (error) {
