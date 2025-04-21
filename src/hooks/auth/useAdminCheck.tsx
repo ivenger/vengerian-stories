@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -42,24 +43,7 @@ export function useAdminCheck(session: Session | null) {
         throw urlError;
       }
 
-      // Step 4: Prepare headers
-      console.log('Step 4: Preparing headers...');
-      try {
-        const headers = {
-          Authorization: `Bearer ${currentSession?.access_token}`,
-          apikey: supabase.supabaseKey || '',
-          'Content-Type': 'application/json'
-        };
-        console.log('Headers prepared:', {
-          hasAuthorization: !!headers.Authorization,
-          hasApiKey: !!headers.apikey
-        });
-      } catch (headerError) {
-        console.error('Failed to prepare headers:', headerError);
-        throw headerError;
-      }
-
-      // Step 5: Make RPC call
+      // Step 4: Make RPC call - Fix headers position in the options
       console.log('Step 5: Making RPC call...');
       let rpcResponse;
       try {
@@ -68,12 +52,13 @@ export function useAdminCheck(session: Session | null) {
           payload,
           clientConfig: {
             url: baseUrl,
-            hasAuth: !!currentSession?.access_token,
-            hasApiKey: !!supabase.supabaseKey
+            hasAuth: !!currentSession?.access_token
           }
         });
         
+        // The correct way to call RPC without passing headers in the wrong location
         rpcResponse = await supabase.rpc('is_admin', payload);
+        
         console.log('RPC raw response:', {
           status: rpcResponse.status,
           error: rpcResponse.error,
