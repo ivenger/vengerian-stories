@@ -14,48 +14,62 @@ export function useAdminCheck(session: Session | null) {
       // Debug RPC call details including headers
       const payload = { user_id: userId };
       
-      // Get the Supabase client configuration
-      const supabaseUrl = supabase.getUrl();
-      const authHeader = await supabase.auth.getSession();
+      // Get the current auth session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       
-      console.log('RPC request details:', {
-        url: `${supabaseUrl}/rest/v1/rpc/is_admin`,
+      console.log('Attempting RPC call with:', {
+        url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`,
         payload,
-        authSession: authHeader?.data?.session ? 'Present' : 'Missing',
-        accessToken: authHeader?.data?.session?.access_token ? 'Present' : 'Missing'
+        hasAuthSession: !!currentSession,
+        authHeader: currentSession?.access_token ? 'Present' : 'Missing',
+        headers: {
+          ...supabase.headers,
+          Authorization: `Bearer ${currentSession?.access_token || ''}`
+        }
       });
 
-      // Only use the RPC approach
-      const rpcCall = await supabase.rpc('is_admin', payload);
-      
-      // Log the entire response for debugging
-      console.log('RPC response:', {
-        status: rpcCall.status,
-        statusText: rpcCall.statusText,
-        error: rpcCall.error ? {
-          message: rpcCall.error.message,
-          details: rpcCall.error.details,
-          hint: rpcCall.error.hint,
-          code: rpcCall.error.code
-        } : null,
-        data: rpcCall.data
-      });
+      try {
+        // Only use the RPC approach
+        const rpcCall = await supabase.rpc('is_admin', payload);
+        
+        // Log the entire response for debugging
+        console.log('RPC response:', {
+          status: rpcCall.status,
+          statusText: rpcCall.statusText,
+          error: rpcCall.error ? {
+            message: rpcCall.error.message,
+            details: rpcCall.error.details,
+            hint: rpcCall.error.hint,
+            code: rpcCall.error.code
+          } : null,
+          data: rpcCall.data,
+          rawResponse: rpcCall
+        });
 
-      if (rpcCall.error) {
-        throw new Error(JSON.stringify({
-          message: rpcCall.error.message,
-          details: rpcCall.error.details,
-          hint: rpcCall.error.hint,
-          code: rpcCall.error.code
-        }));
+        if (rpcCall.error) {
+          throw new Error(JSON.stringify({
+            message: rpcCall.error.message,
+            details: rpcCall.error.details,
+            hint: rpcCall.error.hint,
+            code: rpcCall.error.code
+          }, null, 2));
+        }
+
+        return rpcCall.data === true;
+      } catch (rpcError) {
+        console.error('RPC call failed:', {
+          error: rpcError,
+          message: rpcError instanceof Error ? rpcError.message : String(rpcError),
+          stack: rpcError instanceof Error ? rpcError.stack : undefined
+        });
+        throw rpcError;
       }
-
-      return rpcCall.data === true;
     } catch (err) {
       console.error("Failed to check user role:", {
-        errorType: err.constructor.name,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        errorStack: err instanceof Error ? err.stack : undefined
+        error: err,
+        errorType: err?.constructor?.name,
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
       });
       return false;
     }
