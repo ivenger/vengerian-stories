@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { togglePostReadStatus, isPostRead } from "@/services/readingHistoryService";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
@@ -28,6 +29,23 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     };
   }, []);
 
+  // Reset auth state if needed
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && user) {
+        // Check if we need to refresh the session when page becomes visible
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log(`[${new Date().toISOString()}] ReadingTracker: No active session detected, attempting refresh`);
+          await supabase.auth.refreshSession();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
   // Check if post is already marked as read
   useEffect(() => {
     // Reset state when user or postId changes
@@ -46,6 +64,20 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         if (!isMounted.current) return;
         setIsUpdating(true);
+        
+        // Verify session before checking read status
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn(`[${new Date().toISOString()}] ReadingTracker: No active session, attempting refresh`);
+          const { data } = await supabase.auth.refreshSession();
+          if (!data.session) {
+            console.error(`[${new Date().toISOString()}] ReadingTracker: Failed to refresh session`);
+            if (isMounted.current) {
+              setIsUpdating(false);
+            }
+            return;
+          }
+        }
         
         // Try to get read status from direct database check
         const readStatus = await isPostRead(user.id, postId);
@@ -89,6 +121,21 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       try {
         if (!isMounted.current) return;
         setIsUpdating(true);
+        
+        // Check if session is valid before marking as read
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.warn(`[${new Date().toISOString()}] ReadingTracker: No active session, attempting refresh`);
+          const { data } = await supabase.auth.refreshSession();
+          if (!data.session) {
+            console.error(`[${new Date().toISOString()}] ReadingTracker: Failed to refresh session`);
+            if (isMounted.current) {
+              setIsUpdating(false);
+              retryCount.current += 1;
+            }
+            return;
+          }
+        }
         
         console.log(`[${new Date().toISOString()}] ReadingTracker: Auto-marking post ${postId} as read for user ${user.id}`);
         const success = await togglePostReadStatus(user.id, postId, true);
@@ -153,6 +200,25 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     try {
       setIsUpdating(true);
       console.log(`[${new Date().toISOString()}] ReadingTracker: Manually toggling read status to ${!isRead}`);
+      
+      // Check if session is valid before toggling
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.warn(`[${new Date().toISOString()}] ReadingTracker: No active session, attempting refresh`);
+        const { data } = await supabase.auth.refreshSession();
+        if (!data.session) {
+          console.error(`[${new Date().toISOString()}] ReadingTracker: Failed to refresh session`);
+          toast({
+            title: "Authentication Error",
+            description: "Please log in again to update reading status",
+            variant: "destructive",
+          });
+          if (isMounted.current) {
+            setIsUpdating(false);
+          }
+          return;
+        }
+      }
       
       // Use the togglePostReadStatus function from the service
       const success = await togglePostReadStatus(user.id, postId, !isRead);

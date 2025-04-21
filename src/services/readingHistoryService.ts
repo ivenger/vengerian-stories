@@ -33,6 +33,14 @@ export const getUserReadingHistory = async (userId: string): Promise<ReadingHist
 export const isPostRead = async (userId: string, postId: string): Promise<boolean> => {
   try {
     console.log(`[${new Date().toISOString()}] readingHistoryService: Checking if user ${userId} has read post ${postId}`);
+    
+    // First check session to ensure user is authenticated
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.warn(`[${new Date().toISOString()}] readingHistoryService: No active session, cannot check read status`);
+      return false;
+    }
+    
     const { data, error } = await supabase
       .from('reading_history')
       .select('id')
@@ -61,9 +69,16 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
   try {
     console.log(`[${new Date().toISOString()}] readingHistoryService: Setting read status for post ${postId} to ${isRead}`);
     
+    // First check session to ensure user is authenticated
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.warn(`[${new Date().toISOString()}] readingHistoryService: No active session, cannot update read status`);
+      return false;
+    }
+    
     if (isRead) {
-      // Mark as read - add proper content-type headers to fix the 400 error
-      const { error, data } = await supabase
+      // Mark as read - explicitly set headers and provide the complete payload
+      const { error } = await supabase
         .from('reading_history')
         .upsert({
           user_id: userId,
@@ -78,11 +93,11 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`, data);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`);
       return true;
     } else {
       // Mark as unread (delete the record)
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from('reading_history')
         .delete()
         .eq('user_id', userId)
@@ -93,7 +108,7 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
         return false;
       }
       
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`, data);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`);
       return true;
     }
   } catch (error) {
@@ -105,7 +120,20 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
 /**
  * Convenient function to mark a post as read
  */
-export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
-  const success = await togglePostReadStatus(userId, postId, true);
-  console.log(`[${new Date().toISOString()}] readingHistoryService: Mark post ${postId} as read result:`, success);
+export const markPostAsRead = async (userId: string, postId: string): Promise<boolean> => {
+  try {
+    // Verify user has a valid session before attempting to mark as read
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      console.warn(`[${new Date().toISOString()}] readingHistoryService: No active session for user ${userId}, skipping mark as read`);
+      return false;
+    }
+    
+    const success = await togglePostReadStatus(userId, postId, true);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: Mark post ${postId} as read result:`, success);
+    return success;
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] readingHistoryService: Error in markPostAsRead:`, error);
+    return false;
+  }
 };

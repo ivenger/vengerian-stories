@@ -10,6 +10,7 @@ import PostError from "@/components/blog/PostError";
 import PostLoading from "@/components/blog/PostLoading";
 import { useToast } from "@/hooks/use-toast";
 import { markPostAsRead } from "@/services/readingHistoryService";
+import { supabase } from "@/integrations/supabase/client";
 
 const BlogPost = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +21,7 @@ const BlogPost = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const isMounted = React.useRef(true);
+  const hasTriedMarkingAsRead = React.useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -27,6 +29,21 @@ const BlogPost = () => {
       isMounted.current = false;
     };
   }, []);
+  
+  // Check if session needs refresh
+  useEffect(() => {
+    if (user) {
+      const checkSession = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          console.log(`[${new Date().toISOString()}] BlogPost: No active session, attempting refresh`);
+          await supabase.auth.refreshSession();
+        }
+      };
+      
+      checkSession();
+    }
+  }, [user]);
   
   useEffect(() => {
     const fetchPostData = async () => {
@@ -71,15 +88,24 @@ const BlogPost = () => {
         setPost(postData);
         setLoading(false);
         
-        // Mark post as read if user is logged in
-        if (user && id) {
-          try {
-            console.log(`[${new Date().toISOString()}] BlogPost: Marking post ${id} as read for user ${user.id}`);
-            await markPostAsRead(user.id, id);
-          } catch (readErr) {
-            console.error(`[${new Date().toISOString()}] BlogPost: Error marking post as read:`, readErr);
-            // Don't show error to user as this is non-critical
-          }
+        // Mark post as read if user is logged in - delay slightly to ensure auth is ready
+        if (user && id && !hasTriedMarkingAsRead.current) {
+          hasTriedMarkingAsRead.current = true;
+          
+          // Small delay to ensure session is properly established
+          setTimeout(async () => {
+            try {
+              console.log(`[${new Date().toISOString()}] BlogPost: Marking post ${id} as read for user ${user.id}`);
+              const success = await markPostAsRead(user.id, id);
+              
+              if (!success) {
+                console.warn(`[${new Date().toISOString()}] BlogPost: Failed to mark post as read automatically`);
+              }
+            } catch (readErr) {
+              console.error(`[${new Date().toISOString()}] BlogPost: Error marking post as read:`, readErr);
+              // Don't show error to user as this is non-critical
+            }
+          }, 1000);
         }
       } catch (err: any) {
         console.error(`[${new Date().toISOString()}] BlogPost: Error fetching post:`, err);
