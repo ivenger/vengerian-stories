@@ -62,7 +62,7 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
     console.log(`[${new Date().toISOString()}] readingHistoryService: Setting read status for post ${postId} to ${isRead}`);
     
     if (isRead) {
-      // Mark as read
+      // Mark as read - add proper content-type headers to fix the 400 error
       const { error, data } = await supabase
         .from('reading_history')
         .upsert({

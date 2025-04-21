@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { togglePostReadStatus, isPostRead } from "@/services/readingHistoryService";
@@ -9,6 +10,9 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
   const isMounted = useRef(true);
   const hasCheckedStatus = useRef(false);
   const { toast } = useToast();
+  // Add a retry counter to prevent infinite loops
+  const retryCount = useRef(0);
+  const MAX_RETRIES = 3;
 
   // Track page URL for better debugging
   useEffect(() => {
@@ -29,6 +33,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     // Reset state when user or postId changes
     setIsRead(false);
     hasCheckedStatus.current = false;
+    retryCount.current = 0;
     
     const checkReadStatus = async () => {
       if (!user || !postId) {
@@ -74,6 +79,12 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       return;
     }
 
+    // If we've already hit the retry limit, don't try again
+    if (retryCount.current >= MAX_RETRIES) {
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Max retries (${MAX_RETRIES}) reached, not attempting to mark as read again`);
+      return;
+    }
+
     const markAsRead = async () => {
       try {
         if (!isMounted.current) return;
@@ -83,7 +94,18 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         const success = await togglePostReadStatus(user.id, postId, true);
 
         if (!success) {
-          console.error(`[${new Date().toISOString()}] ReadingTracker: Error marking post as read`);
+          retryCount.current += 1;
+          console.error(`[${new Date().toISOString()}] ReadingTracker: Error marking post as read (attempt ${retryCount.current}/${MAX_RETRIES})`);
+          
+          if (retryCount.current >= MAX_RETRIES) {
+            console.log(`[${new Date().toISOString()}] ReadingTracker: Hit max retries (${MAX_RETRIES}), giving up`);
+            // Show a toast but don't retry anymore to break the loop
+            toast({
+              title: "Couldn't mark as read",
+              description: "Unable to update reading status",
+              variant: "destructive",
+            });
+          }
           return;
         }
 
@@ -97,6 +119,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         }
       } catch (err) {
         console.error(`[${new Date().toISOString()}] ReadingTracker: Error in markAsRead:`, err);
+        retryCount.current += 1;
       } finally {
         if (isMounted.current) {
           setIsUpdating(false);
@@ -106,7 +129,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
 
     // Only mark as read if we've confirmed status and it's not already read
     markAsRead();
-  }, [postId, user, isRead, isUpdating, toast, hasCheckedStatus.current]);
+  }, [postId, user, isRead, isUpdating, toast]);
 
   // Manual toggle function
   const toggleReadStatus = async () => {
