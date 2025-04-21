@@ -56,7 +56,6 @@ export function useAdminCheck(session: Session | null) {
             userId: session.user.id,
             hasSession: !!session,
             accessToken: session.access_token ? "Present" : "Missing",
-            endpoint: `${supabase.supabaseUrl}/rest/v1/rpc/is_admin`,
             functionCall: "is_admin",
             parameters: { user_id: session.user.id }
           });
