@@ -12,60 +12,69 @@ export function useAdminCheck(session: Session | null) {
     console.log(`Checking admin role for user: ${userId}`);
     
     try {
-      // Debug RPC call details including headers
-      const payload = { user_id: userId };
-      
-      // Get the current auth session synchronously to catch any auth errors
-      let currentSession;
-      try {
-        const { data: authData } = await supabase.auth.getSession();
-        currentSession = authData.session;
-        console.log('Auth session retrieved:', {
-          hasSession: !!currentSession,
-          accessToken: currentSession?.access_token ? 'Present' : 'Missing'
-        });
-      } catch (authError) {
-        console.error('Failed to get auth session:', authError);
-        throw new Error('Auth session retrieval failed');
-      }
-
-      // Log the request we're about to make
-      console.log('Preparing RPC call:', {
-        url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`,
-        method: 'POST',
-        payload: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${currentSession?.access_token || 'MISSING'}`,
-          apikey: supabase.supabaseKey,
-          'Content-Type': 'application/json'
-        }
+      // Step 1: Get auth session
+      console.log('Step 1: Getting auth session...');
+      const { data: authData } = await supabase.auth.getSession();
+      const currentSession = authData.session;
+      console.log('Auth session retrieved:', {
+        hasSession: !!currentSession,
+        accessToken: currentSession?.access_token ? 'Present' : 'Missing',
+        userId: currentSession?.user?.id
       });
 
-      // Make the RPC call with explicit error handling
+      // Step 2: Prepare payload
+      console.log('Step 2: Preparing RPC payload...');
+      const payload = { user_id: userId };
+      console.log('Payload:', payload);
+
+      // Step 3: Get Supabase client info
+      console.log('Step 3: Getting Supabase client info...');
+      const baseUrl = supabase.getUrl();
+      console.log('Base URL:', baseUrl);
+
+      // Step 4: Prepare headers
+      console.log('Step 4: Preparing headers...');
+      const headers = {
+        Authorization: `Bearer ${currentSession?.access_token || 'MISSING'}`,
+        apikey: supabase.supabaseKey,
+        'Content-Type': 'application/json'
+      };
+      console.log('Headers prepared');
+
+      // Step 5: Make RPC call
+      console.log('Step 5: Making RPC call...');
       let rpcResponse;
       try {
         rpcResponse = await supabase.rpc('is_admin', payload);
-        console.log('Raw RPC response:', rpcResponse);
+        console.log('RPC raw response:', {
+          status: rpcResponse.status,
+          error: rpcResponse.error,
+          data: rpcResponse.data
+        });
       } catch (rpcError) {
-        console.error('RPC call threw an exception:', rpcError);
+        console.error('RPC call threw an exception:', {
+          error: rpcError,
+          message: rpcError instanceof Error ? rpcError.message : String(rpcError),
+          stack: rpcError instanceof Error ? rpcError.stack : undefined
+        });
         throw rpcError;
       }
 
+      // Step 6: Process response
+      console.log('Step 6: Processing response...');
       if (rpcResponse.error) {
         console.error('RPC call returned error:', {
           error: rpcResponse.error,
           status: rpcResponse.status,
           statusText: rpcResponse.statusText
         });
-        throw new Error(JSON.stringify(rpcResponse.error, null, 2));
+        throw rpcResponse.error;
       }
 
-      console.log('RPC call succeeded:', {
-        data: rpcResponse.data,
-        status: rpcResponse.status
-      });
+      const isAdmin = rpcResponse.data === true;
+      console.log('RPC call result:', { isAdmin, rawData: rpcResponse.data });
+      return isAdmin;
 
-      return rpcResponse.data === true;
     } catch (err) {
       console.error("Failed to check user role:", {
         error: err,
