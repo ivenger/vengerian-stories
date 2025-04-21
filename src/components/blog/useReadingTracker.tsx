@@ -102,7 +102,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
             // Show a toast but don't retry anymore to break the loop
             toast({
               title: "Couldn't mark as read",
-              description: "Unable to update reading status",
+              description: "Unable to update reading status due to a system error.",
               variant: "destructive",
             });
           }
@@ -120,6 +120,14 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       } catch (err) {
         console.error(`[${new Date().toISOString()}] ReadingTracker: Error in markAsRead:`, err);
         retryCount.current += 1;
+        
+        if (retryCount.current >= MAX_RETRIES) {
+          toast({
+            title: "Read Status Error",
+            description: "Could not update reading status after multiple attempts.",
+            variant: "destructive",
+          });
+        }
       } finally {
         if (isMounted.current) {
           setIsUpdating(false);
