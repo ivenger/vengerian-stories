@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -23,73 +22,32 @@ export function useAdminCheck(session: Session | null) {
         userId: currentSession?.user?.id
       });
 
-      // Step 2: Prepare payload
-      console.log('Step 2: Preparing RPC payload...');
-      const payload = { user_id: userId };
-      console.log('Payload:', payload);
+      // Step 2: Prepare RPC call
+      console.log('Step 2: Making RPC call...');
+      const rpcCall = await supabase.rpc('is_admin', { 
+        "user_id": userId  // Use named parameter to match PostgreSQL function
+      });
+      
+      console.log('RPC response:', {
+        status: rpcCall.status,
+        error: rpcCall.error,
+        data: rpcCall.data,
+        hasResponse: !!rpcCall
+      });
 
-      // Step 3: Get Supabase client info
-      console.log('Step 3: Getting Supabase client info...');
-      let baseUrl;
-      try {
-        baseUrl = getSupabaseUrl();
-        console.log('Supabase base URL:', baseUrl);
-      } catch (urlError) {
-        console.error('Failed to get Supabase URL:', {
-          error: urlError,
-          supabaseClient: !!supabase,
-          supabaseProperties: Object.keys(supabase)
+      if (rpcCall.error) {
+        console.error('RPC call failed:', {
+          error: rpcCall.error,
+          status: rpcCall.status,
+          statusText: rpcCall.statusText,
+          message: rpcCall.error.message,
+          details: rpcCall.error.details
         });
-        throw urlError;
+        throw rpcCall.error;
       }
 
-      // Step 4: Make RPC call
-      console.log('Step 4: Making RPC call...');
-      let rpcResponse;
-      try {
-        console.log('Calling supabase.rpc with:', {
-          functionName: 'is_admin',
-          payload,
-          clientConfig: {
-            url: baseUrl,
-            hasAuth: !!currentSession?.access_token
-          }
-        });
-        
-        // Call RPC function
-        rpcResponse = await supabase.rpc('is_admin', payload);
-        
-        console.log('RPC raw response:', {
-          status: rpcResponse.status,
-          error: rpcResponse.error,
-          data: rpcResponse.data,
-          hasResponse: !!rpcResponse
-        });
-      } catch (rpcError) {
-        console.error('RPC call threw an exception:', {
-          error: rpcError,
-          message: rpcError instanceof Error ? rpcError.message : String(rpcError),
-          stack: rpcError instanceof Error ? rpcError.stack : undefined,
-          type: rpcError?.constructor?.name
-        });
-        throw rpcError;
-      }
-
-      // Step 5: Process response
-      console.log('Step 5: Processing response...');
-      if (rpcResponse.error) {
-        console.error('RPC call returned error:', {
-          error: rpcResponse.error,
-          status: rpcResponse.status,
-          statusText: rpcResponse.statusText,
-          errorMessage: rpcResponse.error.message,
-          errorDetails: rpcResponse.error.details
-        });
-        throw rpcResponse.error;
-      }
-
-      const isAdmin = rpcResponse.data === true;
-      console.log('RPC call result:', { isAdmin, rawData: rpcResponse.data });
+      const isAdmin = rpcCall.data === true;
+      console.log('RPC call result:', { isAdmin, rawData: rpcCall.data });
       return isAdmin;
 
     } catch (err) {
@@ -98,10 +56,6 @@ export function useAdminCheck(session: Session | null) {
         type: err?.constructor?.name,
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined,
-        supabaseClientState: {
-          hasClient: !!supabase,
-          functions: Object.keys(supabase).filter(k => typeof supabase[k] === 'function')
-        }
       });
       return false;
     } finally {
