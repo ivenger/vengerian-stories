@@ -44,11 +44,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       },
     }
   },
-  realtime: {
-    params: {
-      eventsPerSecond: 10
-    }
-  },
   global: {
     headers: {
       'apikey': SUPABASE_PUBLISHABLE_KEY,

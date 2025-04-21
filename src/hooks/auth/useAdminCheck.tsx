@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Session } from "@supabase/supabase-js";
@@ -16,7 +17,7 @@ export function useAdminCheck(session: Session | null) {
       const { data: authData } = await supabase.auth.getSession();
       const currentSession = authData.session;
       
-      // Make RPC call
+      // Make RPC call - ensure we're passing the userId parameter correctly
       const { data, error } = await supabase.rpc('is_admin', {
         user_id: userId
       });
@@ -70,12 +71,7 @@ export function useAdminCheck(session: Session | null) {
   return isAdmin;
 }
 
-// Import helper function from client file
+// Use the constant directly from client file
 const getSupabaseUrl = () => {
-  // Try to use the helper function if available
-  if (typeof supabase.getUrl === 'function') {
-    return supabase.getUrl();
-  }
-  // Fallback to direct URL
   return "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
 };
