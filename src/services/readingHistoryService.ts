@@ -58,6 +58,22 @@ export const isPostRead = async (userId: string, postId: string): Promise<boolea
  */
 export const togglePostReadStatus = async (userId: string, postId: string, isRead: boolean): Promise<boolean> => {
   try {
+    // Enhanced logging: check current session and token
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const session = sessionData?.session;
+    const accessToken = session?.access_token || null;
+    const sessionUserId = session?.user?.id || null;
+    console.log(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: userId arg =`, userId, 
+      '| sessionUserId =', sessionUserId, '| accessToken exists =', !!accessToken, '\nSession:', session);
+    if (sessionError) {
+      console.error(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: session error:`, sessionError);
+    }
+    if (!session) {
+      console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: No active session!`);
+    } else if (userId !== sessionUserId) {
+      console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: userId does not match session user id!`);
+    }
+    
     console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}`);
     
     if (isRead) {
