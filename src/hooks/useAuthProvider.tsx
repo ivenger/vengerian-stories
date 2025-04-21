@@ -19,6 +19,15 @@ export function useAuthProvider() {
       isAdmin
     });
     
+    // Special case for ilya.venger@gmail.com
+    if (session?.user?.email === 'ilya.venger@gmail.com') {
+      console.log("useAuthProvider - Special check for ilya.venger@gmail.com", {
+        isAdmin,
+        session: !!session,
+        userId: session?.user?.id
+      });
+    }
+    
     // If we have no session but there appears to be data in localStorage,
     // attempt to refresh the session
     if (!session && !loading) {
