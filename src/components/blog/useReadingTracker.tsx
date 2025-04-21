@@ -10,10 +10,16 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
   const hasCheckedStatus = useRef(false);
   const { toast } = useToast();
 
+  // Track page URL for better debugging
+  useEffect(() => {
+    console.log(`[${new Date().toISOString()}] ReadingTracker: Initialized on page ${window.location.pathname} with postId=${postId}, user=${user?.id}`);
+  }, []);
+
   // Keep track of mounted state
   useEffect(() => {
     isMounted.current = true;
     return () => {
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Component unmounting`);
       isMounted.current = false;
     };
   }, []);
@@ -156,8 +162,10 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     toggleReadStatus,
     checkReadStatus: async () => {
       if (!user || !postId) return;
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Manual check requested for post ${postId}`);
       const status = await isPostRead(user.id, postId);
       if (isMounted.current) {
+        console.log(`[${new Date().toISOString()}] ReadingTracker: Manual check result: ${status}`);
         setIsRead(status);
       }
     }

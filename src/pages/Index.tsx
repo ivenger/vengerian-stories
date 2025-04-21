@@ -11,7 +11,9 @@ import { useReadingHistory } from "@/hooks/filters/useReadingHistory";
 
 const Index = () => {
   const { user } = useAuth();
-  const { readPostIds } = useReadingHistory(user);
+  const { readPostIds, hasLoaded: readingHistoryLoaded } = useReadingHistory(user);
+  
+  console.log(`[${new Date().toISOString()}] Index: Rendering with user: ${user?.id}, readPostIds: ${readPostIds?.length || 0}, loaded: ${readingHistoryLoaded}`);
   
   const {
     posts,
