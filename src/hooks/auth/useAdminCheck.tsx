@@ -29,33 +29,63 @@ export function useAdminCheck(session: Session | null) {
 
       // Step 3: Get Supabase client info
       console.log('Step 3: Getting Supabase client info...');
-      const baseUrl = supabase.getUrl();
-      console.log('Base URL:', baseUrl);
+      let baseUrl;
+      try {
+        baseUrl = supabase.getUrl();
+        console.log('Supabase base URL:', baseUrl);
+      } catch (urlError) {
+        console.error('Failed to get Supabase URL:', {
+          error: urlError,
+          supabaseClient: !!supabase,
+          supabaseProperties: Object.keys(supabase)
+        });
+        throw urlError;
+      }
 
       // Step 4: Prepare headers
       console.log('Step 4: Preparing headers...');
-      const headers = {
-        Authorization: `Bearer ${currentSession?.access_token || 'MISSING'}`,
-        apikey: supabase.supabaseKey,
-        'Content-Type': 'application/json'
-      };
-      console.log('Headers prepared');
+      try {
+        const headers = {
+          Authorization: `Bearer ${currentSession?.access_token}`,
+          apikey: supabase.supabaseKey || '',
+          'Content-Type': 'application/json'
+        };
+        console.log('Headers prepared:', {
+          hasAuthorization: !!headers.Authorization,
+          hasApiKey: !!headers.apikey
+        });
+      } catch (headerError) {
+        console.error('Failed to prepare headers:', headerError);
+        throw headerError;
+      }
 
       // Step 5: Make RPC call
       console.log('Step 5: Making RPC call...');
       let rpcResponse;
       try {
+        console.log('Calling supabase.rpc with:', {
+          functionName: 'is_admin',
+          payload,
+          clientConfig: {
+            url: baseUrl,
+            hasAuth: !!currentSession?.access_token,
+            hasApiKey: !!supabase.supabaseKey
+          }
+        });
+        
         rpcResponse = await supabase.rpc('is_admin', payload);
         console.log('RPC raw response:', {
           status: rpcResponse.status,
           error: rpcResponse.error,
-          data: rpcResponse.data
+          data: rpcResponse.data,
+          hasResponse: !!rpcResponse
         });
       } catch (rpcError) {
         console.error('RPC call threw an exception:', {
           error: rpcError,
           message: rpcError instanceof Error ? rpcError.message : String(rpcError),
-          stack: rpcError instanceof Error ? rpcError.stack : undefined
+          stack: rpcError instanceof Error ? rpcError.stack : undefined,
+          type: rpcError?.constructor?.name
         });
         throw rpcError;
       }
@@ -66,7 +96,9 @@ export function useAdminCheck(session: Session | null) {
         console.error('RPC call returned error:', {
           error: rpcResponse.error,
           status: rpcResponse.status,
-          statusText: rpcResponse.statusText
+          statusText: rpcResponse.statusText,
+          errorMessage: rpcResponse.error.message,
+          errorDetails: rpcResponse.error.details
         });
         throw rpcResponse.error;
       }
@@ -80,7 +112,11 @@ export function useAdminCheck(session: Session | null) {
         error: err,
         type: err?.constructor?.name,
         message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined
+        stack: err instanceof Error ? err.stack : undefined,
+        supabaseClientState: {
+          hasClient: !!supabase,
+          functions: Object.keys(supabase).filter(k => typeof supabase[k] === 'function')
+        }
       });
       return false;
     } finally {
