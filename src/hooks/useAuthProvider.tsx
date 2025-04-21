@@ -5,8 +5,8 @@ import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useAuthProvider() {
-  const { session, loading, error, signOut } = useSession();
-  const isAdmin = useAdminCheck(session);
+  const { session, loading: sessionLoading, error: sessionError, signOut } = useSession();
+  const { isAdmin, loading: adminLoading, error: adminError } = useAdminCheck(session);
   
   // Debug log to track session state changes
   useEffect(() => {
@@ -14,14 +14,16 @@ export function useAuthProvider() {
       hasSession: !!session,
       userEmail: session?.user?.email || "no user",
       userId: session?.user?.id,
-      loading,
-      error: error || "no error",
+      sessionLoading,
+      adminLoading,
+      sessionError: sessionError || "no error",
+      adminError: adminError || "no error",
       isAdmin
     });
     
     // If we have no session but there appears to be data in localStorage,
     // attempt to refresh the session
-    if (!session && !loading) {
+    if (!session && !sessionLoading) {
       const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
       if (sessionStr) {
         console.log("useAuthProvider - Session missing but localStorage has data, attempting refresh");
@@ -34,14 +36,14 @@ export function useAuthProvider() {
         });
       }
     }
-  }, [session, loading, error, isAdmin]);
+  }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError]);
 
   return {
     session,
     user: session?.user || null,
-    loading,
+    loading: sessionLoading || adminLoading,
     signOut,
     isAdmin,
-    error
+    error: sessionError || adminError
   };
 }
