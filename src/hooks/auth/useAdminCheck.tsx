@@ -11,31 +11,44 @@ export function useAdminCheck(session: Session | null) {
     try {
       console.log(`Checking admin role for user: ${userId}`);
       
-      // Debug RPC call payload
+      // Debug RPC call payload and URL
       const payload = { user_id: userId };
-      console.log('RPC call payload:', JSON.stringify(payload, null, 2));
+      console.log('RPC call details:', {
+        endpoint: 'is_admin',
+        payload: JSON.stringify(payload, null, 2),
+        url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`
+      });
 
       // Only use the RPC approach
       const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', payload);
 
       if (rpcError) {
         // Log detailed error information
-        console.error('RPC admin check failed with error:', {
+        console.error('RPC admin check failed:', {
           message: rpcError.message,
           details: rpcError.details,
           hint: rpcError.hint,
           code: rpcError.code,
-          fullError: JSON.stringify(rpcError, null, 2)
+          statusCode: rpcError?.status || rpcError?.statusCode,
+          fullError: JSON.stringify(rpcError, Object.getOwnPropertyNames(rpcError))
         });
         return false;
       }
 
-      console.log(`RPC admin check result data:`, JSON.stringify(rpcData, null, 2));
+      console.log(`RPC admin check result:`, {
+        data: rpcData,
+        type: typeof rpcData
+      });
       return rpcData === true;
     } catch (err) {
       console.error("Failed to check user role:", {
         error: err,
-        stringified: JSON.stringify(err, null, 2)
+        stringified: err instanceof Error ? {
+          name: err.name,
+          message: err.message,
+          stack: err.stack,
+          ...err
+        } : err
       });
       return false;
     }
