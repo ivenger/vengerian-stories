@@ -12,15 +12,17 @@ export function useAdminCheck(session: Session | null) {
     try {
       console.log(`Checking admin role for user: ${userId}`);
       
-      // First try using the RPC approach with explicit headers
-      const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', { 
-        user_id: userId 
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
+      // First try using the RPC approach with correct options structure
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'is_admin', 
+        { user_id: userId },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+          }
         }
-      });
+      );
       
       if (!rpcError) {
         console.log(`RPC admin check result:`, rpcData);
