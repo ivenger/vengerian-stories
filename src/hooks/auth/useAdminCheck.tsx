@@ -24,7 +24,7 @@ export function useAdminCheck(session: Session | null) {
       
       console.log(`RPC admin check failed, falling back to direct query: ${rpcError.message}`);
       
-      // Fallback: Query the user_roles table directly
+      // Fallback: Query the user_roles table directly with explicit headers
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
@@ -48,16 +48,24 @@ export function useAdminCheck(session: Session | null) {
   useEffect(() => {
     let isMounted = true;
 
-    if (session?.user) {
-      checkUserRole(session.user.id).then((adminStatus) => {
+    const checkAdminStatus = async () => {
+      if (session?.user) {
+        console.log("Checking admin status for user:", session.user.email);
+        const adminStatus = await checkUserRole(session.user.id);
+        
         if (isMounted) {
+          console.log(`Admin status result for ${session.user.email}:`, adminStatus);
           setIsAdmin(adminStatus);
         }
-      });
-    } else {
-      setIsAdmin(false);
-    }
+      } else {
+        if (isMounted) {
+          setIsAdmin(false);
+        }
+      }
+    };
 
+    checkAdminStatus();
+    
     return () => {
       isMounted = false;
     };

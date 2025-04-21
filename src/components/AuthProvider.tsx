@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAuthenticated: !!auth.user,
       userEmail: auth.user?.email,
       isAdmin: auth.isAdmin,
+      userId: auth.user?.id,
       sessionStatus: auth.loading ? "loading" : !!auth.session ? "active" : "no session"
     });
   }, [auth.user, auth.isAdmin, auth.loading, auth.session]);

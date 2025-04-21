@@ -13,6 +13,7 @@ export function useAuthProvider() {
     console.log("useAuthProvider - Session state changed:", {
       hasSession: !!session,
       userEmail: session?.user?.email || "no user",
+      userId: session?.user?.id,
       loading,
       error: error || "no error",
       isAdmin
