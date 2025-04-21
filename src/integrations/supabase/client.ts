@@ -80,9 +80,22 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       }, GLOBAL_TIMEOUT_MS);
       
       // Ensure default headers are set
+      // Try to get the user's access token from localStorage (Supabase default location)
+      let userToken = undefined;
+      try {
+        const authRaw = localStorage.getItem('supabase-auth-token');
+        if (authRaw) {
+          const authObj = JSON.parse(authRaw);
+          userToken = authObj?.currentSession?.access_token;
+        }
+      } catch (e) {
+        // ignore
+      }
       const headers = {
         'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Authorization': userToken
+          ? `Bearer ${userToken}`
+          : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
         'Cache-Control': 'no-cache',
         ...options?.headers,
       };
