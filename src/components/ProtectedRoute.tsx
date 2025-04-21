@@ -1,6 +1,6 @@
 
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
+import { useAuth } from "@/hooks/auth/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
 
@@ -16,6 +16,15 @@ const ProtectedRoute = ({
   adminOnly = false
 }: ProtectedRouteProps) => {
   const { user, loading, isAdmin, error } = useAuth();
+
+  // Debug output for admin status
+  if (adminOnly) {
+    console.log("ProtectedRoute - Admin check:", { 
+      isAdmin, 
+      userId: user?.id,
+      email: user?.email
+    });
+  }
 
   // If there's an authentication error, show error message with retry option
   if (error) {

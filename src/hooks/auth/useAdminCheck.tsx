@@ -22,9 +22,10 @@ export function useAdminCheck(session: Session | null) {
         return rpcData === true;
       }
       
-      console.log(`RPC admin check failed, falling back to direct query: ${rpcError.message}`);
+      console.log(`RPC admin check failed with error: ${rpcError.message}`);
+      console.log(`Falling back to direct query`);
       
-      // Fallback: Query the user_roles table directly with explicit headers
+      // Fallback: Query the user_roles table directly with content-type header
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('role')
@@ -51,6 +52,8 @@ export function useAdminCheck(session: Session | null) {
     const checkAdminStatus = async () => {
       if (session?.user) {
         console.log("Checking admin status for user:", session.user.email);
+        console.log("User ID for admin check:", session.user.id);
+        
         const adminStatus = await checkUserRole(session.user.id);
         
         if (isMounted) {
@@ -59,6 +62,7 @@ export function useAdminCheck(session: Session | null) {
         }
       } else {
         if (isMounted) {
+          console.log("No session available for admin check");
           setIsAdmin(false);
         }
       }
