@@ -11,44 +11,55 @@ export function useAdminCheck(session: Session | null) {
     try {
       console.log(`Checking admin role for user: ${userId}`);
       
-      // Debug RPC call payload and URL
+      // Debug RPC call details including headers
       const payload = { user_id: userId };
+      const headers = await supabase.rpc('is_admin', {}).headers;
+      
       console.log('RPC call details:', {
         endpoint: 'is_admin',
-        payload: JSON.stringify(payload, null, 2),
-        url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`
+        url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`,
+        payload,
+        headers
       });
 
       // Only use the RPC approach
-      const { data: rpcData, error: rpcError } = await supabase.rpc('is_admin', payload);
+      const rpcCall = await supabase.rpc('is_admin', payload);
+      
+      // Log the entire response for debugging
+      console.log('RPC response:', {
+        status: rpcCall.status,
+        statusText: rpcCall.statusText,
+        data: rpcCall.data,
+        error: rpcCall.error
+      });
 
-      if (rpcError) {
+      if (rpcCall.error) {
         // Log detailed error information
         console.error('RPC admin check failed:', {
-          message: rpcError.message,
-          details: rpcError.details,
-          hint: rpcError.hint,
-          code: rpcError.code,
-          statusCode: rpcError?.status || rpcError?.statusCode,
-          fullError: JSON.stringify(rpcError, Object.getOwnPropertyNames(rpcError))
+          error: rpcCall.error,
+          status: rpcCall.status,
+          statusText: rpcCall.statusText,
+          request: {
+            url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`,
+            payload,
+            headers
+          }
         });
         return false;
       }
 
       console.log(`RPC admin check result:`, {
-        data: rpcData,
-        type: typeof rpcData
+        data: rpcCall.data,
+        type: typeof rpcCall.data
       });
-      return rpcData === true;
+      
+      return rpcCall.data === true;
     } catch (err) {
       console.error("Failed to check user role:", {
         error: err,
-        stringified: err instanceof Error ? {
-          name: err.name,
-          message: err.message,
-          stack: err.stack,
-          ...err
-        } : err
+        name: err instanceof Error ? err.name : 'Unknown',
+        message: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined
       });
       return false;
     }
