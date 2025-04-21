@@ -12,61 +12,29 @@ export function useAdminCheck(session: Session | null) {
     console.log(`Checking admin role for user: ${userId}`);
     
     try {
-      // Step 1: Get auth session
-      console.log('Step 1: Getting auth session...');
+      // Get auth session
       const { data: authData } = await supabase.auth.getSession();
       const currentSession = authData.session;
-      console.log('Auth session retrieved:', {
-        hasSession: !!currentSession,
-        accessToken: currentSession?.access_token ? 'Present' : 'Missing',
-        userId: currentSession?.user?.id
-      });
-
-      // Step 2: Prepare RPC call with explicit parameter
-      console.log('Step 2: Making RPC call...');
-      const rpcCall = await supabase.rpc('is_admin', { 
-        'user_id': userId // Ensure parameter name exactly matches function definition
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Profile': 'public'
-        }
-      });
       
-      console.log('RPC response:', {
-        status: rpcCall.status,
-        error: rpcCall.error,
-        data: rpcCall.data,
-        hasResponse: !!rpcCall,
-        requestPayload: { user_id: userId }
+      // Make RPC call
+      const { data, error } = await supabase.rpc('is_admin', {
+        user_id: userId
       });
 
-      if (rpcCall.error) {
+      if (error) {
         console.error('RPC call failed:', {
-          error: rpcCall.error,
-          status: rpcCall.status,
-          statusText: rpcCall.statusText,
-          message: rpcCall.error.message,
-          details: rpcCall.error.details,
-          hint: rpcCall.error.hint
+          error,
+          userId,
+          hasSession: !!currentSession,
+          accessToken: currentSession?.access_token ? 'Present' : 'Missing'
         });
-        throw rpcCall.error;
+        throw error;
       }
 
-      const isAdmin = rpcCall.data === true;
-      console.log('RPC call result:', { isAdmin, rawData: rpcCall.data });
-      return isAdmin;
-
+      return data === true;
     } catch (err) {
-      console.error("Failed to check user role:", {
-        error: err,
-        type: err?.constructor?.name,
-        message: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-      });
+      console.error("Failed to check user role:", err);
       return false;
-    } finally {
-      console.log('=== Finished admin check ===');
     }
   }, []);
 
