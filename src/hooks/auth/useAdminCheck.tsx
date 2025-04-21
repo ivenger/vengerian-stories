@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -85,9 +84,8 @@ export function useAdminCheck(session: Session | null) {
         console.error("=== Finished admin check ===");
         
         if (isMounted) {
-          // Fall back to checking if the user's email contains admin as a last resort
-          const isEmailAdmin = session.user.email?.includes('admin') || false;
-          setIsAdmin(isEmailAdmin); 
+          // Remove fallback: do not check if the user's email contains 'admin'
+          setIsAdmin(false); 
           setError(err.message || "Failed to verify admin privileges");
           setLoading(false);
         }
