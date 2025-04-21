@@ -8,70 +8,74 @@ export function useAdminCheck(session: Session | null) {
   const checkUserRole = useCallback(async (userId: string) => {
     if (!userId) return false;
 
+    console.log('=== Starting admin check ===');
+    console.log(`Checking admin role for user: ${userId}`);
+    
     try {
-      console.log(`Checking admin role for user: ${userId}`);
-      
       // Debug RPC call details including headers
       const payload = { user_id: userId };
       
-      // Get the current auth session
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
-      console.log('Attempting RPC call with:', {
+      // Get the current auth session synchronously to catch any auth errors
+      let currentSession;
+      try {
+        const { data: authData } = await supabase.auth.getSession();
+        currentSession = authData.session;
+        console.log('Auth session retrieved:', {
+          hasSession: !!currentSession,
+          accessToken: currentSession?.access_token ? 'Present' : 'Missing'
+        });
+      } catch (authError) {
+        console.error('Failed to get auth session:', authError);
+        throw new Error('Auth session retrieval failed');
+      }
+
+      // Log the request we're about to make
+      console.log('Preparing RPC call:', {
         url: `${supabase.getUrl()}/rest/v1/rpc/is_admin`,
-        payload,
-        hasAuthSession: !!currentSession,
-        authHeader: currentSession?.access_token ? 'Present' : 'Missing',
+        method: 'POST',
+        payload: JSON.stringify(payload),
         headers: {
-          ...supabase.headers,
-          Authorization: `Bearer ${currentSession?.access_token || ''}`
+          Authorization: `Bearer ${currentSession?.access_token || 'MISSING'}`,
+          apikey: supabase.supabaseKey,
+          'Content-Type': 'application/json'
         }
       });
 
+      // Make the RPC call with explicit error handling
+      let rpcResponse;
       try {
-        // Only use the RPC approach
-        const rpcCall = await supabase.rpc('is_admin', payload);
-        
-        // Log the entire response for debugging
-        console.log('RPC response:', {
-          status: rpcCall.status,
-          statusText: rpcCall.statusText,
-          error: rpcCall.error ? {
-            message: rpcCall.error.message,
-            details: rpcCall.error.details,
-            hint: rpcCall.error.hint,
-            code: rpcCall.error.code
-          } : null,
-          data: rpcCall.data,
-          rawResponse: rpcCall
-        });
-
-        if (rpcCall.error) {
-          throw new Error(JSON.stringify({
-            message: rpcCall.error.message,
-            details: rpcCall.error.details,
-            hint: rpcCall.error.hint,
-            code: rpcCall.error.code
-          }, null, 2));
-        }
-
-        return rpcCall.data === true;
+        rpcResponse = await supabase.rpc('is_admin', payload);
+        console.log('Raw RPC response:', rpcResponse);
       } catch (rpcError) {
-        console.error('RPC call failed:', {
-          error: rpcError,
-          message: rpcError instanceof Error ? rpcError.message : String(rpcError),
-          stack: rpcError instanceof Error ? rpcError.stack : undefined
-        });
+        console.error('RPC call threw an exception:', rpcError);
         throw rpcError;
       }
+
+      if (rpcResponse.error) {
+        console.error('RPC call returned error:', {
+          error: rpcResponse.error,
+          status: rpcResponse.status,
+          statusText: rpcResponse.statusText
+        });
+        throw new Error(JSON.stringify(rpcResponse.error, null, 2));
+      }
+
+      console.log('RPC call succeeded:', {
+        data: rpcResponse.data,
+        status: rpcResponse.status
+      });
+
+      return rpcResponse.data === true;
     } catch (err) {
       console.error("Failed to check user role:", {
         error: err,
-        errorType: err?.constructor?.name,
+        type: err?.constructor?.name,
         message: err instanceof Error ? err.message : String(err),
         stack: err instanceof Error ? err.stack : undefined
       });
       return false;
+    } finally {
+      console.log('=== Finished admin check ===');
     }
   }, []);
 
