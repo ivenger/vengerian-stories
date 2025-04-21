@@ -10,7 +10,6 @@ import { User } from "@supabase/supabase-js";
 interface PostContentProps {
   post: BlogEntry;
   isUserLoggedIn: boolean;
-  isRead: boolean;
   user: User | null;
   postId: string | undefined;
 }
@@ -18,6 +17,13 @@ interface PostContentProps {
 const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, user, postId }) => {
   // Use the enhanced reading tracker
   const { isRead, isUpdating, toggleReadStatus } = useReadingTracker(postId, user);
+  
+  console.log(`[${new Date().toISOString()}] PostContent: Rendering with read status:`, {
+    postId,
+    isRead,
+    isUpdating,
+    isUserLoggedIn
+  });
 
   // Ensure post has all required fields or provide defaults
   const safePost = {

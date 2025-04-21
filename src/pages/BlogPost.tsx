@@ -5,7 +5,6 @@ import { fetchPostById } from "../services/blogService";
 import Navigation from "../components/Navigation";
 import { BlogEntry } from "../types/blogTypes";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useReadingTracker } from "@/components/blog/useReadingTracker";
 import PostContent from "@/components/blog/PostContent";
 import PostError from "@/components/blog/PostError";
 import PostLoading from "@/components/blog/PostLoading";
@@ -19,16 +18,21 @@ const BlogPost = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
-  const { isRead, toggleReadStatus, isUpdating } = useReadingTracker(id, user);
   const { toast } = useToast();
+  const isMounted = React.useRef(true);
 
   useEffect(() => {
-    let isMounted = true;
-    
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
+  useEffect(() => {
     const fetchPostData = async () => {
       if (!id) {
-        console.log("BlogPost: No post ID found in URL parameters");
-        if (isMounted) {
+        console.log(`[${new Date().toISOString()}] BlogPost: No post ID found in URL parameters`);
+        if (isMounted.current) {
           setError("Post ID is missing");
           setLoading(false);
         }
@@ -36,49 +40,51 @@ const BlogPost = () => {
       }
       
       try {
-        console.log(`BlogPost: Fetching post with ID: ${id}`);
-        setLoading(true);
-        setError(null);
+        console.log(`[${new Date().toISOString()}] BlogPost: Fetching post with ID: ${id}`);
+        if (isMounted.current) {
+          setLoading(true);
+          setError(null);
+        }
         const postData = await fetchPostById(id);
         
         // Only update state if component is still mounted
-        if (isMounted) {
-          console.log(`BlogPost: Successfully fetched post with title: ${postData?.title}`);
-          
-          // Check if we have a valid post with content
-          if (!postData) {
-            console.error("BlogPost: Post data is missing");
-            setError("The post could not be found.");
-            setLoading(false);
-            return;
-          }
-          
-          if (!postData.content) {
-            console.error("BlogPost: Post content is missing");
-            setError("The post content appears to be empty or missing.");
-            setPost(postData); // Still set the post so we can show metadata
-            setLoading(false);
-            return;
-          }
-          
-          setPost(postData);
+        if (!isMounted.current) return;
+        
+        console.log(`[${new Date().toISOString()}] BlogPost: Successfully fetched post with title: ${postData?.title}`);
+        
+        // Check if we have a valid post with content
+        if (!postData) {
+          console.error(`[${new Date().toISOString()}] BlogPost: Post data is missing`);
+          setError("The post could not be found.");
           setLoading(false);
-          
-          // Mark post as read if user is logged in
-          if (user && id) {
-            try {
-              console.log(`BlogPost: Marking post ${id} as read for user ${user.id}`);
-              await markPostAsRead(user.id, id);
-            } catch (readErr) {
-              console.error("BlogPost: Error marking post as read:", readErr);
-              // Don't show error to user as this is non-critical
-            }
+          return;
+        }
+        
+        if (!postData.content) {
+          console.error(`[${new Date().toISOString()}] BlogPost: Post content is missing`);
+          setError("The post content appears to be empty or missing.");
+          setPost(postData); // Still set the post so we can show metadata
+          setLoading(false);
+          return;
+        }
+        
+        setPost(postData);
+        setLoading(false);
+        
+        // Mark post as read if user is logged in
+        if (user && id) {
+          try {
+            console.log(`[${new Date().toISOString()}] BlogPost: Marking post ${id} as read for user ${user.id}`);
+            await markPostAsRead(user.id, id);
+          } catch (readErr) {
+            console.error(`[${new Date().toISOString()}] BlogPost: Error marking post as read:`, readErr);
+            // Don't show error to user as this is non-critical
           }
         }
       } catch (err: any) {
-        console.error("BlogPost: Error fetching post:", err);
+        console.error(`[${new Date().toISOString()}] BlogPost: Error fetching post:`, err);
         // Only update state if component is still mounted
-        if (isMounted) {
+        if (isMounted.current) {
           setError(err.message || "Failed to load the post. Please try again later.");
           setLoading(false);
           setPost(null);
@@ -87,11 +93,6 @@ const BlogPost = () => {
     };
 
     fetchPostData();
-    
-    // Cleanup function to prevent state updates on unmounted component
-    return () => {
-      isMounted = false;
-    };
   }, [id, navigate, user]);
 
   return (
@@ -106,7 +107,6 @@ const BlogPost = () => {
           <PostContent 
             post={post} 
             isUserLoggedIn={!!user} 
-            isRead={isRead} 
             user={user}
             postId={id}
           />

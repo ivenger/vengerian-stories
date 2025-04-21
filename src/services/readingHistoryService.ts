@@ -7,7 +7,7 @@ import { ReadingHistoryItem } from "@/types/readingHistory";
  */
 export const getUserReadingHistory = async (userId: string): Promise<ReadingHistoryItem[]> => {
   try {
-    console.log(`readingHistoryService: Fetching reading history for user ${userId}`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: Fetching reading history for user ${userId}`);
     const { data, error } = await supabase
       .from('reading_history')
       .select('*')
@@ -15,14 +15,14 @@ export const getUserReadingHistory = async (userId: string): Promise<ReadingHist
       .order('read_at', { ascending: false });
       
     if (error) {
-      console.error('Error fetching reading history:', error);
+      console.error(`[${new Date().toISOString()}] readingHistoryService: Error fetching reading history:`, error);
       throw new Error(`Failed to fetch reading history: ${error.message}`);
     }
     
-    console.log(`readingHistoryService: Retrieved ${data?.length || 0} reading history items`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: Retrieved ${data?.length || 0} reading history items`);
     return data || [];
   } catch (error: any) {
-    console.error('Failed to fetch reading history:', error);
+    console.error(`[${new Date().toISOString()}] readingHistoryService: Failed to fetch reading history:`, error);
     throw new Error(`Failed to fetch reading history: ${error.message}`);
   }
 };
@@ -32,7 +32,7 @@ export const getUserReadingHistory = async (userId: string): Promise<ReadingHist
  */
 export const isPostRead = async (userId: string, postId: string): Promise<boolean> => {
   try {
-    console.log(`readingHistoryService: Checking if user ${userId} has read post ${postId}`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: Checking if user ${userId} has read post ${postId}`);
     const { data, error } = await supabase
       .from('reading_history')
       .select('id')
@@ -41,15 +41,15 @@ export const isPostRead = async (userId: string, postId: string): Promise<boolea
       .maybeSingle();
       
     if (error) {
-      console.error('Error checking if post is read:', error);
+      console.error(`[${new Date().toISOString()}] readingHistoryService: Error checking read status:`, error);
       return false;
     }
     
     const result = !!data;
-    console.log(`readingHistoryService: User has ${result ? '' : 'not '}read post ${postId}`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: User has ${result ? '' : 'not '}read post ${postId}`);
     return result;
   } catch (error) {
-    console.error('Error checking if post is read:', error);
+    console.error(`[${new Date().toISOString()}] readingHistoryService: Error checking if post is read:`, error);
     return false;
   }
 };
@@ -59,11 +59,11 @@ export const isPostRead = async (userId: string, postId: string): Promise<boolea
  */
 export const togglePostReadStatus = async (userId: string, postId: string, isRead: boolean): Promise<boolean> => {
   try {
-    console.log(`readingHistoryService: Setting read status for post ${postId} to ${isRead}`);
+    console.log(`[${new Date().toISOString()}] readingHistoryService: Setting read status for post ${postId} to ${isRead}`);
     
     if (isRead) {
       // Mark as read
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('reading_history')
         .upsert({
           user_id: userId,
@@ -74,30 +74,30 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
         });
         
       if (error) {
-        console.error('Error marking post as read:', error);
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as read:`, error);
         return false;
       }
       
-      console.log(`readingHistoryService: Successfully marked post ${postId} as read`);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`, data);
       return true;
     } else {
       // Mark as unread (delete the record)
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('reading_history')
         .delete()
         .eq('user_id', userId)
         .eq('post_id', postId);
         
       if (error) {
-        console.error('Error marking post as unread:', error);
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as unread:`, error);
         return false;
       }
       
-      console.log(`readingHistoryService: Successfully marked post ${postId} as unread`);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`, data);
       return true;
     }
   } catch (error) {
-    console.error('Error toggling post read status:', error);
+    console.error(`[${new Date().toISOString()}] readingHistoryService: Error toggling post read status:`, error);
     return false;
   }
 };
@@ -106,5 +106,6 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
  * Convenient function to mark a post as read
  */
 export const markPostAsRead = async (userId: string, postId: string): Promise<void> => {
-  await togglePostReadStatus(userId, postId, true);
+  const success = await togglePostReadStatus(userId, postId, true);
+  console.log(`[${new Date().toISOString()}] readingHistoryService: Mark post ${postId} as read result:`, success);
 };
