@@ -8,7 +8,6 @@ import { isPostRead } from '@/services/readingHistoryService';
 
 interface BlogCardProps {
   post: BlogEntry;
-  readPostIds?: string[];
 }
 
 const hasCyrillic = (text: string): boolean => {
@@ -19,57 +18,34 @@ const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
 };
 
-const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds }) => {
+const BlogCard: React.FC<BlogCardProps> = ({ post }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
   const { user } = useAuth();
   const [isRead, setIsRead] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Log the props for debugging
   useEffect(() => {
-    console.log(`[${new Date().toISOString()}] BlogCard: Rendering post ${post.id} with readPostIds:`, 
-      readPostIds ? `Array of ${readPostIds.length} items` : 'undefined', 
-      user ? `User ${user.id}` : 'No user');
-      
-    if (readPostIds && post.id) {
-      console.log(`[${new Date().toISOString()}] BlogCard: Post ${post.id} in readPostIds: ${readPostIds.includes(post.id)}`);
-    }
-  }, [post.id, readPostIds, user]);
-  
-  // Check if post is in the provided readPostIds array (from parent component)
-  useEffect(() => {
-    if (readPostIds && post.id) {
-      const isInReadList = readPostIds.includes(post.id);
-      console.log(`[${new Date().toISOString()}] BlogCard: Setting post ${post.id} read status from readPostIds: ${isInReadList}`);
-      setIsRead(isInReadList);
+    if (!user || !post.id) {
       setIsLoading(false);
+      return;
     }
-  }, [readPostIds, post.id]);
-  
-  // Fall back to direct check if readPostIds isn't provided
-  useEffect(() => {
-    if (!readPostIds && user && post.id) {
-      const checkReadStatus = async () => {
-        try {
-          console.log(`[${new Date().toISOString()}] BlogCard: Checking read status for post ${post.id} manually`);
-          setIsLoading(true);
-          const readStatus = await isPostRead(user.id, post.id);
-          console.log(`[${new Date().toISOString()}] BlogCard: Post ${post.id} manual read status: ${readStatus}`);
-          setIsRead(readStatus);
-        } catch (err) {
-          console.error(`[${new Date().toISOString()}] BlogCard: Error checking post read status:`, err);
-        } finally {
-          setIsLoading(false);
-        }
-      };
-      
-      checkReadStatus();
-    } else if (!user) {
-      console.log(`[${new Date().toISOString()}] BlogCard: No user, skipping manual read status check`);
-      setIsLoading(false); // Not logged in, so no need to check
-    }
-  }, [user, post.id, readPostIds]);
+    
+    const checkReadStatus = async () => {
+      try {
+        setIsLoading(true);
+        // Use the service function instead of direct Supabase query
+        const readStatus = await isPostRead(user.id, post.id);
+        setIsRead(readStatus);
+      } catch (err) {
+        console.error("BlogCard: Error checking post read status:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    checkReadStatus();
+  }, [user, post.id]);
 
   const isHebrewPost = post.language?.includes('Hebrew');
   const contentDirection = isHebrewPost ? 'flex-row-reverse' : 'flex-row';

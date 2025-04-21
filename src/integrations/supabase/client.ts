@@ -52,8 +52,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   global: {
     headers: {
       'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'x-client-info': `@supabase/js@latest`,
-      'Content-Type': 'application/json' // Explicitly set Content-Type header for all requests
+      'x-client-info': `@supabase/js@latest`
     },
     fetch: (url, options) => {
       const requestId = Math.random().toString(36).substring(2, 10);
@@ -85,7 +84,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       const headers = {
         'apikey': SUPABASE_PUBLISHABLE_KEY,
         'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
-        'Content-Type': 'application/json', // Always set Content-Type header
         'Cache-Control': 'no-cache',
         ...options?.headers,
       };

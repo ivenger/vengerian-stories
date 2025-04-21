@@ -8,11 +8,10 @@ import { Spinner } from '@/components/ui/spinner';
 interface StoriesListProps {
   posts: BlogEntry[];
   loading: boolean;
-  error: string | null;
+  error?: string | null;
   hasActiveFilters: boolean;
   clearFilters: () => void;
   onRetry?: () => void;
-  readPostIds?: string[];
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
@@ -21,13 +20,14 @@ const StoriesList: React.FC<StoriesListProps> = ({
   error,
   hasActiveFilters,
   clearFilters,
-  onRetry,
-  readPostIds
+  onRetry
 }) => {
   const isRetrying = error?.includes('Retrying');
   const [localLoading, setLocalLoading] = useState(loading);
 
+  // Update local loading state when prop changes
   useEffect(() => {
+    // Add a small delay before showing loading state to prevent flicker
     if (loading) {
       const timer = setTimeout(() => {
         setLocalLoading(true);
@@ -38,6 +38,7 @@ const StoriesList: React.FC<StoriesListProps> = ({
     }
   }, [loading]);
 
+  // Show more detailed error information
   const getErrorMessage = (errorText: string) => {
     if (errorText.includes('500')) {
       return "Server error occurred. This might be due to database issues.";
@@ -120,10 +121,8 @@ const StoriesList: React.FC<StoriesListProps> = ({
   }
   
   return (
-    <div className="grid grid-cols-1 gap-4">
-      {posts.map(post => (
-        <BlogCard key={post.id} post={post} readPostIds={readPostIds} />
-      ))}
+    <div className="grid gap-8">
+      {posts.map(post => <BlogCard key={post.id} post={post} />)}
     </div>
   );
 };

@@ -1,4 +1,3 @@
-
 import React from "react";
 import Navigation from "../components/Navigation";
 import MultilingualTitle from "../components/MultilingualTitle";
@@ -7,13 +6,9 @@ import ActiveFilters from "../components/ActiveFilters";
 import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
 import { useAuth } from "@/hooks/auth/useAuth";
-import { useReadingHistory } from "@/hooks/filters/useReadingHistory";
 
 const Index = () => {
   const { user } = useAuth();
-  const { readPostIds, hasLoaded: readingHistoryLoaded } = useReadingHistory(user);
-  
-  console.log(`[${new Date().toISOString()}] Index: Rendering with user: ${user?.id}, readPostIds: ${readPostIds?.length || 0}, loaded: ${readingHistoryLoaded}`);
   
   const {
     posts,
@@ -67,7 +62,6 @@ const Index = () => {
             hasActiveFilters={hasActiveFilters} 
             clearFilters={clearFilters}
             onRetry={loadPosts}
-            readPostIds={readPostIds}
           />
         </div>
       </main>

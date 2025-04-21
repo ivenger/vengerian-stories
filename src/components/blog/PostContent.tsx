@@ -1,35 +1,23 @@
 
-import React, { useEffect } from "react";
+import React from "react";
 import { Calendar, Tag } from "lucide-react";
 import { BlogEntry } from "../../types/blogTypes";
 import MarkdownPreview from "../MarkdownPreview";
 import ReadStatus from "./ReadStatus";
 import { useReadingTracker } from "./useReadingTracker";
 import { User } from "@supabase/supabase-js";
-import { useLocation } from "react-router-dom";
 
 interface PostContentProps {
   post: BlogEntry;
   isUserLoggedIn: boolean;
+  isRead: boolean;
   user: User | null;
   postId: string | undefined;
 }
 
 const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, user, postId }) => {
-  const location = useLocation();
-  const isBlogPostPage = location.pathname.startsWith('/blog/');
-  
-  // Use the enhanced reading tracker, but only enable auto-marking on blog post pages
+  // Use the enhanced reading tracker
   const { isRead, isUpdating, toggleReadStatus } = useReadingTracker(postId, user);
-  
-  console.log(`[${new Date().toISOString()}] PostContent: Rendering with read status:`, {
-    postId,
-    isRead,
-    isUpdating,
-    isUserLoggedIn,
-    isBlogPostPage,
-    currentPath: location.pathname
-  });
 
   // Ensure post has all required fields or provide defaults
   const safePost = {
@@ -43,7 +31,7 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, user, p
 
   return (
     <article className="bg-white rounded-lg shadow-md overflow-hidden relative max-w-4xl mx-auto">
-      {isUserLoggedIn && isBlogPostPage && (
+      {isUserLoggedIn && (
         <ReadStatus 
           isRead={isRead} 
           isUpdating={isUpdating}
