@@ -1,7 +1,8 @@
+
 import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
-import { useAuth } from "@/hooks/auth/useAuth";
+import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
 import { Button } from "@/components/ui/button";
 
 const Navigation = () => {
@@ -11,10 +12,7 @@ const Navigation = () => {
 
   useEffect(() => {
     console.log("Navigation: Admin status changed:", isAdmin);
-    if (user?.email === 'ilya.venger@gmail.com') {
-      console.log("Navigation: ilya.venger@gmail.com admin status:", isAdmin);
-    }
-  }, [isAdmin, user]);
+  }, [isAdmin]);
 
   const isActive = (path: string) => {
     return location.pathname === path;

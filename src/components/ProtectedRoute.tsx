@@ -1,9 +1,8 @@
+
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/auth/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
-import { useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,40 +18,13 @@ const ProtectedRoute = ({
   const { user, loading, isAdmin, error } = useAuth();
 
   // Debug output for admin status
-  useEffect(() => {
-    if (adminOnly) {
-      console.log("ProtectedRoute - Admin check:", { 
-        isAdmin, 
-        userId: user?.id,
-        email: user?.email
-      });
-      
-      // Special case for ilya.venger@gmail.com
-      if (user?.email === 'ilya.venger@gmail.com') {
-        console.log("ProtectedRoute - Special check for ilya.venger@gmail.com");
-        
-        // Direct database check for debugging
-        const checkAdminDirectly = async () => {
-          try {
-            const { data, error } = await supabase
-              .from('user_roles')
-              .select('*')
-              .eq('user_id', user.id);
-              
-            console.log("Direct DB check for admin roles:", {
-              data,
-              error,
-              userId: user.id
-            });
-          } catch (e) {
-            console.error("Error in direct DB check:", e);
-          }
-        };
-        
-        checkAdminDirectly();
-      }
-    }
-  }, [adminOnly, isAdmin, user]);
+  if (adminOnly) {
+    console.log("ProtectedRoute - Admin check:", { 
+      isAdmin, 
+      userId: user?.id,
+      email: user?.email
+    });
+  }
 
   // If there's an authentication error, show error message with retry option
   if (error) {
@@ -91,12 +63,7 @@ const ProtectedRoute = ({
 
   // If adminOnly flag is true, check if the current user is an admin
   if (adminOnly && !isAdmin) {
-    console.log("Access denied: User is not an admin", { 
-      isAdmin, 
-      userId: user?.id, 
-      email: user?.email 
-    });
-    
+    console.log("Access denied: User is not an admin", { isAdmin, userId: user.id });
     return (
       <div className="flex flex-col justify-center items-center h-screen p-4">
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 max-w-md text-center">
