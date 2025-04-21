@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -87,6 +86,12 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         'Cache-Control': 'no-cache',
         ...options?.headers,
       };
+      // Ensure Content-Type is set for methods with a body
+      const method = (options?.method || 'GET').toUpperCase();
+      if (['POST', 'PUT', 'PATCH'].includes(method) &&
+        !Object.keys(headers).some(h => h.toLowerCase() === 'content-type')) {
+        headers['Content-Type'] = 'application/json';
+      }
       
       if (DEBUG_REQUESTS) {
         console.log(`[${new Date().toISOString()}] Supabase request ${requestId} headers:`, headers);
