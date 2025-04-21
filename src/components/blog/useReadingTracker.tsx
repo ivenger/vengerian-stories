@@ -1,106 +1,88 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
-import { togglePostReadStatus } from "@/services/readingHistoryService";
+import { togglePostReadStatus, isPostRead } from "@/services/readingHistoryService";
 import { useToast } from "@/hooks/use-toast";
 
 export const useReadingTracker = (postId: string | undefined, user: User | null) => {
   const [isRead, setIsRead] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const isMounted = useRef(true);
+  const hasCheckedStatus = useRef(false);
   const { toast } = useToast();
+
+  // Keep track of mounted state
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
 
   // Check if post is already marked as read
   useEffect(() => {
-    let isMounted = true;
-
+    // Reset state when user or postId changes
+    setIsRead(false);
+    hasCheckedStatus.current = false;
+    
     const checkReadStatus = async () => {
       if (!user || !postId) {
-        console.log("ReadingTracker: Not checking read status because user or postId is missing");
+        console.log(`[${new Date().toISOString()}] ReadingTracker: Not checking read status because user or postId is missing`, 
+          { hasUser: !!user, postId });
         return;
       }
 
-      console.log(`ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Checking read status for user ${user.id} and post ${postId}`);
       try {
+        if (!isMounted.current) return;
         setIsUpdating(true);
         
-        // Try to get read status from API
-        try {
-          const readStatus = await fetch(`/api/reading-status?userId=${user.id}&postId=${postId}`);
-          
-          if (readStatus.ok) {
-            const result = await readStatus.json();
-            if (isMounted) {
-              console.log(`ReadingTracker: Read status from API is ${!!result.isRead}`);
-              setIsRead(!!result.isRead);
-            }
-            setIsUpdating(false);
-            return;
-          }
-        } catch (apiError) {
-          console.log("ReadingTracker: API error, falling back to direct database check", apiError);
-          // Continue to fallback implementation
-        }
+        // Try to get read status from direct database check
+        const readStatus = await isPostRead(user.id, postId);
         
-        // Fallback to local implementation
-        const { data, error } = await import('@/integrations/supabase/client').then(({ supabase }) =>
-          supabase
-            .from('reading_history')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('post_id', postId)
-            .maybeSingle()
-        );
-
-        if (error) {
-          console.error("useReadingTracker: Error checking read status:", error);
-          return;
-        }
-
-        if (isMounted) {
-          console.log(`ReadingTracker: Read status is ${!!data}`);
-          setIsRead(!!data);
-        }
+        if (!isMounted.current) return;
+        console.log(`[${new Date().toISOString()}] ReadingTracker: Read status is ${readStatus}`);
+        setIsRead(readStatus);
+        hasCheckedStatus.current = true;
       } catch (readErr) {
-        console.error("ReadingTracker: Error checking read status:", readErr);
+        console.error(`[${new Date().toISOString()}] ReadingTracker: Error checking read status:`, readErr);
       } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setIsUpdating(false);
         }
       }
     };
 
     checkReadStatus();
-
-    return () => {
-      isMounted = false;
-    };
   }, [postId, user]);
 
-  // Mark post as read when it loads
+  // Mark post as read when viewing it (if not already read)
   useEffect(() => {
-    let isMounted = true;
+    if (!user || !postId || isRead || isUpdating || !hasCheckedStatus.current) {
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Not auto-marking as read because:`, {
+        hasUser: !!user,
+        hasPostId: !!postId,
+        isAlreadyRead: isRead,
+        isUpdateInProgress: isUpdating,
+        hasCheckedStatus: hasCheckedStatus.current
+      });
+      return;
+    }
 
     const markAsRead = async () => {
-      if (!user || !postId || isRead || isUpdating) {
-        console.log("ReadingTracker: Not marking as read because:", 
-          !user ? "no user" : !postId ? "no postId" : isRead ? "already read" : "update in progress");
-        return;
-      }
-
       try {
+        if (!isMounted.current) return;
         setIsUpdating(true);
-        console.log(`ReadingTracker: Marking post ${postId} as read for user ${user.id}`);
         
-        // Use the togglePostReadStatus function to mark as read
+        console.log(`[${new Date().toISOString()}] ReadingTracker: Auto-marking post ${postId} as read for user ${user.id}`);
         const success = await togglePostReadStatus(user.id, postId, true);
 
         if (!success) {
-          console.error("ReadingTracker: Error marking post as read");
+          console.error(`[${new Date().toISOString()}] ReadingTracker: Error marking post as read`);
           return;
         }
 
-        if (isMounted) {
-          console.log("ReadingTracker: Successfully marked post as read");
+        if (isMounted.current) {
+          console.log(`[${new Date().toISOString()}] ReadingTracker: Successfully marked post as read`);
           setIsRead(true);
           toast({
             title: "Post marked as read",
@@ -108,33 +90,38 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           });
         }
       } catch (err) {
-        console.error("ReadingTracker: Error in markAsRead:", err);
+        console.error(`[${new Date().toISOString()}] ReadingTracker: Error in markAsRead:`, err);
       } finally {
-        if (isMounted) {
+        if (isMounted.current) {
           setIsUpdating(false);
         }
       }
     };
 
-    // Only try to mark as read if we have all required data
+    // Only mark as read if we've confirmed status and it's not already read
     markAsRead();
+  }, [postId, user, isRead, isUpdating, toast, hasCheckedStatus.current]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [postId, user, isRead, isUpdating, toast]);
-
+  // Manual toggle function
   const toggleReadStatus = async () => {
-    if (!user || !postId || isUpdating) return;
+    if (!user || !postId || isUpdating) {
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Cannot toggle read status`, {
+        hasUser: !!user,
+        hasPostId: !!postId,
+        isUpdateInProgress: isUpdating
+      });
+      return;
+    }
     
     try {
       setIsUpdating(true);
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Manually toggling read status to ${!isRead}`);
       
       // Use the togglePostReadStatus function from the service
       const success = await togglePostReadStatus(user.id, postId, !isRead);
       
       if (!success) {
-        console.error("ReadingTracker: Error toggling read status");
+        console.error(`[${new Date().toISOString()}] ReadingTracker: Error toggling read status`);
         toast({
           title: "Error",
           description: "Failed to update reading status",
@@ -143,6 +130,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         return;
       }
       
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Successfully toggled read status to ${!isRead}`);
       setIsRead(!isRead);
       toast({
         title: isRead ? "Marked as unread" : "Marked as read",
@@ -151,7 +139,7 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
           : "This post has been added to your reading history",
       });
     } catch (err) {
-      console.error("ReadingTracker: Error in toggleReadStatus:", err);
+      console.error(`[${new Date().toISOString()}] ReadingTracker: Error in toggleReadStatus:`, err);
       toast({
         title: "Error",
         description: "Failed to update reading status",
@@ -162,5 +150,16 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     }
   };
 
-  return { isRead, isUpdating, toggleReadStatus };
+  return { 
+    isRead, 
+    isUpdating, 
+    toggleReadStatus,
+    checkReadStatus: async () => {
+      if (!user || !postId) return;
+      const status = await isPostRead(user.id, postId);
+      if (isMounted.current) {
+        setIsRead(status);
+      }
+    }
+  };
 };
