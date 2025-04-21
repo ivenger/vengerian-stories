@@ -22,17 +22,23 @@ export function useAdminCheck(session: Session | null) {
         userId: currentSession?.user?.id
       });
 
-      // Step 2: Prepare RPC call
+      // Step 2: Prepare RPC call with explicit parameter
       console.log('Step 2: Making RPC call...');
       const rpcCall = await supabase.rpc('is_admin', { 
-        "user_id": userId  // Use named parameter to match PostgreSQL function
+        'user_id': userId // Ensure parameter name exactly matches function definition
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Profile': 'public'
+        }
       });
       
       console.log('RPC response:', {
         status: rpcCall.status,
         error: rpcCall.error,
         data: rpcCall.data,
-        hasResponse: !!rpcCall
+        hasResponse: !!rpcCall,
+        requestPayload: { user_id: userId }
       });
 
       if (rpcCall.error) {
@@ -41,7 +47,8 @@ export function useAdminCheck(session: Session | null) {
           status: rpcCall.status,
           statusText: rpcCall.statusText,
           message: rpcCall.error.message,
-          details: rpcCall.error.details
+          details: rpcCall.error.details,
+          hint: rpcCall.error.hint
         });
         throw rpcCall.error;
       }
