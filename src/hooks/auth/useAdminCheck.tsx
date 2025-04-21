@@ -28,61 +28,28 @@ export function useAdminCheck(session: Session | null) {
       }
 
       try {
-        // First try using the user_roles table directly
+        // Query the user_roles table directly
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id);
 
-        // If we can query the roles table directly
-        if (!rolesError && roles) {
-          const adminRole = roles.find(role => role.role === 'admin');
-          if (isMounted) {
-            setIsAdmin(!!adminRole);
-            setLoading(false);
-          }
-          console.log("Admin status result for", session.user.email, ":", !!adminRole);
-          return;
+        if (rolesError) {
+          console.error("Error querying user roles:", rolesError);
+          throw new Error(`Failed to check admin status: ${rolesError.message}`);
         }
 
-        // If the first approach failed, log why
-        console.error("Failed to query roles directly:", rolesError);
+        // Check if the user has the admin role
+        const adminRole = roles?.find(role => role.role === 'admin');
         
-        // Fallback to old method with better error handling
-        try {
-          console.log("Step 1: Making RPC call to is_admin");
-          
-          const { data, error, status, statusText } = await supabase.rpc('is_admin', {
-            user_id: session.user.id
-          });
-          
-          console.log("Step 5: Processing response...");
-          
-          if (error) {
-            console.error(" RPC call returned error:", {
-              error,
-              errorMessage: error.message,
-              errorDetails: error.details,
-              status,
-              statusText,
-            });
-            
-            throw new Error(`Admin check failed: ${error.message} (Code: ${error.code})`);
-          }
-
-          if (isMounted) {
-            setIsAdmin(!!data);
-            setLoading(false);
-          }
-          
-          console.log("Admin status result for", session.user.email, ":", !!data);
-        } catch (rpcError) {
-          console.error("RPC call failed completely:", rpcError);
-          throw rpcError;
+        if (isMounted) {
+          setIsAdmin(!!adminRole);
+          setLoading(false);
         }
+        
+        console.log("Admin check result for", session.user.email, ":", !!adminRole);
       } catch (err: any) {
         console.error("Failed to check user role:", err);
-        console.error("=== Finished admin check ===");
         
         if (isMounted) {
           // Fall back to checking if the user's email contains admin as a last resort
@@ -90,6 +57,8 @@ export function useAdminCheck(session: Session | null) {
           setIsAdmin(isEmailAdmin); 
           setError(err.message || "Failed to verify admin privileges");
           setLoading(false);
+          
+          console.log("Admin check fallback to email for", session.user.email, "result:", isEmailAdmin);
         }
       }
     };
