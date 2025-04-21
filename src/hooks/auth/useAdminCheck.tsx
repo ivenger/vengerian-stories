@@ -32,7 +32,7 @@ export function useAdminCheck(session: Session | null) {
       console.log('Step 3: Getting Supabase client info...');
       let baseUrl;
       try {
-        baseUrl = supabase.getUrl();
+        baseUrl = getSupabaseUrl();
         console.log('Supabase base URL:', baseUrl);
       } catch (urlError) {
         console.error('Failed to get Supabase URL:', {
@@ -43,8 +43,8 @@ export function useAdminCheck(session: Session | null) {
         throw urlError;
       }
 
-      // Step 4: Make RPC call - Fix headers position in the options
-      console.log('Step 5: Making RPC call...');
+      // Step 4: Make RPC call
+      console.log('Step 4: Making RPC call...');
       let rpcResponse;
       try {
         console.log('Calling supabase.rpc with:', {
@@ -56,7 +56,7 @@ export function useAdminCheck(session: Session | null) {
           }
         });
         
-        // The correct way to call RPC without passing headers in the wrong location
+        // Call RPC function
         rpcResponse = await supabase.rpc('is_admin', payload);
         
         console.log('RPC raw response:', {
@@ -75,8 +75,8 @@ export function useAdminCheck(session: Session | null) {
         throw rpcError;
       }
 
-      // Step 6: Process response
-      console.log('Step 6: Processing response...');
+      // Step 5: Process response
+      console.log('Step 5: Processing response...');
       if (rpcResponse.error) {
         console.error('RPC call returned error:', {
           error: rpcResponse.error,
@@ -140,3 +140,13 @@ export function useAdminCheck(session: Session | null) {
 
   return isAdmin;
 }
+
+// Import helper function from client file
+const getSupabaseUrl = () => {
+  // Try to use the helper function if available
+  if (typeof supabase.getUrl === 'function') {
+    return supabase.getUrl();
+  }
+  // Fallback to direct URL
+  return "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
+};
