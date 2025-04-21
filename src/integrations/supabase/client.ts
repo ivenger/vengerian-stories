@@ -44,6 +44,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       },
     }
   },
+  realtime: {
+    params: {
+      eventsPerSecond: 10
+    }
+  },
   global: {
     headers: {
       'apikey': SUPABASE_PUBLISHABLE_KEY,
@@ -111,27 +116,34 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   }
 });
 
-// Add a helper to get the URL
-export const getSupabaseUrl = () => SUPABASE_URL;
-
 // Add connection state monitoring
 supabase.auth.onAuthStateChange((event, session) => {
   console.log('Supabase auth state changed:', event, session?.user?.email || 'no user');
 });
 
-// Simple connection monitoring via auth events instead of realtime channels
-if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
-    console.log('Browser went online, checking auth session...');
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        console.log('Session found, resuming connection');
-        supabase.auth.refreshSession();
-      }
-    });
-  });
-  
-  window.addEventListener('offline', () => {
-    console.log('Browser went offline, connection to Supabase may be interrupted');
-  });
-}
+// Setup auto-reconnect for realtime
+let isReconnecting = false;
+
+// Create a dedicated channel for connection status
+const connectionStatusChannel = supabase.channel('connection-status');
+
+// Listen for connection status changes
+connectionStatusChannel
+  .on('system', { event: 'disconnect' }, () => {
+    console.log('Lost connection to Supabase');
+    if (!isReconnecting) {
+      isReconnecting = true;
+      setTimeout(async () => {
+        try {
+          // Attempt to reconnect the channel
+          await connectionStatusChannel.subscribe();
+          console.log('Reconnected to Supabase');
+        } catch (error) {
+          console.error('Failed to reconnect:', error);
+        } finally {
+          isReconnecting = false;
+        }
+      }, 1000);
+    }
+  })
+  .subscribe();
