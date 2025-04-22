@@ -1,5 +1,3 @@
-
-// Just updating the import statement at the top of the file
 import React, { useState, useEffect } from "react";
 import { BlogEntry } from "../types/blogTypes";
 import { 
@@ -36,6 +34,7 @@ interface MarkdownEditorProps {
   post: BlogEntry;
   onSave: (post: BlogEntry) => void;
   onCancel: () => void;
+  disabled?: boolean;
 }
 
 const getFormattedContent = (markdown: string): string => {
@@ -80,7 +79,7 @@ const detectLanguage = (text: string): string => {
   }
 };
 
-const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel }) => {
+const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel, disabled = false }) => {
   const { toast } = useToast();
   const [title, setTitle] = useState(post.title);
   const [excerpt, setExcerpt] = useState(post.excerpt || "");
@@ -312,13 +311,17 @@ const MarkdownEditor: React.FC<MarkdownEditorProps> = ({ post, onSave, onCancel 
           <button
             onClick={onCancel}
             className="flex items-center px-3 py-1 border border-gray-300 rounded hover:bg-gray-100"
+            disabled={disabled}
           >
             <X size={16} className="mr-1" />
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="flex items-center px-3 py-1 bg-gray-900 text-white rounded hover:bg-gray-700"
+            className={`flex items-center px-3 py-1 bg-gray-900 text-white rounded hover:bg-gray-700 ${
+              disabled ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+            disabled={disabled}
           >
             <Save size={16} className="mr-1" />
             Save
