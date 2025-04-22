@@ -22,17 +22,18 @@ export function useSession() {
         return false;
       }
       
-      // Attempt session refresh
-      const { data, error: refreshError } = await supabase.auth.refreshSession();
+      // Attempt session refresh with timeout
+      const refreshPromise = supabase.auth.refreshSession();
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
+      });
       
-      if (refreshError) {
-        console.error("Failed to refresh session:", refreshError);
-        return false;
-      }
+      // Race the refresh against a timeout
+      const result = await Promise.race([refreshPromise, timeoutPromise]) as any;
       
-      if (data.session) {
+      if (result.data?.session) {
         console.log("Session recovered successfully");
-        setSession(data.session);
+        setSession(result.data.session);
         setError(null);
         return true;
       }
@@ -51,6 +52,7 @@ export function useSession() {
 
     console.log("useSession: Initializing auth state monitoring");
 
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
         console.log("Auth state changed:", event, newSession?.user?.email || "no user");
@@ -121,16 +123,34 @@ export function useSession() {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error: signOutError } = await supabase.auth.signOut();
+      console.log("useSession - Signing out");
       
-      if (signOutError) {
-        console.error("Error signing out:", signOutError);
-        toast({
-          title: "Error",
-          description: "Failed to sign out. Please try again.",
-          variant: "destructive"
-        });
-      }
+      // Create a timeout promise to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Sign out timeout')), 5000);
+      });
+      
+      // Race between the actual signOut and the timeout
+      await Promise.race([
+        supabase.auth.signOut(),
+        timeoutPromise
+      ]).catch(err => {
+        console.error("Sign out timed out or failed:", err);
+        // Force clear local storage as a fallback for timeout situations
+        try {
+          localStorage.removeItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
+        } catch (e) {
+          console.warn("Could not clear localStorage:", e);
+        }
+      });
+      
+      // Always clear session state regardless of API success
+      setSession(null);
+      
+      toast({
+        title: "Signed out",
+        description: "You've been signed out successfully.",
+      });
     } catch (err) {
       console.error("Sign out exception:", err);
       toast({

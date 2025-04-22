@@ -2,13 +2,15 @@
 import React, { useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Home, InfoIcon, Settings, LogOut, User } from "lucide-react";
-import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
+import { useAuth } from "@/hooks/auth/useAuth"; 
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 const Navigation = () => {
   const { user, signOut, isAdmin } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     console.log("Navigation: Admin status changed:", isAdmin);
@@ -23,10 +25,30 @@ const Navigation = () => {
     e.stopPropagation();
     
     try {
+      console.log("Navigation: Initiating sign out");
+      toast({
+        title: "Signing out",
+        description: "Processing your request...",
+      });
+      
       await signOut();
+      
+      // Force navigation to home page
       navigate('/');
+      
+      // Force clear local storage as an additional fallback
+      try {
+        localStorage.removeItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
+      } catch (e) {
+        console.warn("Navigation: Could not clear localStorage:", e);
+      }
     } catch (error) {
       console.error("Error in Navigation handleSignOut:", error);
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try refreshing the page.",
+        variant: "destructive"
+      });
     }
   };
 
