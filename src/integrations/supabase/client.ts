@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
@@ -53,7 +54,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       'apikey': SUPABASE_PUBLISHABLE_KEY,
       'x-client-info': `@supabase/js@latest`
     },
-    fetch: (url, options) => {
+    fetch: async (url, options) => {
       const requestId = Math.random().toString(36).substring(2, 10);
       
       // Create a controller that will abort the fetch after GLOBAL_TIMEOUT_MS
@@ -79,26 +80,37 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         controller.abort();
       }, GLOBAL_TIMEOUT_MS);
       
-      // Ensure default headers are set
-      // Try to get the user's access token from localStorage (Supabase default location)
-      let userToken = undefined;
+      // Get current session token directly from Supabase Auth
+      let authHeaders = {};
       try {
-        const authRaw = localStorage.getItem('supabase-auth-token');
-        if (authRaw) {
-          const authObj = JSON.parse(authRaw);
-          userToken = authObj?.currentSession?.access_token;
+        const { data } = await supabase.auth.getSession();
+        const session = data.session;
+        
+        if (session && session.access_token) {
+          authHeaders = {
+            'Authorization': `Bearer ${session.access_token}`
+          };
+          if (DEBUG_REQUESTS) {
+            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} using session auth token`);
+          }
+        } else {
+          if (DEBUG_REQUESTS) {
+            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} no session, using anon key`);
+          }
         }
       } catch (e) {
-        // ignore
+        console.error(`[${new Date().toISOString()}] Error getting auth session for request:`, e);
       }
+      
+      // Ensure default headers are set
       const headers = {
         'apikey': SUPABASE_PUBLISHABLE_KEY,
-        'Authorization': userToken
-          ? `Bearer ${userToken}`
-          : `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+        'Authorization': `Bearer ${SUPABASE_PUBLISHABLE_KEY}`, // Default to anon key
         'Cache-Control': 'no-cache',
+        ...authHeaders, // Add auth headers if present (will override default Authorization)
         ...options?.headers,
       };
+      
       // Ensure Content-Type is set for methods with a body
       const method = (options?.method || 'GET').toUpperCase();
       if (['POST', 'PUT', 'PATCH'].includes(method) &&
