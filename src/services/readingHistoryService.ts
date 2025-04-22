@@ -72,6 +72,7 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
       console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: No active session!`);
     } else if (userId !== sessionUserId) {
       console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: userId does not match session user id!`);
+      console.warn(`[${new Date().toISOString()}] [DEBUG] Provided userId: ${userId}, Session userId: ${sessionUserId}`);
     }
 
     console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}`);
