@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { ReadingHistoryItem } from "@/types/readingHistory";
 
@@ -6,6 +7,12 @@ import { ReadingHistoryItem } from "@/types/readingHistory";
  */
 export const getUserReadingHistory = async (userId: string): Promise<ReadingHistoryItem[]> => {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      console.error(`[${new Date().toISOString()}] readingHistoryService: No active session`);
+      return [];
+    }
+
     console.log(`[${new Date().toISOString()}] readingHistoryService: Fetching reading history for user ${userId}`);
     const { data, error } = await supabase
       .from('reading_history')
@@ -31,6 +38,12 @@ export const getUserReadingHistory = async (userId: string): Promise<ReadingHist
  */
 export const isPostRead = async (userId: string, postId: string): Promise<boolean> => {
   try {
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      console.error(`[${new Date().toISOString()}] readingHistoryService: No active session`);
+      return false;
+    }
+
     console.log(`[${new Date().toISOString()}] readingHistoryService: Checking if user ${userId} has read post ${postId}`);
     const { data, error } = await supabase
       .from('reading_history')
@@ -58,78 +71,68 @@ export const isPostRead = async (userId: string, postId: string): Promise<boolea
  */
 export const togglePostReadStatus = async (userId: string, postId: string, isRead: boolean): Promise<boolean> => {
   try {
-    // Enhanced logging: check current session and token
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-    const session = sessionData?.session;
-    const accessToken = session?.access_token || null;
-    const sessionUserId = session?.user?.id || null;
-    console.log(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: userId arg =`, userId, 
-      '| sessionUserId =', sessionUserId, '| accessToken exists =', !!accessToken, '\nSession:', session);
-    if (sessionError) {
-      console.error(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: session error:`, sessionError);
+    // First verify we have an active session
+    const session = await supabase.auth.getSession();
+    if (!session.data.session) {
+      console.error(`[${new Date().toISOString()}] readingHistoryService: No active session when trying to toggle read status`);
+      return false;
     }
-    if (!session) {
-      console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: No active session!`);
-    } else if (userId !== sessionUserId) {
-      console.warn(`[${new Date().toISOString()}] [DEBUG] togglePostReadStatus: userId does not match session user id!`);
-      console.warn(`[${new Date().toISOString()}] [DEBUG] Provided userId: ${userId}, Session userId: ${sessionUserId}`);
+
+    // Verify the session user matches the requested userId
+    if (session.data.session.user.id !== userId) {
+      console.error(`[${new Date().toISOString()}] readingHistoryService: Session user ID does not match requested user ID`);
+      return false;
     }
 
     console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}`);
+    
     if (isRead) {
-      // First check if the record already exists
-      const { data: existingRecord } = await supabase
-        .from('reading_history')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('post_id', postId)
-        .maybeSingle();
-
-      // If record exists, update it. If not, insert it
       const payload = {
         user_id: userId,
         post_id: postId,
         read_at: new Date().toISOString()
       };
 
-      let result;
-      if (existingRecord) {
+      // Insert new record - if it fails due to duplicate, we'll update
+      const { error: insertError } = await supabase
+        .from('reading_history')
+        .insert(payload);
+
+      if (insertError && insertError.code === '23505') { // Unique violation
         // Update existing record
         console.log(`[${new Date().toISOString()}] readingHistoryService: Updating existing reading_history record`);
-        result = await supabase
+        const { error: updateError } = await supabase
           .from('reading_history')
           .update({ read_at: payload.read_at })
           .eq('user_id', userId)
           .eq('post_id', postId);
-      } else {
-        // Insert new record
-        console.log(`[${new Date().toISOString()}] readingHistoryService: Inserting new reading_history record`);
-        result = await supabase
-          .from('reading_history')
-          .insert(payload);
-      }
 
-      const { error, data, status } = result;
-      if (error) {
-        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as read:`, error, '\nPayload:', payload, '\nSession:', session);
+        if (updateError) {
+          console.error(`[${new Date().toISOString()}] readingHistoryService: Error updating read status:`, updateError);
+          return false;
+        }
+      } else if (insertError) {
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error inserting read status:`, insertError);
         return false;
       }
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully ${existingRecord ? 'updated' : 'inserted'} post ${postId} as read. Status: ${status}`);
+
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`);
       return true;
     } else {
       // Mark as unread (delete the record)
       console.log(`[${new Date().toISOString()}] readingHistoryService: Deleting from reading_history where user_id=${userId} and post_id=${postId}`);
-      const { error, data, status, statusText } = await supabase
+      const { error } = await supabase
         .from('reading_history')
         .delete()
         .eq('user_id', userId)
         .eq('post_id', postId);
-      console.log(`[${new Date().toISOString()}] [DEBUG] Delete response:`, { error, data, status, statusText });
+
       if (error) {
-        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as unread:`, error, '\nSession:', session);
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as unread:`, error);
         return false;
       }
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread. Returned data:`, data);
+      
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`);
       return true;
     }
   } catch (error) {
