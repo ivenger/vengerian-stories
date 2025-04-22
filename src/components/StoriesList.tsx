@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import BlogCard from './BlogCard';
 import { BlogEntry } from '../types/blogTypes';
@@ -13,6 +14,7 @@ interface StoriesListProps {
   clearFilters: () => void;
   onRetry?: () => void;
   readPostIds?: string[];
+  onReadStatusChange?: () => void;
 }
 
 const StoriesList: React.FC<StoriesListProps> = ({ 
@@ -22,7 +24,8 @@ const StoriesList: React.FC<StoriesListProps> = ({
   hasActiveFilters,
   clearFilters,
   onRetry,
-  readPostIds
+  readPostIds,
+  onReadStatusChange
 }) => {
   const isRetrying = error?.includes('Retrying');
   const [localLoading, setLocalLoading] = useState(loading);
@@ -47,6 +50,11 @@ const StoriesList: React.FC<StoriesListProps> = ({
       return "Network error. Please check your connection and try again.";
     }
     return errorText;
+  };
+
+  const handleReadStatusChange = () => {
+    console.log(`[${new Date().toISOString()}] StoriesList: Read status changed, notifying parent`);
+    onReadStatusChange?.();
   };
 
   if (error) {
@@ -122,7 +130,12 @@ const StoriesList: React.FC<StoriesListProps> = ({
   return (
     <div className="grid grid-cols-1 gap-4">
       {posts.map(post => (
-        <BlogCard key={post.id} post={post} readPostIds={readPostIds} />
+        <BlogCard 
+          key={post.id} 
+          post={post} 
+          readPostIds={readPostIds} 
+          onReadStatusChange={handleReadStatusChange}
+        />
       ))}
     </div>
   );

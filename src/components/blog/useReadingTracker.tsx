@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { togglePostReadStatus, isPostRead } from "@/services/readingHistoryService";
@@ -117,11 +118,17 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
       setIsUpdating(true);
       console.log(`[${new Date().toISOString()}] ReadingTracker: Manually toggling read status to ${!isRead}`);
       
+      // Update local state first for immediate feedback
+      const newIsRead = !isRead;
+      setIsRead(newIsRead);
+      
       // Use the togglePostReadStatus function from the service
-      const success = await togglePostReadStatus(user.id, postId, !isRead);
+      const success = await togglePostReadStatus(user.id, postId, newIsRead);
       
       if (!success) {
+        // Revert the local state if request failed
         console.error(`[${new Date().toISOString()}] ReadingTracker: Error toggling read status`);
+        setIsRead(isRead); // Revert to previous state
         toast({
           title: "Error",
           description: "Failed to update reading status",
@@ -130,15 +137,17 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
         return;
       }
       
-      console.log(`[${new Date().toISOString()}] ReadingTracker: Successfully toggled read status to ${!isRead}`);
-      setIsRead(!isRead);
+      console.log(`[${new Date().toISOString()}] ReadingTracker: Successfully toggled read status to ${newIsRead}`);
+      
       toast({
-        title: isRead ? "Marked as unread" : "Marked as read",
-        description: isRead 
-          ? "This post has been removed from your reading history" 
-          : "This post has been added to your reading history",
+        title: newIsRead ? "Marked as read" : "Marked as unread",
+        description: newIsRead 
+          ? "This post has been added to your reading history" 
+          : "This post has been removed from your reading history",
       });
     } catch (err) {
+      // Revert local state on error
+      setIsRead(isRead);
       console.error(`[${new Date().toISOString()}] ReadingTracker: Error in toggleReadStatus:`, err);
       toast({
         title: "Error",
@@ -156,9 +165,18 @@ export const useReadingTracker = (postId: string | undefined, user: User | null)
     toggleReadStatus,
     checkReadStatus: async () => {
       if (!user || !postId) return;
-      const status = await isPostRead(user.id, postId);
-      if (isMounted.current) {
-        setIsRead(status);
+      try {
+        setIsUpdating(true);
+        const status = await isPostRead(user.id, postId);
+        if (isMounted.current) {
+          setIsRead(status);
+        }
+      } catch (error) {
+        console.error(`[${new Date().toISOString()}] ReadingTracker: Error in checkReadStatus:`, error);
+      } finally {
+        if (isMounted.current) {
+          setIsUpdating(false);
+        }
       }
     }
   };

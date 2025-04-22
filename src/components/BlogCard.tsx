@@ -4,11 +4,13 @@ import { Link } from 'react-router-dom';
 import { Calendar, Tag, Eye, EyeOff } from 'lucide-react';
 import { BlogEntry } from '../types/blogTypes';
 import { useAuth } from '@/hooks/auth/useAuth';
-import { isPostRead } from '@/services/readingHistoryService';
+import { isPostRead, togglePostReadStatus } from '@/services/readingHistoryService';
+import { useToast } from '@/hooks/use-toast';
 
 interface BlogCardProps {
   post: BlogEntry;
   readPostIds?: string[];
+  onReadStatusChange?: () => void;
 }
 
 const hasCyrillic = (text: string): boolean => {
@@ -19,17 +21,20 @@ const hasHebrew = (text: string): boolean => {
   return /[\u0590-\u05FF]/.test(text);
 };
 
-const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds }) => {
+const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds, onReadStatusChange }) => {
   const isRtl = hasHebrew(post.title);
   const hasCyrillicText = hasCyrillic(post.title);
   const { user } = useAuth();
   const [isRead, setIsRead] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
   
   // Check if post is in the provided readPostIds array (from parent component)
   useEffect(() => {
     if (readPostIds && post.id) {
-      setIsRead(readPostIds.includes(post.id));
+      const isInReadList = readPostIds.includes(post.id);
+      console.log(`[${new Date().toISOString()}] BlogCard: Post ${post.id} in read list?: ${isInReadList}`);
+      setIsRead(isInReadList);
       setIsLoading(false);
     }
   }, [readPostIds, post.id]);
@@ -57,6 +62,53 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds }) => {
     }
   }, [user, post.id, readPostIds]);
 
+  const handleToggleReadStatus = async (e: React.MouseEvent) => {
+    if (!user || isLoading) return;
+    
+    // Stop the event from triggering navigation
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      setIsLoading(true);
+      const newReadStatus = !isRead;
+      
+      console.log(`[${new Date().toISOString()}] BlogCard: Toggling read status for ${post.id} to ${newReadStatus}`);
+      const success = await togglePostReadStatus(user.id, post.id, newReadStatus);
+      
+      if (success) {
+        setIsRead(newReadStatus);
+        toast({
+          title: newReadStatus ? "Marked as read" : "Marked as unread",
+          description: newReadStatus 
+            ? "This post has been added to your reading history" 
+            : "This post has been removed from your reading history",
+        });
+        
+        // Notify parent component that read status has changed
+        if (onReadStatusChange) {
+          console.log(`[${new Date().toISOString()}] BlogCard: Notifying parent of read status change`);
+          onReadStatusChange();
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update reading status",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] BlogCard: Error toggling read status:`, err);
+      toast({
+        title: "Error",
+        description: "Failed to update reading status",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const isHebrewPost = post.language?.includes('Hebrew');
   const contentDirection = isHebrewPost ? 'flex-row-reverse' : 'flex-row';
 
@@ -64,7 +116,10 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds }) => {
     <Link to={`/blog/${post.id}`} className="block no-underline">
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
         {user && (
-          <div className={`absolute top-3 right-3 ${isLoading ? 'opacity-50' : ''}`}>
+          <div 
+            className={`absolute top-3 right-3 z-10 cursor-pointer p-2 rounded-full hover:bg-gray-100 transition-colors ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            onClick={handleToggleReadStatus}
+          >
             {isRead ? (
               <Eye size={18} className="text-green-500" />
             ) : (

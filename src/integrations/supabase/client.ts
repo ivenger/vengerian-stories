@@ -177,3 +177,33 @@ connectionStatusChannel
     }
   })
   .subscribe();
+
+// Enable realtime on the reading_history table for live updates
+const setupRealtimeForReadingHistory = async () => {
+  try {
+    // Create a channel specific for reading_history changes
+    const channel = supabase.channel('reading_history_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all changes (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'reading_history',
+        },
+        (payload) => {
+          console.log(`[${new Date().toISOString()}] Reading history realtime update:`, payload);
+          // This will be picked up by components that subscribe to reading_history changes
+        }
+      )
+      .subscribe();
+
+    console.log(`[${new Date().toISOString()}] Setup realtime subscription for reading_history table`);
+    return channel;
+  } catch (error) {
+    console.error(`[${new Date().toISOString()}] Error setting up realtime for reading_history:`, error);
+    return null;
+  }
+};
+
+// Call this function to set up realtime for reading_history
+setupRealtimeForReadingHistory();

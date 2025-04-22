@@ -14,6 +14,7 @@ export const useReadingHistory = (user: User | null) => {
   const hasLoaded = useRef(false);
   const { shouldRefreshSession, refreshSession } = useSessionRefresh();
   const lastUpdateTime = useRef<number>(0);
+  const realtimeChannel = useRef<any>(null);
 
   // Track mounting status
   useEffect(() => {
@@ -23,6 +24,12 @@ export const useReadingHistory = (user: User | null) => {
     return () => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: Component unmounted`);
       isMounted.current = false;
+      
+      // Clean up realtime subscription if it exists
+      if (realtimeChannel.current) {
+        supabase.removeChannel(realtimeChannel.current);
+        realtimeChannel.current = null;
+      }
     };
   }, []);
 
@@ -36,7 +43,7 @@ export const useReadingHistory = (user: User | null) => {
     
     // Subscribe to changes in reading_history for this user
     const channel = supabase
-      .channel('reading_history_changes')
+      .channel(`reading_history_changes_${user.id}`)
       .on(
         'postgres_changes',
         {
@@ -47,15 +54,23 @@ export const useReadingHistory = (user: User | null) => {
         },
         (payload) => {
           console.log(`[${new Date().toISOString()}] useReadingHistory: Realtime update received:`, payload);
-          // Refresh reading history when changes occur
-          fetchReadPosts();
+          // Refresh reading history when changes occur, with a small debounce
+          setTimeout(() => {
+            if (isMounted.current) {
+              fetchReadPosts(true);
+            }
+          }, 100);
         }
       )
       .subscribe();
     
+    // Store the channel reference for cleanup
+    realtimeChannel.current = channel;
+    
     return () => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: Removing realtime subscription`);
       supabase.removeChannel(channel);
+      realtimeChannel.current = null;
     };
   }, [user?.id]); // Only re-subscribe when user ID changes
 
@@ -86,14 +101,14 @@ export const useReadingHistory = (user: User | null) => {
   }, [user]); 
 
   // Extracted fetch function for reuse
-  const fetchReadPosts = async () => {
+  const fetchReadPosts = async (forceRefresh = false) => {
     if (!user || !isMounted.current) {
       return;
     }
     
-    // Don't fetch too frequently (debounce) - wait at least 500ms between fetches
+    // Don't fetch too frequently (debounce) unless forceRefresh is true
     const now = Date.now();
-    if (now - lastUpdateTime.current < 500) {
+    if (!forceRefresh && now - lastUpdateTime.current < 500) {
       console.log(`[${new Date().toISOString()}] useReadingHistory: Skipping fetch, too soon since last update`);
       return;
     }
