@@ -1,12 +1,31 @@
 
 import { useSession } from "./auth/useSession";
 import { useAdminCheck } from "./auth/useAdminCheck";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useAuthProvider() {
   const { session, loading: sessionLoading, error: sessionError, signOut } = useSession();
   const { isAdmin, loading: adminLoading, error: adminError } = useAdminCheck(session);
+  
+  // Refresh function that components can call directly when needed
+  const refreshSession = useCallback(async () => {
+    try {
+      console.log("useAuthProvider - Manually refreshing session");
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) {
+        console.error("useAuthProvider - Failed to refresh session:", error);
+        return null;
+      } else if (data.session) {
+        console.log("useAuthProvider - Session refreshed successfully");
+        return data.session;
+      }
+      return null;
+    } catch (err) {
+      console.error("useAuthProvider - Error refreshing session:", err);
+      return null;
+    }
+  }, []);
   
   // Debug log to track session state changes
   useEffect(() => {
@@ -27,16 +46,10 @@ export function useAuthProvider() {
       const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
       if (sessionStr) {
         console.log("useAuthProvider - Session missing but localStorage has data, attempting refresh");
-        supabase.auth.refreshSession().then(({ data, error }) => {
-          if (error) {
-            console.error("useAuthProvider - Failed to refresh session:", error);
-          } else if (data.session) {
-            console.log("useAuthProvider - Session refreshed successfully");
-          }
-        });
+        refreshSession();
       }
     }
-  }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError]);
+  }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError, refreshSession]);
 
   return {
     session,
@@ -44,6 +57,7 @@ export function useAuthProvider() {
     loading: sessionLoading || adminLoading,
     signOut,
     isAdmin,
-    error: sessionError || adminError
+    error: sessionError || adminError,
+    refreshSession
   };
 }

@@ -104,6 +104,16 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       throw new Error("Post data is required to save.");
     }
 
+    // Log detailed auth info to debug the issue
+    const { data: sessionData } = await supabase.auth.getSession();
+    const currentSession = sessionData?.session;
+    
+    console.log("Saving post with auth state:", {
+      hasSession: !!currentSession,
+      userId: currentSession?.user?.id || "no user id",
+      isExpired: currentSession?.expires_at ? new Date(currentSession.expires_at * 1000) < new Date() : "unknown",
+    });
+
     console.log("Saving post data:", {
       id: post.id,
       title: post.title,
@@ -111,8 +121,27 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       tags: post.tags
     });
 
+    // If session is expired or missing, try to refresh it
+    if (!currentSession || (currentSession.expires_at && new Date(currentSession.expires_at * 1000) < new Date())) {
+      console.log("Session expired or missing, attempting to refresh");
+      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        console.error("Failed to refresh session:", refreshError);
+        throw new Error(`Authentication error: ${refreshError.message}. Please log in again.`);
+      }
+      
+      console.log("Session refreshed successfully:", !!refreshData.session);
+    }
+
     // Omit the 'created_at' field from the post data
     const { created_at, ...postData } = post;
+
+    // Set user_id explicitly if not present
+    if (!postData.user_id && currentSession?.user?.id) {
+      postData.user_id = currentSession.user.id;
+      console.log(`Setting user_id to ${postData.user_id}`);
+    }
 
     if (post.id) {
       // Update existing post
@@ -126,7 +155,13 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
 
       if (error) {
         console.error('Error updating post:', error);
-        throw new Error(`Failed to update post: ${error.message} (${error.code})`);
+        if (error.code === '42501') {
+          throw new Error(`Permission denied: You don't have the right permissions to update this post.`);
+        } else if (error.code === '401') {
+          throw new Error(`Authentication error: You need to log in again.`);
+        } else {
+          throw new Error(`Failed to update post: ${error.message} (${error.code})`);
+        }
       }
 
       console.log('Post updated successfully:', data.id);
@@ -142,7 +177,13 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
 
       if (error) {
         console.error('Error creating post:', error);
-        throw new Error(`Failed to create post: ${error.message} (${error.code})`);
+        if (error.code === '42501') {
+          throw new Error(`Permission denied: You don't have the right permissions to create posts.`);
+        } else if (error.code === '401') {
+          throw new Error(`Authentication error: You need to log in again.`);
+        } else {
+          throw new Error(`Failed to create post: ${error.message} (${error.code})`);
+        }
       }
 
       console.log('Post created successfully:', data.id);
@@ -160,6 +201,12 @@ export const deletePost = async (id: string): Promise<void> => {
   console.log(`Deleting post with ID: ${id}`);
   
   try {
+    // Check if session is valid before proceeding
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      throw new Error("Authentication required. Please log in again.");
+    }
+    
     const { error } = await supabase
       .from('entries')
       .delete()
@@ -167,7 +214,11 @@ export const deletePost = async (id: string): Promise<void> => {
     
     if (error) {
       console.error('Error deleting post:', error);
-      throw new Error(`Failed to delete post: ${error.message} (${error.code})`);
+      if (error.code === '42501') {
+        throw new Error(`Permission denied: You don't have the right permissions to delete this post.`);
+      } else {
+        throw new Error(`Failed to delete post: ${error.message} (${error.code})`);
+      }
     }
     
     console.log('Post deleted successfully:', id);
