@@ -76,24 +76,44 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
 
     console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}`);
     if (isRead) {
-      // Mark as read
-      const upsertPayload = {
+      // First check if the record already exists
+      const { data: existingRecord } = await supabase
+        .from('reading_history')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('post_id', postId)
+        .maybeSingle();
+
+      // If record exists, update it. If not, insert it
+      const payload = {
         user_id: userId,
         post_id: postId,
         read_at: new Date().toISOString()
       };
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Upserting into reading_history:`, upsertPayload);
-      const { error, data, status, statusText } = await supabase
-        .from('reading_history')
-        .upsert(upsertPayload, {
-          onConflict: 'user_id,post_id'
-        });
-      console.log(`[${new Date().toISOString()}] [DEBUG] Upsert response:`, { error, data, status, statusText });
+
+      let result;
+      if (existingRecord) {
+        // Update existing record
+        console.log(`[${new Date().toISOString()}] readingHistoryService: Updating existing reading_history record`);
+        result = await supabase
+          .from('reading_history')
+          .update({ read_at: payload.read_at })
+          .eq('user_id', userId)
+          .eq('post_id', postId);
+      } else {
+        // Insert new record
+        console.log(`[${new Date().toISOString()}] readingHistoryService: Inserting new reading_history record`);
+        result = await supabase
+          .from('reading_history')
+          .insert(payload);
+      }
+
+      const { error, data, status } = result;
       if (error) {
-        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as read:`, error, '\nPayload:', upsertPayload, '\nSession:', session);
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as read:`, error, '\nPayload:', payload, '\nSession:', session);
         return false;
       }
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read. Returned data:`, data);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully ${existingRecord ? 'updated' : 'inserted'} post ${postId} as read. Status: ${status}`);
       return true;
     } else {
       // Mark as unread (delete the record)
