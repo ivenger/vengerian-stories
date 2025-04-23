@@ -35,7 +35,8 @@ const Index = () => {
   // Force reload posts when readPostIds changes
   useEffect(() => {
     if (showUnreadOnly && readPostIds) {
-      loadPosts(true); // Force refresh when read history changes and unread filter is active
+      // Fixed: removed the boolean argument
+      loadPosts();
     }
   }, [readPostIds, showUnreadOnly, loadPosts]);
   
@@ -52,7 +53,8 @@ const Index = () => {
       title: "Refreshing stories...",
       duration: 2000,
     });
-    loadPosts(true);
+    // Fixed: removed the boolean argument
+    loadPosts();
   };
   
   // Show connection status to user

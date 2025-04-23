@@ -17,7 +17,7 @@ export const useStoryFilters = (user: User | null) => {
   const { readPostIds } = useReadingHistory(user);
   const { allTags, selectedTags, toggleTag, clearTags } = useTagsManagement();
   const { connectionStatus, checkConnection, handleConnectionError } = useConnectionStatus();
-  const { loading, error, lastLoad, loadPosts } = usePostsLoading(user);
+  const { loading, error, lastLoad, loadPosts: originalLoadPosts } = usePostsLoading(user);
   const { posts, originalPosts, showUnreadOnly, toggleUnreadFilter, updateFilteredPosts } = useFilterState(user);
 
   // Component lifecycle management
@@ -42,12 +42,17 @@ export const useStoryFilters = (user: User | null) => {
   }, []);
 
   // Handle initial posts load
-  const handleInitialLoad = async () => {
-    const fetchedPosts = await loadPosts(selectedTags);
+  const handleInitialLoad = async (forceRefresh = false) => {
+    const fetchedPosts = await originalLoadPosts(selectedTags, forceRefresh);
     if (isMountedRef.current) {
       updateFilteredPosts(fetchedPosts, selectedTags, readPostIds);
     }
   };
+
+  // Create a simplified loadPosts function that matches the expected API in Index.tsx
+  const loadPosts = useCallback((forceRefresh = false) => {
+    return handleInitialLoad(forceRefresh);
+  }, [handleInitialLoad]);
 
   // When filters change, apply them to the original posts
   useEffect(() => {
@@ -99,7 +104,9 @@ export const useStoryFilters = (user: User | null) => {
 
   const clearFilters = () => {
     clearTags();
-    toggleUnreadFilter();
+    if (showUnreadOnly) {
+      toggleUnreadFilter();
+    }
     if (originalPosts.length > 0) {
       updateFilteredPosts(originalPosts, [], readPostIds);
     }
@@ -118,7 +125,7 @@ export const useStoryFilters = (user: User | null) => {
     toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
-    loadPosts: handleInitialLoad,
+    loadPosts,
     connectionStatus
   };
 };
