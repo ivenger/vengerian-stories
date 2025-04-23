@@ -20,22 +20,23 @@ export { markPostAsRead as markPostAsReadFromPostService } from './postService';
 // Import what we need from postService
 import { fetchFilteredPosts } from './postService';
 import { supabase } from '@/integrations/supabase/client';
+import { BlogEntry } from '@/types/blogTypes';
 
 /**
  * Fallback function to fetch posts with better error handling and timeout protection
  * This function will catch errors from fetchFilteredPosts and provide fallbacks
  */
-export const fetchPostsWithFallback = async (tags?: string[]) => {
+export const fetchPostsWithFallback = async (tags?: string[]): Promise<BlogEntry[]> => {
   console.log("fetchPostsWithFallback called with tags:", tags);
   
   try {
     // Create a timeout promise to prevent hanging
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Fetch timeout exceeded')), 8000);
     });
     
     // Race between the actual fetch and the timeout
-    const posts = await Promise.race([
+    const posts = await Promise.race<BlogEntry[]>([
       fetchFilteredPosts(tags),
       timeoutPromise
     ]);
@@ -65,7 +66,7 @@ export const fetchPostsWithFallback = async (tags?: string[]) => {
       if (error) throw error;
       
       console.log(`Fallback query returned ${data?.length || 0} posts`);
-      return data || [];
+      return data as BlogEntry[] || [];
     } catch (fallbackError) {
       console.error("Even fallback query failed:", fallbackError);
       // Return empty array as final fallback
