@@ -18,6 +18,8 @@ export {
 export { markPostAsRead as markPostAsReadFromPostService } from './postService';
 
 // Add a utility function to fetch posts with better error handling
+import { fetchFilteredPosts } from './postService';
+
 export const fetchPostsWithFallback = async (tags?: string[]) => {
   try {
     return await fetchFilteredPosts(tags);
