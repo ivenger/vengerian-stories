@@ -8,6 +8,8 @@ import StoriesList from "../components/StoriesList";
 import { useStoryFilters } from "../hooks/useStoryFilters";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useReadingHistory } from "@/hooks/filters/useReadingHistory";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 const Index = () => {
   const { user } = useAuth();
@@ -39,6 +41,12 @@ const Index = () => {
     console.log(`[${new Date().toISOString()}] Index: Reading status changed, refreshing data`);
     refreshReadingHistory(true); // Force refresh of reading history
   }, [refreshReadingHistory]);
+
+  // Manual refresh function for users
+  const handleManualRefresh = () => {
+    console.log("Manual refresh requested by user");
+    loadPosts(true);
+  };
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -71,13 +79,26 @@ const Index = () => {
         </div>
 
         <div className="max-w-3xl mx-auto">
+          {error && (
+            <div className="mb-4 flex justify-center">
+              <Button 
+                onClick={handleManualRefresh}
+                className="flex items-center gap-2"
+                variant="outline"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Refresh Stories
+              </Button>
+            </div>
+          )}
+          
           <StoriesList 
             posts={posts} 
             loading={loading} 
             error={error}
             hasActiveFilters={hasActiveFilters} 
             clearFilters={clearFilters}
-            onRetry={loadPosts}
+            onRetry={handleManualRefresh}
             readPostIds={readPostIds}
             onReadStatusChange={handleReadStatusChange}
           />

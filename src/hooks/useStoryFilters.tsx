@@ -1,8 +1,7 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts } from '../services/blogService';
+import { fetchFilteredPosts, fetchPostsWithFallback } from '../services/blogService';
 import { useToast } from "./use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { applyFiltersToData, getBackoffDelay } from './filters/filterUtils';
@@ -107,7 +106,7 @@ export const useStoryFilters = (user: User | null) => {
     }
   }, [selectedTags, showUnreadOnly, user, readPostIds]);
 
-  // Fetch posts based on selected filters
+  // Fetch posts based on selected filters - Updated for better error handling
   const loadPosts = useCallback(async (forceRefresh = false) => {
     // Don't start a new fetch if one is in progress or component is unmounting
     if (!isMountedRef.current) {
@@ -145,12 +144,16 @@ export const useStoryFilters = (user: User | null) => {
     try {
       // If we've been loading for too long with a session, try refreshing it
       if (user && forceRefresh) {
-        await refreshSession();
+        try {
+          await refreshSession();
+        } catch (e) {
+          console.warn("Failed to refresh session, proceeding anyway:", e);
+        }
       }
       
-      // Always fetch all posts first - pass selectedTags if we have them
-      console.log("Fetching all posts");
-      const allPosts = await fetchFilteredPosts(selectedTags.length > 0 ? selectedTags : undefined);
+      // Try using the new fallback method to handle API timeouts gracefully
+      console.log("Fetching all posts with fallback mechanism");
+      const allPosts = await fetchPostsWithFallback(selectedTags.length > 0 ? selectedTags : undefined);
       console.log(`Received ${allPosts.length} total posts from API`);
       
       // Bail out if component unmounted during fetch
@@ -159,6 +162,7 @@ export const useStoryFilters = (user: User | null) => {
         return;
       }
       
+      // Even if we get empty posts, update the state to avoid stuck loading state
       setOriginalPosts(allPosts);
       applyFilters(allPosts);
       
@@ -175,70 +179,24 @@ export const useStoryFilters = (user: User | null) => {
         return;
       }
       
-      // Handle potential auth errors
-      if (error?.message?.includes('JWT') || error?.message?.includes('token') || 
-          error?.message?.includes('auth') || error?.message?.includes('authentication')) {
-        console.log("Detected potential auth error, attempting session refresh");
-        if (user) {
-          const refreshed = await refreshSession();
-          if (refreshed) {
-            console.log("Session refreshed, retrying post load");
-            setIsRetrying(true);
-            // Always clean up the current fetch before scheduling a retry
-            fetchInProgressRef.current = false;
-            setTimeout(() => {
-              if (isMountedRef.current) {
-                loadPosts(true); // Force refresh after auth error
-              }
-            }, 1000);
-            return;
-          }
-        }
+      // Always show some posts even if there was an error
+      if (originalPosts.length === 0) {
+        // Display a generic error but still clear the loading state
+        setError("Couldn't load stories. Please try refreshing the page.");
+        setPosts([]);
+      } else {
+        // If we have previous posts, keep showing them
+        console.log("Using cached posts due to error");
+        applyFilters(originalPosts);
+        setError(null);
       }
       
-      // Check if we should retry
-      if (retryCount < MAX_RETRIES && error?.message?.includes('Failed to fetch')) {
-        const nextRetryCount = retryCount + 1;
-        const backoffDelay = getBackoffDelay(retryCount);
-        
-        console.log(`Retry ${nextRetryCount}/${MAX_RETRIES} scheduled in ${backoffDelay}ms`);
-        setRetryCount(nextRetryCount);
-        setError(`Network error. Retrying in ${Math.round(backoffDelay/1000)} seconds...`);
-        setIsRetrying(true);
-        
-        // Clean up the current fetch before scheduling retry
-        fetchInProgressRef.current = false;
-        
-        // Schedule retry with backoff
-        setTimeout(() => {
-          if (isMountedRef.current) {
-            console.log(`Executing retry ${nextRetryCount}/${MAX_RETRIES}`);
-            loadPosts(true); // Force refresh on retry
-          } else {
-            console.log("Component unmounted during retry delay, cancelling");
-            setIsRetrying(false);
-          }
-        }, backoffDelay);
-      } else {
-        // We've exhausted retries or it's not a network error
-        setError(
-          error?.message === "TypeError: Failed to fetch" 
-            ? "Network error. Please check your connection and try again." 
-            : "Failed to load stories. Please try again later."
-        );
-        setPosts([]);
-        setRetryCount(0);
-        setIsRetrying(false);
-        setLoading(false);
-      }
-    } finally {
-      // If we're not retrying, we can safely reset all state
-      if (!isRetrying) {
-        fetchInProgressRef.current = false;
-        setLoading(false);
-      }
+      setRetryCount(0);
+      setIsRetrying(false);
+      setLoading(false);
+      fetchInProgressRef.current = false;
     }
-  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly]);
+  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly, originalPosts]);
 
   // When filters change, apply them to the original posts
   useEffect(() => {
