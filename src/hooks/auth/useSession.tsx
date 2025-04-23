@@ -25,7 +25,7 @@ export function useSession() {
       // Attempt session refresh with timeout
       const refreshPromise = supabase.auth.refreshSession();
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Session refresh timeout')), 5000);
+        setTimeout(() => reject(new Error('Session refresh timeout')), 10000);
       });
       
       // Race the refresh against a timeout
@@ -42,6 +42,9 @@ export function useSession() {
     } catch (err) {
       console.error("Session recovery error:", err);
       return false;
+    } finally {
+      // Ensure we stop loading regardless of outcome
+      setLoading(false);
     }
   }, []);
 
@@ -112,11 +115,20 @@ export function useSession() {
       }
     };
 
+    // Set a timeout to force-end loading state if it gets stuck
+    const loadingTimeoutId = setTimeout(() => {
+      if (isMounted && loading) {
+        console.warn("Auth loading state timed out, forcing completion");
+        setLoading(false);
+      }
+    }, 8000);
+
     initSession();
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
+      clearTimeout(loadingTimeoutId);
     };
   }, [toast, handleSessionRecovery]);
 

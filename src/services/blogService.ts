@@ -41,8 +41,13 @@ export const fetchPostsWithFallback = async (tags?: string[]): Promise<BlogEntry
       timeoutPromise
     ]);
     
-    console.log(`Successfully fetched ${posts.length} posts`);
-    return posts;
+    if (Array.isArray(posts)) {
+      console.log(`Successfully fetched ${posts.length} posts`);
+      return posts;
+    } else {
+      console.error("Invalid posts data", posts);
+      return [];
+    }
   } catch (error) {
     console.error("Error in fetchPostsWithFallback:", error);
     
@@ -65,8 +70,13 @@ export const fetchPostsWithFallback = async (tags?: string[]): Promise<BlogEntry
       
       if (error) throw error;
       
-      console.log(`Fallback query returned ${data?.length || 0} posts`);
-      return data as BlogEntry[] || [];
+      if (Array.isArray(data)) {
+        console.log(`Fallback query returned ${data.length || 0} posts`);
+        return data as BlogEntry[];
+      } else {
+        console.error("Invalid data returned from fallback query", data);
+        return [];
+      }
     } catch (fallbackError) {
       console.error("Even fallback query failed:", fallbackError);
       // Return empty array as final fallback

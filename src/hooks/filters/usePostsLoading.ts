@@ -41,12 +41,15 @@ export const usePostsLoading = (user: User | null) => {
         selectedTags.length > 0 ? selectedTags : undefined
       );
       
-      setRetryCount(0);
-      setIsRetrying(false);
-      setLoading(false);
-      setError(null);
-      
-      return allPosts;
+      if (Array.isArray(allPosts)) {
+        setRetryCount(0);
+        setIsRetrying(false);
+        setLoading(false);
+        setError(null);
+        return allPosts;
+      } else {
+        throw new Error("Invalid posts data returned");
+      }
     } catch (error: any) {
       console.error("Failed to load posts:", error);
       setRetryCount((prev) => prev + 1);

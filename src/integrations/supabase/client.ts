@@ -5,8 +5,8 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://dvalgsvmkrqzwfcxvbxg.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR2YWxnc3Zta3JxendmY3h2YnhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDIwMjI1MjcsImV4cCI6MjA1NzU5ODUyN30.v2iTZuy6PwIorHwEyfFes0fcM9gZtUyTuHCHTkCupuE";
 
-// Set reasonable global timeout - longer than individual query timeouts
-const GLOBAL_TIMEOUT_MS = 15000; 
+// Set reasonable global timeout - shorter than before to avoid blocking
+const GLOBAL_TIMEOUT_MS = 10000; 
 // Log requests to debug authentication and network issues
 const DEBUG_REQUESTS = true;
 
@@ -18,7 +18,9 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     storage: {
       getItem: (key: string) => {
         try {
-          return Promise.resolve(localStorage.getItem(key));
+          const item = localStorage.getItem(key);
+          console.log(`Storage getItem: ${key} => ${item ? "found" : "not found"}`);
+          return Promise.resolve(item);
         } catch (error) {
           console.error('Error accessing localStorage:', error);
           return Promise.resolve(null);
@@ -27,6 +29,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       setItem: (key: string, value: string) => {
         try {
           localStorage.setItem(key, value);
+          console.log(`Storage setItem: ${key} => saved`);
           return Promise.resolve();
         } catch (error) {
           console.error('Error setting localStorage:', error);
@@ -36,6 +39,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
       removeItem: (key: string) => {
         try {
           localStorage.removeItem(key);
+          console.log(`Storage removeItem: ${key} => removed`);
           return Promise.resolve();
         } catch (error) {
           console.error('Error removing from localStorage:', error);
@@ -80,26 +84,35 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
         controller.abort();
       }, GLOBAL_TIMEOUT_MS);
       
-      // Get current session token directly from Supabase Auth
+      // Get current session token directly from localStorage for more reliability
       let authHeaders = {};
       try {
-        const { data } = await supabase.auth.getSession();
-        const session = data.session;
+        const tokenStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
+        let accessToken = null;
         
-        if (session && session.access_token) {
+        if (tokenStr) {
+          try {
+            const tokenData = JSON.parse(tokenStr);
+            accessToken = tokenData?.access_token;
+          } catch (e) {
+            console.error("Error parsing auth token:", e);
+          }
+        }
+        
+        if (accessToken) {
           authHeaders = {
-            'Authorization': `Bearer ${session.access_token}`
+            'Authorization': `Bearer ${accessToken}`
           };
           if (DEBUG_REQUESTS) {
-            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} using session auth token`);
+            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} using local storage auth token`);
           }
         } else {
           if (DEBUG_REQUESTS) {
-            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} no session, using anon key`);
+            console.log(`[${new Date().toISOString()}] Supabase request ${requestId} no local storage token, using anon key`);
           }
         }
       } catch (e) {
-        console.error(`[${new Date().toISOString()}] Error getting auth session for request:`, e);
+        console.error(`[${new Date().toISOString()}] Error getting auth token from storage:`, e);
       }
       
       // Ensure default headers are set
@@ -192,7 +205,6 @@ const setupRealtimeForReadingHistory = async () => {
         },
         (payload) => {
           console.log(`[${new Date().toISOString()}] Reading history realtime update:`, payload);
-          // This will be picked up by components that subscribe to reading_history changes
         }
       )
       .subscribe();

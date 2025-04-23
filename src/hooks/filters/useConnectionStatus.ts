@@ -9,12 +9,19 @@ export const useConnectionStatus = () => {
   
   const checkConnection = useCallback(async () => {
     setConnectionStatus('checking');
-    const status = await checkSupabaseConnection();
-    setConnectionStatus(status.connected ? 'ok' : 'error');
-    return status.connected;
+    try {
+      const status = await checkSupabaseConnection();
+      const newStatus = status.connected ? 'ok' : 'error';
+      setConnectionStatus(newStatus);
+      return status.connected;
+    } catch (err) {
+      console.error("Error checking connection:", err);
+      setConnectionStatus('error');
+      return false;
+    }
   }, []);
   
-  const handleConnectionError = () => {
+  const handleConnectionError = useCallback(() => {
     if (connectionStatus === 'error') {
       toast({
         title: "Connection issue detected",
@@ -23,7 +30,7 @@ export const useConnectionStatus = () => {
         variant: "destructive",
       });
     }
-  };
+  }, [connectionStatus, toast]);
   
   return {
     connectionStatus,

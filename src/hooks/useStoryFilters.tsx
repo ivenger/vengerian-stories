@@ -7,6 +7,7 @@ import { useConnectionStatus } from './filters/useConnectionStatus';
 import { usePostsLoading } from './filters/usePostsLoading';
 import { useFilterState } from './filters/useFilterState';
 import { useToast } from './use-toast';
+import { BlogEntry } from '@/types/blogTypes';
 
 export const useStoryFilters = (user: User | null) => {
   const isMountedRef = useRef(true);
@@ -42,16 +43,27 @@ export const useStoryFilters = (user: User | null) => {
   }, []);
 
   // Handle initial posts load
-  const handleInitialLoad = async (forceRefresh = false) => {
-    const fetchedPosts = await originalLoadPosts(selectedTags, forceRefresh);
-    if (isMountedRef.current) {
-      updateFilteredPosts(fetchedPosts, selectedTags, readPostIds);
+  const handleInitialLoad = useCallback(async (forceRefresh = false) => {
+    try {
+      const fetchedPosts = await originalLoadPosts(selectedTags, forceRefresh);
+      if (isMountedRef.current && Array.isArray(fetchedPosts)) {
+        updateFilteredPosts(fetchedPosts, selectedTags, readPostIds);
+      }
+    } catch (err) {
+      console.error("Error in handleInitialLoad:", err);
+      if (isMountedRef.current) {
+        toast({
+          title: "Error loading stories",
+          description: "Please try refreshing the page",
+          variant: "destructive"
+        });
+      }
     }
-  };
+  }, [originalLoadPosts, selectedTags, readPostIds, updateFilteredPosts, toast]);
 
   // Create a simplified loadPosts function that matches the expected API in Index.tsx
-  const loadPosts = useCallback((forceRefresh = false) => {
-    return handleInitialLoad(forceRefresh);
+  const loadPosts = useCallback(() => {
+    return handleInitialLoad(true);
   }, [handleInitialLoad]);
 
   // When filters change, apply them to the original posts
@@ -76,7 +88,7 @@ export const useStoryFilters = (user: User | null) => {
         clearInterval(refreshTimerRef.current);
       }
     };
-  }, [lastLoad]);
+  }, [lastLoad, handleInitialLoad]);
 
   // Handle page visibility changes
   useEffect(() => {
@@ -93,14 +105,14 @@ export const useStoryFilters = (user: User | null) => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [lastLoad, error]);
+  }, [lastLoad, error, handleInitialLoad, checkConnection]);
 
   // Show connection status to user
   useEffect(() => {
     if (!loading) {
       handleConnectionError();
     }
-  }, [connectionStatus, loading]);
+  }, [connectionStatus, loading, handleConnectionError]);
 
   const clearFilters = () => {
     clearTags();
