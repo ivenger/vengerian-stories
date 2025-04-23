@@ -9,11 +9,13 @@ import { useStoryFilters } from "../hooks/useStoryFilters";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useReadingHistory } from "@/hooks/filters/useReadingHistory";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, WifiOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const { user } = useAuth();
   const { readPostIds, refreshReadingHistory } = useReadingHistory(user);
+  const { toast } = useToast();
   
   const {
     posts,
@@ -26,7 +28,8 @@ const Index = () => {
     toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
-    loadPosts
+    loadPosts,
+    connectionStatus
   } = useStoryFilters(user);
   
   // Force reload posts when readPostIds changes
@@ -45,8 +48,24 @@ const Index = () => {
   // Manual refresh function for users
   const handleManualRefresh = () => {
     console.log("Manual refresh requested by user");
+    toast({
+      title: "Refreshing stories...",
+      duration: 2000,
+    });
     loadPosts(true);
   };
+  
+  // Show connection status to user
+  useEffect(() => {
+    if (connectionStatus === 'error' && !loading) {
+      toast({
+        title: "Connection issue detected",
+        description: "Having trouble accessing our servers. Some features may be limited.",
+        duration: 5000,
+        variant: "destructive",
+      });
+    }
+  }, [connectionStatus, loading, toast]);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -79,14 +98,18 @@ const Index = () => {
         </div>
 
         <div className="max-w-3xl mx-auto">
-          {error && (
+          {(error || connectionStatus === 'error') && (
             <div className="mb-4 flex justify-center">
               <Button 
                 onClick={handleManualRefresh}
                 className="flex items-center gap-2"
                 variant="outline"
               >
-                <RefreshCw className="h-4 w-4" />
+                {connectionStatus === 'error' ? (
+                  <WifiOff className="h-4 w-4" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
                 Refresh Stories
               </Button>
             </div>

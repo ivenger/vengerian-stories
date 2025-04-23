@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { BlogEntry } from '../types/blogTypes';
-import { fetchFilteredPosts, fetchPostsWithFallback } from '../services/blogService';
+import { fetchPostsWithFallback, checkSupabaseConnection } from '../services/blogService';
 import { useToast } from "./use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { applyFiltersToData, getBackoffDelay } from './filters/filterUtils';
@@ -22,6 +22,7 @@ export const useStoryFilters = (user: User | null) => {
   const [lastLoad, setLastLoad] = useState<number>(Date.now());
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'ok' | 'error'>('checking');
   
   // Custom hooks
   const { readPostIds } = useReadingHistory(user);
@@ -64,6 +65,14 @@ export const useStoryFilters = (user: User | null) => {
     filtersRef.current = { tags: selectedTags, unreadOnly: showUnreadOnly };
   }, [showUnreadOnly, user, selectedTags]);
 
+  // Check Supabase connection
+  const checkConnection = useCallback(async () => {
+    setConnectionStatus('checking');
+    const status = await checkSupabaseConnection();
+    setConnectionStatus(status.connected ? 'ok' : 'error');
+    return status.connected;
+  }, []);
+
   // Component lifecycle management
   useEffect(() => {
     console.log("StoryFilters: Component mounted with key", pageKey.current);
@@ -76,8 +85,18 @@ export const useStoryFilters = (user: User | null) => {
     setIsRetrying(false);
     setRetryCount(0);
     
-    // Execute initial fetch
-    loadPosts();
+    // Check connection status first
+    checkConnection().then(isConnected => {
+      if (isConnected) {
+        // Execute initial fetch if connected
+        loadPosts();
+      } else {
+        // Set error state if not connected
+        setLoading(false);
+        setError("Connection to database unavailable. Please try again later.");
+      }
+    });
+    
     loadedRef.current = true;
     
     return () => {
@@ -151,25 +170,30 @@ export const useStoryFilters = (user: User | null) => {
         }
       }
       
-      // Try using the new fallback method to handle API timeouts gracefully
-      console.log("Fetching all posts with fallback mechanism");
+      // Try using the improved fallback method
+      console.log("Fetching all posts with enhanced fallback mechanism");
       const allPosts = await fetchPostsWithFallback(selectedTags.length > 0 ? selectedTags : undefined);
       console.log(`Received ${allPosts.length} total posts from API`);
       
       // Bail out if component unmounted during fetch
       if (!isMountedRef.current) {
         console.log("Component unmounted during fetch, skipping state updates");
+        fetchInProgressRef.current = false;
         return;
       }
       
-      // Even if we get empty posts, update the state to avoid stuck loading state
+      // Cache the original posts
       setOriginalPosts(allPosts);
+      
+      // Apply filters immediately
       applyFilters(allPosts);
       
-      // Reset retry count and loading state on success
+      // Reset states
       setRetryCount(0);
       setIsRetrying(false);
       setLoading(false);
+      setConnectionStatus('ok');
+      setError(null);
       
     } catch (error: any) {
       console.error("Failed to load posts:", error);
@@ -180,23 +204,26 @@ export const useStoryFilters = (user: User | null) => {
       }
       
       // Always show some posts even if there was an error
-      if (originalPosts.length === 0) {
-        // Display a generic error but still clear the loading state
-        setError("Couldn't load stories. Please try refreshing the page.");
-        setPosts([]);
-      } else {
+      if (originalPosts.length > 0) {
         // If we have previous posts, keep showing them
         console.log("Using cached posts due to error");
         applyFilters(originalPosts);
-        setError(null);
+        setError("Couldn't refresh stories. Using cached data.");
+      } else {
+        // No previous posts, show clear error
+        setError("Unable to load stories. Please check your connection and try again.");
+        setPosts([]);
       }
       
-      setRetryCount(0);
+      setRetryCount((prev) => prev + 1);
       setIsRetrying(false);
       setLoading(false);
+      setConnectionStatus('error');
+      
+    } finally {
       fetchInProgressRef.current = false;
     }
-  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly, originalPosts]);
+  }, [user, refreshSession, retryCount, isRetrying, applyFilters, selectedTags, showUnreadOnly, originalPosts, checkConnection]);
 
   // When filters change, apply them to the original posts
   useEffect(() => {
@@ -239,14 +266,13 @@ export const useStoryFilters = (user: User | null) => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible') {
         console.log(`[${new Date().toISOString()}] App became visible. Checking user session state:`, user);
-        console.log(`[${new Date().toISOString()}] Checking localStorage for session:`, localStorage.getItem('supabase.auth.token'));
-        if (user) {
-          const { data: { session }, error } = await supabase.auth.getSession();
-          if (error || !session) {
-            console.error(`[${new Date().toISOString()}] No active session found. Error:`, error);
-          } else {
-            console.log(`[${new Date().toISOString()}] Active session found. Session details:`, session);
-          }
+        
+        // Also check connection status when page becomes visible
+        const isConnected = await checkConnection();
+        
+        if (isConnected && (Date.now() - lastLoad > 60000 || error)) {
+          // Refresh data if it's been more than a minute or there was an error
+          loadPosts(true);
         }
       }
     };
@@ -256,7 +282,7 @@ export const useStoryFilters = (user: User | null) => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user]);
+  }, [user, loadPosts, lastLoad, error, checkConnection]);
 
   const toggleUnreadFilter = () => {
     setShowUnreadOnly(!showUnreadOnly);
@@ -288,6 +314,7 @@ export const useStoryFilters = (user: User | null) => {
     toggleUnreadFilter,
     clearFilters,
     hasActiveFilters,
-    loadPosts  // Expose reload function
+    loadPosts,  // Expose reload function
+    connectionStatus
   };
 };
