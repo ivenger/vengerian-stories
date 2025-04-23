@@ -55,20 +55,33 @@ export const fetchPostsWithFallback = async (tags?: string[]): Promise<BlogEntry
     try {
       console.log("Attempting direct Supabase query as fallback");
       
+      // Ensure we have a valid session first
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        console.log("No valid session for direct query");
+        return [];
+      }
+      
       let query = supabase
         .from('entries')
         .select('*')
-        .eq('status', 'published')
         .order('date', { ascending: false });
       
       if (tags && tags.length > 0) {
+        console.log("Adding tags filter to query:", tags);
         query = query.contains('tags', tags);
+      } else {
+        console.log("No tags filter applied");
+        query = query.eq('status', 'published');
       }
       
       // Set a shorter timeout for this query
       const { data, error } = await query.abortSignal(AbortSignal.timeout(5000));
       
-      if (error) throw error;
+      if (error) {
+        console.error("Fallback query error:", error);
+        throw error;
+      }
       
       if (Array.isArray(data)) {
         console.log(`Fallback query returned ${data.length || 0} posts`);

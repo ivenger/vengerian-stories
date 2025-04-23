@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { checkSupabaseConnection } from '@/services/blogService';
 import { useToast } from '../use-toast';
 
@@ -10,8 +10,10 @@ export const useConnectionStatus = () => {
   const checkConnection = useCallback(async () => {
     setConnectionStatus('checking');
     try {
+      console.log("Checking Supabase connection...");
       const status = await checkSupabaseConnection();
       const newStatus = status.connected ? 'ok' : 'error';
+      console.log(`Connection check result: ${newStatus}, response time: ${status.responseTime}ms`);
       setConnectionStatus(newStatus);
       return status.connected;
     } catch (err) {
@@ -31,6 +33,11 @@ export const useConnectionStatus = () => {
       });
     }
   }, [connectionStatus, toast]);
+
+  // Check connection on mount
+  useEffect(() => {
+    checkConnection();
+  }, []);
   
   return {
     connectionStatus,

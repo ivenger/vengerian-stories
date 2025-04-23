@@ -15,7 +15,7 @@ export const usePostsLoading = (user: User | null) => {
   const { refreshSession } = useSessionRefresh();
 
   const loadPosts = useCallback(async (
-    selectedTags: string[],
+    selectedTags: string[] = [],
     forceRefresh = false
   ): Promise<BlogEntry[]> => {
     if (fetchInProgressRef.current && !forceRefresh) {
@@ -31,17 +31,20 @@ export const usePostsLoading = (user: User | null) => {
     try {
       if (user && forceRefresh) {
         try {
+          console.log("Attempting to refresh session before fetching posts");
           await refreshSession();
         } catch (e) {
           console.warn("Failed to refresh session, proceeding anyway:", e);
         }
       }
       
+      console.log(`Fetching posts with tags:`, selectedTags);
       const allPosts = await fetchPostsWithFallback(
         selectedTags.length > 0 ? selectedTags : undefined
       );
       
       if (Array.isArray(allPosts)) {
+        console.log(`Successfully loaded ${allPosts.length} posts`);
         setRetryCount(0);
         setIsRetrying(false);
         setLoading(false);
