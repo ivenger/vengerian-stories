@@ -117,31 +117,31 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds, onReadStatusChan
       <div className="bg-white rounded-lg shadow-md overflow-hidden relative transition-all hover:shadow-lg">
         {user && (
           <div 
-            className={`absolute top-3 right-3 z-10 cursor-pointer p-2 rounded-full hover:bg-gray-100 transition-colors ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
+            className={`absolute top-2 sm:top-3 right-2 sm:right-3 z-10 cursor-pointer p-1.5 sm:p-2 rounded-full hover:bg-gray-100 transition-colors ${isLoading ? 'opacity-50 pointer-events-none' : ''}`}
             onClick={handleToggleReadStatus}
           >
             {isRead ? (
-              <Eye size={18} className="text-green-500" />
+              <Eye size={16} className="text-green-500 sm:h-[18px] sm:w-[18px]" />
             ) : (
-              <EyeOff size={18} className="text-gray-300" />
+              <EyeOff size={16} className="text-gray-300 sm:h-[18px] sm:w-[18px]" />
             )}
           </div>
         )}
         
-        <div className="p-5">
-          <div className={`flex flex-col md:${contentDirection} gap-4`}>
+        <div className="p-3 sm:p-5">
+          <div className={`flex flex-col sm:${contentDirection} gap-3 sm:gap-4`}>
             {post.image_url && (
               <img 
                 src={post.image_url} 
                 alt={post.title}
-                className="w-full md:w-32 h-32 object-cover rounded-md"
+                className="w-full sm:w-32 h-24 sm:h-32 object-cover rounded-md"
               />
             )}
             
             <div className={`flex-1 ${isRtl ? 'text-right' : 'text-left'}`}>
               <h2 
                 className={`
-                  block text-xl mb-2 hover:text-blue-600 transition-colors
+                  block text-lg sm:text-xl mb-1.5 sm:mb-2 hover:text-blue-600 transition-colors
                   ${isRtl ? 'font-raleway font-semibold' : hasCyrillicText ? 'font-pacifico' : 'font-pacifico'}
                 `}
                 dir={isRtl ? 'rtl' : 'ltr'}
@@ -149,8 +149,8 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds, onReadStatusChan
                 {post.title}
               </h2>
               
-              <div className={`flex items-center text-gray-500 text-sm mb-3 ${isRtl ? 'justify-end' : 'justify-start'}`}>
-                <Calendar className={`h-4 w-4 ${isRtl ? 'ml-1' : 'mr-1'}`} />
+              <div className={`flex items-center text-gray-500 text-xs sm:text-sm mb-2 sm:mb-3 ${isRtl ? 'justify-end' : 'justify-start'}`}>
+                <Calendar className={`h-3 w-3 sm:h-4 sm:w-4 ${isRtl ? 'ml-1' : 'mr-1'}`} />
                 <span>{post.date}</span>
               </div>
               
@@ -159,10 +159,10 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds, onReadStatusChan
                   {post.tags.map((tag, index) => (
                     <span 
                       key={index}
-                      className="flex items-center px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs"
+                      className="flex items-center px-1.5 sm:px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded-full text-[10px] sm:text-xs"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <Tag className={`h-3 w-3 ${isRtl ? 'ml-1' : 'mr-1'}`} />
+                      <Tag className={`h-2.5 w-2.5 sm:h-3 sm:w-3 ${isRtl ? 'ml-1' : 'mr-1'}`} />
                       {tag}
                     </span>
                   ))}

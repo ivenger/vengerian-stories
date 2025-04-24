@@ -13,18 +13,18 @@ interface PostHeaderProps {
 const PostHeader = ({ title, date, tags = [], imageUrl }: PostHeaderProps) => {
   return (
     <>
-      <div className="mb-8">
+      <div className="mb-4 sm:mb-8 px-4 sm:px-0">
         <Link
           to="/"
-          className="inline-flex items-center text-blue-600 hover:text-blue-800 transition-colors"
+          className="inline-flex items-center text-sm sm:text-base text-blue-600 hover:text-blue-800 transition-colors"
         >
-          <ArrowLeft className="mr-1 h-4 w-4" />
+          <ArrowLeft className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
           Back to Stories
         </Link>
       </div>
 
       {imageUrl && (
-        <div className="w-full h-64 sm:h-80 md:h-96 bg-gray-100">
+        <div className="w-full h-48 sm:h-64 md:h-80 lg:h-96 bg-gray-100">
           <img
             src={imageUrl}
             alt={title}

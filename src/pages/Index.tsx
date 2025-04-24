@@ -72,11 +72,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 text-center relative">
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        <div className="mb-4 sm:mb-6 text-center relative">
           <MultilingualTitle />
-          <div className="flex items-center justify-center gap-2">
-            <p className="text-gray-600">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+            <p className="text-gray-600 text-sm sm:text-base">
               Короткое, длиннее и странное
             </p>
             
@@ -99,7 +99,7 @@ const Index = () => {
           />
         </div>
 
-        <div className="max-w-3xl mx-auto">
+        <div className="w-full max-w-3xl mx-auto">
           {(error || connectionStatus === 'error') && (
             <div className="mb-4 flex justify-center">
               <Button 
