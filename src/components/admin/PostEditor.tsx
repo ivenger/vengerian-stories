@@ -7,6 +7,7 @@ import { savePost } from "@/services/blogService";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
 
 interface PostEditorProps {
   selectedPost: BlogEntry;
@@ -21,14 +22,19 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
   const { user, session } = useAuth();
   const [isSaving, setIsSaving] = useState(false);
   const [sessionOk, setSessionOk] = useState(false);
+  const { getActiveSession, refreshSession } = useSessionRefresh();
 
   // Check session on mount
   useEffect(() => {
     const checkSession = async () => {
+      console.log("PostEditor: Checking session");
+      
       if (!session) {
-        console.log("No session in auth context, checking directly with Supabase");
-        const { data } = await supabase.auth.getSession();
-        if (!data.session) {
+        console.log("PostEditor: No session in auth context, checking directly");
+        const activeSession = await getActiveSession();
+        
+        if (!activeSession) {
+          console.error("PostEditor: No valid session found");
           toast({
             title: "Session Error",
             description: "No valid session found. Please log in again.",
@@ -37,16 +43,23 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
           navigate("/auth");
           return;
         }
-        console.log("Valid session found directly from Supabase");
+        
+        console.log("PostEditor: Valid session found with user ID:", activeSession.user.id);
+      } else {
+        console.log("PostEditor: Session exists in auth context with user ID:", session.user.id);
       }
+      
       setSessionOk(true);
     };
     
     checkSession();
-  }, [session, navigate, toast]);
+  }, [session, navigate, toast, getActiveSession]);
 
   const handleSavePost = async (post: BlogEntry) => {
+    console.log("PostEditor: Starting save post operation");
+    
     if (!user) {
+      console.error("PostEditor: No user found in auth context");
       toast({
         title: "Error",
         description: "You must be logged in to save posts",
@@ -58,11 +71,12 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
 
     try {
       setIsSaving(true);
-      console.log("Saving post with data:", {
+      console.log("PostEditor: Saving post with data:", {
         title: post.title,
         id: post.id,
         tags: post.tags,
-        status: post.status
+        status: post.status,
+        userId: user.id
       });
 
       // Ensure post has the current user's ID
@@ -72,18 +86,16 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
       };
       
       // Force session refresh before save
-      try {
-        const { data, error } = await supabase.auth.refreshSession();
-        if (error) {
-          console.warn("Session refresh before save failed:", error);
-        } else {
-          console.log("Session refreshed before saving post");
-        }
-      } catch (e) {
-        console.warn("Exception during session refresh:", e);
+      console.log("PostEditor: Refreshing session before saving post");
+      await refreshSession();
+      
+      // Get the current session to verify we have a valid one
+      const currentSession = await getActiveSession();
+      if (!currentSession || !currentSession.user) {
+        throw new Error("No valid session available. Please log in again.");
       }
       
-      console.log("Saving post with user ID:", user.id);
+      console.log("PostEditor: Session verified, proceeding with save. User ID:", currentSession.user.id);
       const savedPost = await savePost(postWithUserId);
       
       toast({
@@ -98,10 +110,11 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
         navigate("/admin");
       }
     } catch (error: any) {
-      console.error("Error saving post:", error);
+      console.error("PostEditor: Error saving post:", error);
       
       // Handle specific error cases
-      if (error.message?.includes("Authentication")) {
+      if (error.message?.includes("Authentication") || error.message?.includes("Cannot read properties of null")) {
+        console.error("PostEditor: Authentication error detected:", error.message);
         toast({
           title: "Session Expired",
           description: "Your login session has expired. Please sign in again.",
@@ -133,6 +146,7 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
     return (
       <div className="p-4 text-center">
         <p>Checking session...</p>
+        <p className="text-sm text-gray-500 mt-2">If this takes too long, try refreshing the page or logging in again.</p>
       </div>
     );
   }

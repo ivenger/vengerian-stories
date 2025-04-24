@@ -104,48 +104,74 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       throw new Error("Post data is required to save.");
     }
 
+    // Enhanced logging for debugging authentication issues
+    console.log("savePost: Starting post save operation with data:", {
+      id: post.id,
+      title: post.title,
+      user_id: post.user_id
+    });
+
     // Log detailed auth info to debug the issue
     const { data: sessionData } = await supabase.auth.getSession();
     const currentSession = sessionData?.session;
     
-    console.log("Saving post with auth state:", {
+    if (!currentSession) {
+      console.error("savePost: No active session found");
+      throw new Error("Authentication required. Please log in again.");
+    }
+    
+    // Additional logging about the session state
+    const userMatches = post.user_id === currentSession.user.id;
+    const expiresAt = currentSession.expires_at ? new Date(currentSession.expires_at * 1000) : null;
+    const isExpired = expiresAt ? new Date() > expiresAt : false;
+    
+    console.log("savePost: Authentication state:", {
       hasSession: !!currentSession,
       userId: currentSession?.user?.id || "no user id",
-      isExpired: currentSession?.expires_at ? new Date(currentSession.expires_at * 1000) < new Date() : "unknown",
+      postUserId: post.user_id,
+      userIdsMatch: userMatches,
+      isExpired: isExpired,
+      expiresAt: expiresAt?.toISOString(),
+      remainingTime: expiresAt ? Math.floor((expiresAt.getTime() - Date.now()) / 1000) + " seconds" : "unknown",
     });
 
-    console.log("Saving post data:", {
-      id: post.id,
-      title: post.title,
-      status: post.status,
-      tags: post.tags
-    });
+    if (!userMatches) {
+      console.warn("savePost: Post user_id does not match session user_id");
+    }
 
-    // If session is expired or missing, try to refresh it
-    if (!currentSession || (currentSession.expires_at && new Date(currentSession.expires_at * 1000) < new Date())) {
-      console.log("Session expired or missing, attempting to refresh");
+    // If session is expired or about to expire, try to refresh it
+    if (isExpired || (expiresAt && new Date(expiresAt.getTime() - 5 * 60 * 1000) < new Date())) {
+      console.log("savePost: Session expired or about to expire, attempting to refresh");
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
       
       if (refreshError) {
-        console.error("Failed to refresh session:", refreshError);
+        console.error("savePost: Failed to refresh session:", refreshError);
         throw new Error(`Authentication error: ${refreshError.message}. Please log in again.`);
       }
       
-      console.log("Session refreshed successfully:", !!refreshData.session);
+      console.log("savePost: Session refreshed successfully:", {
+        hasNewSession: !!refreshData.session,
+        newUserId: refreshData.session?.user?.id || "no user id"
+      });
     }
 
     // Omit the 'created_at' field from the post data
     const { created_at, ...postData } = post;
 
-    // Set user_id explicitly if not present
+    // Ensure user_id is explicitly set
     if (!postData.user_id && currentSession?.user?.id) {
       postData.user_id = currentSession.user.id;
-      console.log(`Setting user_id to ${postData.user_id}`);
+      console.log(`savePost: Setting user_id to ${postData.user_id}`);
+    }
+
+    if (!postData.user_id) {
+      console.error("savePost: No user_id available for the post");
+      throw new Error("User ID is required to save a post. Please log in again.");
     }
 
     if (post.id) {
       // Update existing post
-      console.log(`Updating post with ID: ${post.id}`);
+      console.log(`savePost: Updating post with ID: ${post.id}`);
       const { data, error } = await supabase
         .from('entries')
         .update(postData)
@@ -154,7 +180,7 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         .single();
 
       if (error) {
-        console.error('Error updating post:', error);
+        console.error('savePost: Error updating post:', error);
         if (error.code === '42501') {
           throw new Error(`Permission denied: You don't have the right permissions to update this post.`);
         } else if (error.code === '401') {
@@ -164,11 +190,11 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         }
       }
 
-      console.log('Post updated successfully:', data.id);
+      console.log('savePost: Post updated successfully:', data.id);
       return data as BlogEntry;
     } else {
       // Create a new post
-      console.log('Creating a new post');
+      console.log('savePost: Creating a new post');
       const { data, error } = await supabase
         .from('entries')
         .insert([postData])
@@ -176,7 +202,7 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         .single();
 
       if (error) {
-        console.error('Error creating post:', error);
+        console.error('savePost: Error creating post:', error);
         if (error.code === '42501') {
           throw new Error(`Permission denied: You don't have the right permissions to create posts.`);
         } else if (error.code === '401') {
@@ -186,7 +212,7 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         }
       }
 
-      console.log('Post created successfully:', data.id);
+      console.log('savePost: Post created successfully:', data.id);
       return data as BlogEntry;
     }
   } catch (error: any) {
