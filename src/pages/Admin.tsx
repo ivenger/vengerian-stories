@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import PostsTab from "../components/admin/PostsTab";
@@ -18,8 +19,19 @@ const Admin = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedPost, setSelectedPost] = useState<BlogEntry | null>(null);
   const [activeTab, setActiveTab] = useState("posts");
+  const [pageReady, setPageReady] = useState(false);
   const query = useQuery();
   const editId = query.get("editId");
+
+  // Ensure smooth transitions when switching to the admin page
+  useEffect(() => {
+    // Short delay to allow components to initialize properly
+    const timer = setTimeout(() => {
+      setPageReady(true);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white">
@@ -30,7 +42,11 @@ const Admin = () => {
           <MultilingualTitle />
         </div>
         
-        {!isEditing ? (
+        {!pageReady ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+          </div>
+        ) : !isEditing ? (
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6">
               <TabsTrigger value="posts">Posts</TabsTrigger>

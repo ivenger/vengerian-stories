@@ -15,6 +15,7 @@ export const useReadingHistory = (user: User | null) => {
   const { refreshSession, getActiveSession } = useSessionRefresh();
   const lastUpdateTime = useRef<number>(0);
   const realtimeChannel = useRef<any>(null);
+  const initialLoadComplete = useRef(false);
 
   // Track mounting status
   useEffect(() => {
@@ -80,10 +81,15 @@ export const useReadingHistory = (user: User | null) => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: No user, clearing reading history`);
       setReadPostIds([]);
       hasLoaded.current = false;
+      initialLoadComplete.current = false;
       return;
     }
     
-    fetchReadPosts();
+    // Only fetch if we haven't loaded data yet for this user
+    if (!initialLoadComplete.current) {
+      fetchReadPosts();
+      initialLoadComplete.current = true;
+    }
     
     // Also refresh data when the page becomes visible again
     const handleVisibilityChange = () => {
@@ -144,7 +150,11 @@ export const useReadingHistory = (user: User | null) => {
       
       console.log(`[${new Date().toISOString()}] useReadingHistory: Reading history fetched:`, data?.length || 0, "items");
       if (isMounted.current) {
-        setReadPostIds((data || []).map(item => item.post_id));
+        // Only update the state if the data has actually changed
+        const newReadPostIds = (data || []).map(item => item.post_id);
+        if (JSON.stringify(newReadPostIds) !== JSON.stringify(readPostIds)) {
+          setReadPostIds(newReadPostIds);
+        }
         hasLoaded.current = true;
       }
     } catch (err) {

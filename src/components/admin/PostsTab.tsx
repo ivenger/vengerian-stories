@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BlogEntry } from "@/types/blogTypes";
 import PostsList from "./posts/PostsList";
@@ -22,6 +22,27 @@ const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
     unpublishPost,
     handleDeletePost
   } = usePostsManagement(editId, setIsEditing, setSelectedPost);
+
+  // Prevent showing empty state during initial load
+  const [showContent, setShowContent] = useState(false);
+  
+  useEffect(() => {
+    // Only show content after initial loading is complete
+    // or after a short delay to prevent flickering
+    const timer = setTimeout(() => {
+      setShowContent(true);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!showContent) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   return (
     <div>
