@@ -12,7 +12,7 @@ export const useReadingHistory = (user: User | null) => {
   const [loading, setLoading] = useState(false);
   const isMounted = useRef(true);
   const hasLoaded = useRef(false);
-  const { shouldRefreshSession, refreshSession } = useSessionRefresh();
+  const { refreshSession, getActiveSession } = useSessionRefresh();
   const lastUpdateTime = useRef<number>(0);
   const realtimeChannel = useRef<any>(null);
 
@@ -118,9 +118,10 @@ export const useReadingHistory = (user: User | null) => {
       setLoading(true);
       console.log(`[${new Date().toISOString()}] useReadingHistory: Fetching reading history for user:`, user.id);
       
-      // Check if session needs refresh before making the request
-      if (shouldRefreshSession()) {
-        console.log(`[${new Date().toISOString()}] useReadingHistory: Refreshing session before fetching reading history`);
+      // Check if session is active before making the request
+      const session = await getActiveSession();
+      if (!session) {
+        console.log(`[${new Date().toISOString()}] useReadingHistory: No active session, attempting to refresh`);
         await refreshSession();
       }
       
