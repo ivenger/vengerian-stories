@@ -122,12 +122,12 @@ const BlogPost = () => {
         ) : error || !post ? (
           <PostError error={error} />
         ) : (
-          <React.memo(PostContent)({
-            post, 
-            isUserLoggedIn: !!user, 
-            user,
-            postId: id
-          })
+          <PostContent 
+            post={post} 
+            isUserLoggedIn={!!user} 
+            user={user}
+            postId={id}
+          />
         )}
       </div>
     </div>
