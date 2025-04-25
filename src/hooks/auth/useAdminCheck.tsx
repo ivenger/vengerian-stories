@@ -174,4 +174,11 @@ export function useAdminCheck(session: Session | null) {
     }
 
     return () => {
-      if
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [session]);
+  
+  return { isAdmin, loading, error };
+}
