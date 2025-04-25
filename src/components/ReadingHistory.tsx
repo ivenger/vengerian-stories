@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/auth/useAuth";
@@ -10,107 +10,119 @@ import { Check, Clock, AlertCircle, BookOpen, Eye, EyeOff } from "lucide-react";
 import { BlogEntry } from "../types/blogTypes";
 import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
 import { shouldRetryRequest } from "@/hooks/filters/filterUtils";
+import { useReadingHistory } from "@/hooks/filters/useReadingHistory";
+
+const CACHE_DURATION = 60000; // 1 minute cache
 
 const ReadingHistory = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [allPosts, setAllPosts] = useState<BlogEntry[]>([]);
-  const [readPosts, setReadPosts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { refreshSession } = useSessionRefresh();
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
-  const dataFetchedRef = useRef<boolean>(false);
+  const lastFetchTime = useRef<number>(0);
+  const fetchInProgress = useRef<boolean>(false);
+  const { readPostIds, loading: readingHistoryLoading } = useReadingHistory(user);
 
-  useEffect(() => {
-    if (!user || dataFetchedRef.current) return;
+  const fetchData = useCallback(async (force = false) => {
+    // Prevent concurrent fetches
+    if (fetchInProgress.current) {
+      console.log("ReadingHistory: Fetch already in progress, skipping");
+      return;
+    }
 
-    const fetchData = async () => {
-      try {
-        console.log("ReadingHistory: Starting data fetch");
-        setLoading(true);
-        setError(null);
+    // Check cache unless force refresh
+    const now = Date.now();
+    if (!force && now - lastFetchTime.current < CACHE_DURATION) {
+      console.log("ReadingHistory: Using cached data");
+      return;
+    }
+
+    try {
+      console.log("ReadingHistory: Starting data fetch");
+      setLoading(true);
+      setError(null);
+      fetchInProgress.current = true;
+      
+      // Check if we need to refresh the session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        console.log("ReadingHistory: No active session found, refreshing...");
+        await refreshSession();
+      }
+      
+      // Fetch all published blog posts with explicit columns
+      const { data: posts, error: postsError } = await supabase
+        .from("entries")
+        .select("id, title, title_language, content, excerpt, date, language, status, image_url, created_at, updated_at, translations, tags")
+        .eq("status", "published")
+        .order("created_at", { ascending: false });
         
-        // Check if we need to refresh the session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          console.log("ReadingHistory: No active session found, refreshing...");
+      if (postsError) {
+        if (shouldRetryRequest(postsError) && retryCount < maxRetries) {
+          console.log(`ReadingHistory: Retrying posts fetch (attempt ${retryCount + 1}/${maxRetries})`);
+          setRetryCount(prev => prev + 1);
           await refreshSession();
+          setTimeout(() => fetchData(true), 1000);
+          return;
         }
-        
-        // Fetch all published blog posts with explicit columns
-        const { data: posts, error: postsError } = await supabase
-          .from("entries")
-          .select("id, title, title_language, content, excerpt, date, language, status, image_url, created_at, updated_at, translations, tags")
-          .eq("status", "published")
-          .order("created_at", { ascending: false });
-          
-        if (postsError) {
-          // Check if we should retry due to auth/connection issues
-          if (shouldRetryRequest(postsError) && retryCount < maxRetries) {
-            console.log(`ReadingHistory: Retrying posts fetch (attempt ${retryCount + 1}/${maxRetries})`);
-            setRetryCount(prev => prev + 1);
-            await refreshSession();
-            setTimeout(fetchData, 1000); // Retry after a short delay
-            return;
-          }
-          throw postsError;
-        }
-        
-        // Reset retry count on success
-        setRetryCount(0);
-        
-        // Fetch reading history with explicit column selection
-        const { data: history, error: historyError } = await supabase
-          .from("reading_history")
-          .select("id, user_id, post_id, read_at")
-          .eq("user_id", user.id);
-        
-        if (historyError) {
-          console.error("ReadingHistory: Error fetching reading history:", historyError);
-          // Don't throw error for reading history issues, just continue with empty state
-          setReadPosts([]);
-        } else {
-          setReadPosts((history || []).map(item => item.post_id));
-        }
+        throw postsError;
+      }
+      
+      // Reset retry count on success
+      setRetryCount(0);
+      
+      // Map the posts to BlogEntry type
+      const mappedPosts = (posts || []).map((post): BlogEntry => ({
+        id: post.id,
+        title: post.title,
+        title_language: post.title_language || ['en'],
+        content: post.content || '',
+        excerpt: post.excerpt,
+        date: post.date,
+        language: post.language || ['English'],
+        status: post.status || 'published',
+        image_url: post.image_url,
+        created_at: post.created_at,
+        updated_at: post.updated_at,
+        translations: post.translations || [],
+        tags: post.tags || []
+      }));
+      
+      console.log("ReadingHistory: Data fetch completed successfully");
+      setAllPosts(mappedPosts);
+      lastFetchTime.current = now;
+    } catch (err: any) {
+      console.error("ReadingHistory: Error fetching reading data:", err);
+      setError(err.message || "Failed to load reading history");
+    } finally {
+      setLoading(false);
+      fetchInProgress.current = false;
+    }
+  }, [refreshSession, retryCount, maxRetries]);
 
-        // Map the posts to BlogEntry type
-        const mappedPosts = (posts || []).map((post): BlogEntry => ({
-          id: post.id,
-          title: post.title,
-          title_language: post.title_language || ['en'],
-          content: post.content || '',
-          excerpt: post.excerpt,
-          date: post.date,
-          language: post.language || ['English'],
-          status: post.status || 'published',
-          image_url: post.image_url,
-          created_at: post.created_at,
-          updated_at: post.updated_at,
-          translations: post.translations || [],
-          tags: post.tags || []
-        }));
-        
-        console.log("ReadingHistory: Data fetch completed successfully");
-        setAllPosts(mappedPosts);
-        dataFetchedRef.current = true; // Mark data as fetched to prevent loops
-      } catch (err: any) {
-        console.error("ReadingHistory: Error fetching reading data:", err);
-        setError(err.message || "Failed to load reading history");
-      } finally {
-        setLoading(false);
+  // Initial fetch and visibility change handler
+  useEffect(() => {
+    if (!user) return;
+
+    fetchData();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchData();
       }
     };
-    
-    fetchData();
-    
-    return () => {
-      // Cleanup function if needed
-    };
-  }, [user, refreshSession]);
 
-  if (loading) {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [user, fetchData]);
+
+  if (loading || readingHistoryLoading) {
     return (
       <div className="flex justify-center py-8">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
@@ -125,8 +137,7 @@ const ReadingHistory = () => {
         <p className="text-red-700">{error}</p>
         <Button 
           variant="outline" 
-          size="sm"
-          onClick={() => window.location.reload()}
+          onClick={() => fetchData(true)}
           className="mt-3"
         >
           Try Again
@@ -145,8 +156,8 @@ const ReadingHistory = () => {
   }
 
   // Separate posts into read and unread
-  const readPostsList = allPosts.filter(post => readPosts.includes(post.id));
-  const unreadPostsList = allPosts.filter(post => !readPosts.includes(post.id));
+  const readPostsList = allPosts.filter(post => readPostIds.includes(post.id));
+  const unreadPostsList = allPosts.filter(post => !readPostIds.includes(post.id));
 
   return (
     <div className="space-y-6">

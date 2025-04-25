@@ -1,12 +1,12 @@
-
 import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
 import { useSessionRefresh } from './useSessionRefresh';
+import { ReadingHistoryItem } from '@/types/readingHistory';
 
-/**
- * Hook to fetch and manage reading history for a user
- */
+const CACHE_DURATION = 60 * 1000; // 1 minute cache
+const DEBOUNCE_DELAY = 500; // 500ms debounce
+
 export const useReadingHistory = (user: User | null) => {
   const [readPostIds, setReadPostIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -15,7 +15,8 @@ export const useReadingHistory = (user: User | null) => {
   const { refreshSession, getActiveSession } = useSessionRefresh();
   const lastUpdateTime = useRef<number>(0);
   const realtimeChannel = useRef<any>(null);
-  const initialLoadComplete = useRef(false);
+  const fetchInProgressRef = useRef(false);
+  const debouncedFetchTimeout = useRef<NodeJS.Timeout>();
 
   // Track mounting status
   useEffect(() => {
@@ -26,19 +27,20 @@ export const useReadingHistory = (user: User | null) => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: Component unmounted`);
       isMounted.current = false;
       
-      // Clean up realtime subscription if it exists
+      // Clean up realtime subscription and debounce timeout
       if (realtimeChannel.current) {
         supabase.removeChannel(realtimeChannel.current);
         realtimeChannel.current = null;
+      }
+      if (debouncedFetchTimeout.current) {
+        clearTimeout(debouncedFetchTimeout.current);
       }
     };
   }, []);
 
   // Set up real-time subscription for reading_history changes
   useEffect(() => {
-    if (!user) {
-      return;
-    }
+    if (!user) return;
     
     console.log(`[${new Date().toISOString()}] useReadingHistory: Setting up realtime subscription for user ${user.id}`);
     
@@ -48,32 +50,37 @@ export const useReadingHistory = (user: User | null) => {
       .on(
         'postgres_changes',
         {
-          event: '*', // Listen for all changes (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'reading_history',
           filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           console.log(`[${new Date().toISOString()}] useReadingHistory: Realtime update received:`, payload);
-          // Refresh reading history when changes occur, with a small debounce
-          setTimeout(() => {
+          // Debounce the fetch to prevent multiple rapid updates
+          if (debouncedFetchTimeout.current) {
+            clearTimeout(debouncedFetchTimeout.current);
+          }
+          debouncedFetchTimeout.current = setTimeout(() => {
             if (isMounted.current) {
               fetchReadPosts(true);
             }
-          }, 100);
+          }, DEBOUNCE_DELAY);
         }
       )
       .subscribe();
     
-    // Store the channel reference for cleanup
     realtimeChannel.current = channel;
     
     return () => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: Removing realtime subscription`);
+      if (debouncedFetchTimeout.current) {
+        clearTimeout(debouncedFetchTimeout.current);
+      }
       supabase.removeChannel(channel);
       realtimeChannel.current = null;
     };
-  }, [user?.id]); // Only re-subscribe when user ID changes
+  }, [user?.id]);
 
   // Effect to fetch reading history when user changes
   useEffect(() => {
@@ -81,50 +88,46 @@ export const useReadingHistory = (user: User | null) => {
       console.log(`[${new Date().toISOString()}] useReadingHistory: No user, clearing reading history`);
       setReadPostIds([]);
       hasLoaded.current = false;
-      initialLoadComplete.current = false;
       return;
     }
-    
-    // Only fetch if we haven't loaded data yet for this user
-    if (!initialLoadComplete.current) {
+
+    if (!hasLoaded.current) {
       fetchReadPosts();
-      initialLoadComplete.current = true;
     }
     
     // Also refresh data when the page becomes visible again
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user && isMounted.current) {
-        console.log(`[${new Date().toISOString()}] useReadingHistory: Page visible, refreshing reading history`);
-        fetchReadPosts();
+        console.log(`[${new Date().toISOString()}] useReadingHistory: Page visible, checking if refresh needed`);
+        const timeSinceLastUpdate = Date.now() - lastUpdateTime.current;
+        if (timeSinceLastUpdate > CACHE_DURATION) {
+          fetchReadPosts();
+        }
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user]); 
 
-  // Extracted fetch function for reuse
   const fetchReadPosts = async (forceRefresh = false) => {
-    if (!user || !isMounted.current) {
+    if (!user || !isMounted.current || fetchInProgressRef.current) {
       return;
     }
     
-    // Don't fetch too frequently (debounce) unless forceRefresh is true
     const now = Date.now();
-    if (!forceRefresh && now - lastUpdateTime.current < 500) {
-      console.log(`[${new Date().toISOString()}] useReadingHistory: Skipping fetch, too soon since last update`);
+    if (!forceRefresh && now - lastUpdateTime.current < CACHE_DURATION) {
+      console.log(`[${new Date().toISOString()}] useReadingHistory: Using cached data`);
       return;
     }
-    lastUpdateTime.current = now;
-    
+
     try {
+      fetchInProgressRef.current = true;
       setLoading(true);
       console.log(`[${new Date().toISOString()}] useReadingHistory: Fetching reading history for user:`, user.id);
       
-      // Check if session is active before making the request
       const session = await getActiveSession();
       if (!session) {
         console.log(`[${new Date().toISOString()}] useReadingHistory: No active session, attempting to refresh`);
@@ -137,25 +140,17 @@ export const useReadingHistory = (user: User | null) => {
         .eq('user_id', user.id);
         
       if (error) {
-        if (error.code === '406') {
-          console.warn(`[${new Date().toISOString()}] useReadingHistory: 406 Not Acceptable error - continuing without reading history`);
-          if (isMounted.current) {
-            setReadPostIds([]);
-          }
-        } else {
-          console.error(`[${new Date().toISOString()}] useReadingHistory: Error fetching reading history:`, error);
-        }
+        console.error(`[${new Date().toISOString()}] useReadingHistory: Error fetching reading history:`, error);
         return;
       }
       
-      console.log(`[${new Date().toISOString()}] useReadingHistory: Reading history fetched:`, data?.length || 0, "items");
       if (isMounted.current) {
-        // Only update the state if the data has actually changed
         const newReadPostIds = (data || []).map(item => item.post_id);
         if (JSON.stringify(newReadPostIds) !== JSON.stringify(readPostIds)) {
           setReadPostIds(newReadPostIds);
         }
         hasLoaded.current = true;
+        lastUpdateTime.current = now;
       }
     } catch (err) {
       console.error(`[${new Date().toISOString()}] useReadingHistory: Error fetching reading history:`, err);
@@ -163,6 +158,7 @@ export const useReadingHistory = (user: User | null) => {
       if (isMounted.current) {
         setLoading(false);
       }
+      fetchInProgressRef.current = false;
     }
   };
 
@@ -170,6 +166,6 @@ export const useReadingHistory = (user: User | null) => {
     readPostIds,
     loading,
     hasLoaded: hasLoaded.current,
-    refreshReadingHistory: fetchReadPosts // Expose refresh function
+    refreshReadingHistory: (force = false) => fetchReadPosts(force)
   };
 };
