@@ -10,7 +10,7 @@ interface SessionMonitorProps {
   sessionError: string | null;
 }
 
-const DEBOUNCE_DELAY = 1000; // Increased to 1 second
+const DEBOUNCE_DELAY = 2000; // Increased to 2 seconds to reduce frequency
 
 export function useSessionMonitor({
   session,
@@ -19,6 +19,7 @@ export function useSessionMonitor({
   isAdmin,
   sessionError
 }: SessionMonitorProps) {
+  // Track previous state to prevent unnecessary logs
   const previousState = useRef({
     hasSession: false,
     userEmail: null as string | null,
@@ -27,26 +28,54 @@ export function useSessionMonitor({
     sessionLoading: true
   });
 
+  // Add a counter to track consecutive identical states
+  const consecutiveIdenticalStates = useRef(0);
+  const maxConsecutiveStates = 3; // Stop logging after 3 identical states
+
   const logStateChange = useRef(
     debounce((newState: any) => {
       const prevStateStr = JSON.stringify(previousState.current);
       const newStateStr = JSON.stringify(newState);
 
       if (prevStateStr !== newStateStr) {
+        // Reset counter when state changes
+        consecutiveIdenticalStates.current = 0;
+        
         console.log("Session state changed:", {
           ...newState,
           sessionError: sessionError || "no error"
         });
         previousState.current = newState;
+      } else {
+        // Increment counter for identical states
+        consecutiveIdenticalStates.current++;
+        
+        // Only log if we haven't exceeded the max consecutive identical states
+        if (consecutiveIdenticalStates.current <= maxConsecutiveStates) {
+          console.log(`Session state unchanged (${consecutiveIdenticalStates.current}/${maxConsecutiveStates})`);
+        }
       }
     }, DEBOUNCE_DELAY)
   ).current;
 
   useEffect(() => {
+    // Only trigger check if we have relevant changes
+    const userId = session?.user?.id;
+    const userEmail = session?.user?.email;
+    
+    // Skip if both user ID and loading state are unchanged
+    if (
+      userId === previousState.current.userId && 
+      sessionLoading === previousState.current.sessionLoading &&
+      isAdmin === previousState.current.isAdmin
+    ) {
+      return;
+    }
+
     const currentState = {
       hasSession: !!session,
-      userEmail: session?.user?.email || null,
-      userId: session?.user?.id || null,
+      userEmail: userEmail || null,
+      userId: userId || null,
       isAdmin,
       sessionLoading
     };
@@ -56,7 +85,7 @@ export function useSessionMonitor({
     return () => {
       logStateChange.cancel();
     };
-  }, [session?.user?.id, isAdmin, sessionLoading]);
+  }, [session?.user?.id, session?.user?.email, isAdmin, sessionLoading, logStateChange]);
 
   return null;
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,14 +15,22 @@ export function useAdminCheck(session: Session | null) {
   const [error, setError] = useState<string | null>(null);
   const lastCheckedRef = useRef<string | null>(null);
   const checkInProgressRef = useRef<boolean>(false);
+  const skipLogRef = useRef<boolean>(false);
+  const checkCountRef = useRef<number>(0);
+  
+  // Track render cycle to prevent excessive logging
+  const renderCountRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
+    renderCountRef.current += 1;
 
     const checkAdmin = async () => {
       if (!session?.user?.id) {
-        setIsAdmin(false);
-        setLoading(false);
+        if (isMounted) {
+          setIsAdmin(false);
+          setLoading(false);
+        }
         return;
       }
 
@@ -33,19 +42,33 @@ export function useAdminCheck(session: Session | null) {
       // Check cache first
       const cachedStatus = getAdminCache();
       if (cachedStatus && cachedStatus.userId === session.user.id) {
-        setIsAdmin(cachedStatus.isAdmin);
-        setLoading(false);
+        if (isMounted) {
+          setIsAdmin(cachedStatus.isAdmin);
+          setLoading(false);
+        }
         return;
       }
 
       // Skip if already checked this user
       if (lastCheckedRef.current === session.user.id) {
-        logAdminCheck(`[AdminCheck] Skipping check for same user: ${session.user.email}`);
+        // Only log every 5th check to avoid spamming the console
+        if (!skipLogRef.current) {
+          logAdminCheck(`[AdminCheck] Skipping check for same user: ${session.user.email}`);
+          skipLogRef.current = true;
+          
+          // Reset skip log flag after a delay
+          setTimeout(() => {
+            skipLogRef.current = false;
+          }, 5000);
+        }
         return;
       }
 
       checkInProgressRef.current = true;
       lastCheckedRef.current = session.user.id;
+      
+      // Add log to track admin check execution
+      console.log(`[AdminCheck] Checking admin status for user: ${session.user.email} (check #${++checkCountRef.current})`);
 
       try {
         const { data: roles, error: rolesError } = await supabase
