@@ -38,49 +38,52 @@ export function useAdminCheck(session: Session | null) {
       try {
         checkAttemptedRef.current = true;
         
-        // First try using the database function
-        console.log("[AdminCheck] Querying is_admin function for user:", session.user.id, session.user.email);
-        const { data: isAdminData, error: isAdminError } = await supabase
-          .rpc('is_admin', { user_id: session.user.id });
-
-        if (!isAdminError) {
-          console.log("[AdminCheck] is_admin function result:", isAdminData);
-          if (isMounted) {
-            setIsAdmin(!!isAdminData);
-            setLoading(false);
-          }
-          return;
-        }
+        console.log("[AdminCheck] Checking admin status for:", session.user.email);
         
-        // Fallback to querying the user_roles table directly if the function call fails
-        console.log("[AdminCheck] Function call failed, querying user_roles directly:", isAdminError);
+        // Try a direct query first - sometimes more reliable than the RPC
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id);
 
-        console.log("[AdminCheck] user_roles query result:", { roles, rolesError });
+        console.log("[AdminCheck] Direct query result:", { roles, rolesError });
 
-        // If we can query the roles table directly
         if (!rolesError && roles) {
           const adminRole = roles.find(role => role.role === 'admin');
           console.log("[AdminCheck] Found roles:", roles, "Admin role present:", !!adminRole);
+          
           if (isMounted) {
             setIsAdmin(!!adminRole);
             setLoading(false);
           }
-          console.log("[AdminCheck] Admin status result for", session.user.email, ":", !!adminRole);
+          console.log("[AdminCheck] Admin status set to:", !!adminRole);
           return;
-        } else {
-          // If both approaches failed, log why
-          console.error("Failed to check admin status:", isAdminError, rolesError);
-          
+        }
+        
+        // Fallback to using the database function if direct query fails
+        console.log("[AdminCheck] Direct query failed, trying is_admin function");
+        const { data: isAdminData, error: isAdminError } = await supabase
+          .rpc('is_admin', { user_id: session.user.id });
+
+        console.log("[AdminCheck] is_admin function result:", { isAdminData, isAdminError });
+
+        if (!isAdminError && isAdminData !== null) {
           if (isMounted) {
-            // Default to false and inform about the error
-            setIsAdmin(false); 
-            setError("Could not verify admin privileges. Please try refreshing the page.");
+            setIsAdmin(!!isAdminData);
             setLoading(false);
           }
+          console.log("[AdminCheck] Admin status set via function to:", !!isAdminData);
+          return;
+        }
+
+        // If both approaches failed, log why
+        console.error("Failed to check admin status:", rolesError, isAdminError);
+        
+        if (isMounted) {
+          // Default to false and inform about the error
+          setIsAdmin(false); 
+          setError("Could not verify admin privileges. Please try refreshing the page.");
+          setLoading(false);
         }
       } catch (err: any) {
         console.error("Failed to check user role:", err);

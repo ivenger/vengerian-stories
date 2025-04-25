@@ -1,8 +1,7 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/auth/useAuth"; // Updated import
+import { useAuth } from "@/hooks/auth/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,12 +21,14 @@ const ReadingHistory = () => {
   const { refreshSession } = useSessionRefresh();
   const [retryCount, setRetryCount] = useState(0);
   const maxRetries = 3;
+  const dataFetchedRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || dataFetchedRef.current) return;
 
     const fetchData = async () => {
       try {
+        console.log("ReadingHistory: Starting data fetch");
         setLoading(true);
         setError(null);
         
@@ -91,7 +92,9 @@ const ReadingHistory = () => {
           tags: post.tags || []
         }));
         
+        console.log("ReadingHistory: Data fetch completed successfully");
         setAllPosts(mappedPosts);
+        dataFetchedRef.current = true; // Mark data as fetched to prevent loops
       } catch (err: any) {
         console.error("ReadingHistory: Error fetching reading data:", err);
         setError(err.message || "Failed to load reading history");
@@ -102,18 +105,8 @@ const ReadingHistory = () => {
     
     fetchData();
     
-    // Also refresh data when the page becomes visible again
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user) {
-        console.log(`ReadingHistory: Page visible, refreshing data`);
-        fetchData();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
     return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      // Cleanup function if needed
     };
   }, [user, refreshSession]);
 

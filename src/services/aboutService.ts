@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -13,13 +12,6 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
     const queryStartTime = Date.now();
     console.log(`AboutService: Starting query at ${new Date().toISOString()}`);
 
-    // Set up a query timeout that's shorter than the global timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => {
-        reject(new Error("Query timeout - taking too long to respond"));
-      }, 5000); // 5 second timeout
-    });
-
     // Create a query builder but don't execute yet
     let query = supabase
       .from('about_content')
@@ -33,15 +25,7 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
     query = query.order('updated_at', { ascending: false });
     
     // Execute the query and get the first row
-    const queryPromise = query.limit(1);
-    
-    // Race between the query and the timeout
-    const { data, error } = await Promise.race([
-      queryPromise,
-      timeoutPromise.then(() => {
-        throw new Error("Query timeout");
-      })
-    ]) as any;
+    const { data, error } = await query.limit(1);
     
     const queryEndTime = Date.now();
     console.log(`AboutService: Query completed in ${queryEndTime - queryStartTime}ms`);
