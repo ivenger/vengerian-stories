@@ -1,149 +1,14 @@
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Session } from "@supabase/supabase-js";
+import { useSessionInit } from "./useSessionInit";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 export function useSession() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const recoveryAttemptedRef = useRef<boolean>(false);
+  const { session, loading, error } = useSessionInit();
   const { toast } = useToast();
-
-  // Handle session refresh attempts
-  const handleSessionRecovery = useCallback(async () => {
-    try {
-      // Prevent multiple recovery attempts
-      if (recoveryAttemptedRef.current) {
-        console.log("Session recovery already attempted, skipping");
-        return false;
-      }
-      
-      recoveryAttemptedRef.current = true;
-      console.log("Attempting to recover session");
-      
-      // Check if we have auth data in localStorage
-      const tokenData = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
-      
-      if (!tokenData) {
-        console.log("No session data in localStorage to recover");
-        return false;
-      }
-      
-      // Attempt session refresh with timeout
-      const refreshPromise = supabase.auth.refreshSession();
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Session refresh timeout')), 10000);
-      });
-      
-      // Race the refresh against a timeout
-      const result = await Promise.race([refreshPromise, timeoutPromise]) as any;
-      
-      if (result.data?.session) {
-        console.log("Session recovered successfully");
-        setSession(result.data.session);
-        setError(null);
-        return true;
-      }
-      
-      return false;
-    } catch (err) {
-      console.error("Session recovery error:", err);
-      return false;
-    } finally {
-      // Ensure we stop loading regardless of outcome
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-    setLoading(true);
-    setError(null);
-
-    console.log("useSession: Initializing auth state monitoring");
-
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        console.log("Auth state changed:", event, newSession?.user?.email || "no user");
-
-        if (!isMounted) return;
-
-        if (event === 'TOKEN_REFRESHED') {
-          console.log('Token refreshed successfully');
-        }
-
-        setSession(newSession);
-        setLoading(false);
-
-        if (event === 'SIGNED_IN') {
-          toast({
-            title: "Welcome back!",
-            description: "You've successfully signed in.",
-          });
-        } else if (event === 'SIGNED_OUT') {
-          toast({
-            title: "Signed out",
-            description: "You've been signed out successfully.",
-          });
-        }
-      }
-    );
-
-    // Initial session load
-    const initSession = async () => {
-      try {
-        console.log("useSession: Getting initial session");
-        const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-
-        if (sessionError) {
-          console.error("Initial session error:", sessionError);
-          setError("Failed to retrieve authentication session");
-          
-          // Try to recover session if initial load fails
-          const recovered = await handleSessionRecovery();
-          if (!recovered) {
-            setLoading(false);
-          }
-          return;
-        }
-
-        console.log("Initial session loaded:", !!currentSession);
-        setSession(currentSession);
-        setLoading(false);
-      } catch (err) {
-        console.error("Initial session exception:", err);
-        if (isMounted) {
-          setError("An unexpected error occurred while retrieving your session");
-          setLoading(false);
-        }
-      }
-    };
-
-    // Set a timeout to force-end loading state if it gets stuck
-    const loadingTimeoutId = setTimeout(() => {
-      if (isMounted && loading) {
-        console.warn("Auth loading state timed out, forcing completion");
-        setLoading(false);
-      }
-    }, 8000);
-
-    initSession();
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-      clearTimeout(loadingTimeoutId);
-    };
-  }, [toast, handleSessionRecovery]);
 
   const signOut = async () => {
     try {
-      setLoading(true);
       console.log("useSession - Signing out");
       
       // Create a timeout promise to prevent hanging
@@ -165,10 +30,6 @@ export function useSession() {
         }
       });
       
-      // Always clear session state regardless of API success
-      setSession(null);
-      recoveryAttemptedRef.current = false; // Reset recovery flag on sign out
-      
       toast({
         title: "Signed out",
         description: "You've been signed out successfully.",
@@ -180,8 +41,6 @@ export function useSession() {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
-    } finally {
-      setLoading(false);
     }
   };
 
