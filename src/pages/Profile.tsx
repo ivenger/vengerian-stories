@@ -21,6 +21,7 @@ const Profile = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<any>(null);
+  const [loadAttempted, setLoadAttempted] = useState(false);
   
   useEffect(() => {
     console.log("Profile page - Auth state:", { 
@@ -31,12 +32,13 @@ const Profile = () => {
   }, [user, isAdmin, session]);
   
   useEffect(() => {
-    // Don't try to load profile if there's no authenticated user
-    if (!user) return;
+    // Don't try to load profile if there's no authenticated user or if we've already attempted to load
+    if (!user || loadAttempted) return;
 
     const loadUserDetails = async () => {
       try {
         setLoading(true);
+        setLoadAttempted(true);
         
         // Fetch user details from Supabase
         const { data, error } = await supabase.auth.getUser();
@@ -69,19 +71,7 @@ const Profile = () => {
     
     loadUserDetails();
     
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && user) {
-        console.log("Profile page became visible, refreshing user details");
-        loadUserDetails();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [user, toast, navigate]);
+  }, [user, toast, navigate, loadAttempted]);
 
   const getDisplayName = () => {
     if (!userDetails) return '';
