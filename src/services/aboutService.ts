@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 
 /**
@@ -6,12 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
  * @param language Optional language filter
  */
 export async function fetchAboutContent(signal?: AbortSignal, language?: string) {
-  console.log(`AboutService: Fetching content with language: ${language || 'default'}`);
-  
   try {
-    const queryStartTime = Date.now();
-    console.log(`AboutService: Starting query at ${new Date().toISOString()}`);
-
     // Create a query builder but don't execute yet
     let query = supabase
       .from('about_content')
@@ -26,9 +22,6 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
     
     // Execute the query and get the first row
     const { data, error } = await query.limit(1);
-    
-    const queryEndTime = Date.now();
-    console.log(`AboutService: Query completed in ${queryEndTime - queryStartTime}ms`);
 
     if (error) {
       console.error("AboutService: Error fetching about content:", error);
@@ -40,8 +33,6 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
       return null;
     }
 
-    // Return the first row from the result array
-    console.log("AboutService: Content fetched successfully", data[0]);
     return data[0];
   } catch (error: any) {
     console.error(`AboutService: Failed to fetch about content:`, error);
@@ -60,8 +51,6 @@ export async function fetchAboutContent(signal?: AbortSignal, language?: string)
  */
 export async function updateAboutContent(content: string, language: string, imageUrl?: string) {
   try {
-    console.log(`AboutService: Updating content for language: ${language}`);
-    
     const { data, error } = await supabase
       .from('about_content')
       .upsert({ content, language, image_url: imageUrl }, { onConflict: 'language' })
@@ -73,7 +62,6 @@ export async function updateAboutContent(content: string, language: string, imag
       throw error;
     }
 
-    console.log("AboutService: Content updated successfully");
     return data;
   } catch (error: any) {
     console.error(`AboutService: Failed to update about content:`, error);

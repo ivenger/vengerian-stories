@@ -17,20 +17,12 @@ const About: React.FC = () => {
   const { toast } = useToast();
   const isMountedRef = useRef(true);
   const fetchAttempts = useRef(0);
-  const maxRetries = 3;
+  const maxRetries = 2; // Reduced from 3 to improve performance
   const fetchControllerRef = useRef<AbortController | null>(null);
-  const isFirstMount = useRef(true);
   const dataLoadedRef = useRef(false);
   
   useEffect(() => {
-    console.log("About: Component mounting", {
-      isFirstMount: isFirstMount.current,
-      fetchAttempts: fetchAttempts.current,
-      isMounted: isMountedRef.current,
-      hasController: !!fetchControllerRef.current,
-      dataLoaded: dataLoadedRef.current
-    });
-
+    console.log("About: Component mounting");
     isMountedRef.current = true;
     
     // Skip if data already loaded
@@ -39,24 +31,12 @@ const About: React.FC = () => {
       return;
     }
 
-    if (isFirstMount.current) {
-      console.log("About: First mount - resetting fetch state");
-      fetchAttempts.current = 0;
-      isFirstMount.current = false;
-    }
-
     let currentController: AbortController | null = null;
 
     const loadAboutContent = async () => {
       if (!isMountedRef.current) {
-        console.log("About: Skipping load - component unmounted");
         return;
       }
-
-      console.log("About: Starting content load", {
-        fetchAttempts: fetchAttempts.current,
-        hasExistingController: !!currentController
-      });
 
       setError(null);
       if (fetchAttempts.current === 0) {
@@ -65,7 +45,6 @@ const About: React.FC = () => {
 
       // Clean up any existing request
       if (currentController) {
-        console.log("About: Aborting existing request");
         currentController.abort();
       }
 
@@ -73,43 +52,26 @@ const About: React.FC = () => {
       fetchControllerRef.current = currentController;
 
       try {
-        console.log("About: Initiating fetch request");
         const data = await fetchAboutContent(currentController.signal);
         
-        if (!isMountedRef.current) {
-          console.log("About: Fetch completed but component unmounted - discarding result");
-          return;
-        }
-
-        if (fetchControllerRef.current !== currentController) {
-          console.log("About: Fetch completed but controller changed - discarding result");
+        if (!isMountedRef.current || fetchControllerRef.current !== currentController) {
           return;
         }
 
         if (!data) {
-          console.log("About: No content received from service");
           setContent("No content available.");
           setImageUrl(null);
         } else {
-          console.log("About: Content fetched successfully", { data });
           setContent(data.content || "");
           setImageUrl(data.image_url);
         }
         
         setIsLoading(false);
         fetchAttempts.current = 0;
-        dataLoadedRef.current = true; // Mark data as loaded successfully
+        dataLoadedRef.current = true;
       } catch (error: any) {
-        console.log("About: Fetch error occurred", { 
-          error, 
-          name: error.name,
-          message: error.message,
-          currentAttempt: fetchAttempts.current 
-        });
-
-        // Don't retry on abort errors since they're intentional
+        // Skip error handling for aborted requests
         if (error.name === 'AbortError') {
-          console.log("About: Request was aborted, skipping retry");
           return;
         }
 
@@ -117,10 +79,8 @@ const About: React.FC = () => {
           if (fetchAttempts.current < maxRetries) {
             const retryDelay = Math.min(1000 * Math.pow(2, fetchAttempts.current), 5000);
             fetchAttempts.current += 1;
-            console.log("About: Retrying fetch", { attempt: fetchAttempts.current, retryDelay });
             setTimeout(loadAboutContent, retryDelay);
           } else {
-            console.log("About: Max retries reached, giving up", { attemptsMade: fetchAttempts.current });
             setError("Failed to load About content. Please try again later.");
             setIsLoading(false);
           }
@@ -131,20 +91,16 @@ const About: React.FC = () => {
     loadAboutContent();
 
     return () => {
-      console.log("About: Component unmounting");
       isMountedRef.current = false;
       
       if (currentController) {
-        console.log("About: Cleaning up controller");
         currentController.abort();
-        currentController = null;
       }
       fetchControllerRef.current = null;
     };
   }, [maxRetries]);
 
   const handleRetry = () => {
-    console.log("About: Manual retry requested");
     setIsLoading(true);
     setError(null);
     fetchAttempts.current = 0;
@@ -158,7 +114,6 @@ const About: React.FC = () => {
     fetchAboutContent(fetchControllerRef.current.signal)
       .then(data => {
         if (isMountedRef.current) {
-          console.log("About: Content fetched successfully on retry:", data);
           setContent(data?.content || "");
           setImageUrl(data?.image_url);
           setIsLoading(false);
@@ -167,7 +122,6 @@ const About: React.FC = () => {
       })
       .catch(error => {
         if (isMountedRef.current && error.name !== 'AbortError') {
-          console.error("About: Error on retry:", error);
           setError("Failed to load About content. Please try again later.");
           setIsLoading(false);
           

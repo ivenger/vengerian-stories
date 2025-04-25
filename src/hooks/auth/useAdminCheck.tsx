@@ -8,9 +8,19 @@ export function useAdminCheck(session: Session | null) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const checkAttemptedRef = useRef<boolean>(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let isMounted = true;
+    
+    // Abort any existing requests when effect reruns or unmounts
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
+    // Create a new abort controller for this effect run
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     
     const checkUserRole = async () => {
       // Reset state on every check only if component is mounted
@@ -28,76 +38,87 @@ export function useAdminCheck(session: Session | null) {
         return;
       }
 
-      // Only check admin role once per session
-      if (checkAttemptedRef.current) {
-        console.log("[AdminCheck] Already checked admin status for this session, reusing result");
-        setLoading(false);
-        return;
-      }
-
       try {
-        checkAttemptedRef.current = true;
+        // For debugging purposes, log the user we're checking
+        console.log(`[AdminCheck] Checking admin status for user: ${session.user.email} (${session.user.id})`);
         
-        console.log("[AdminCheck] Checking admin status for:", session.user.email);
-        
-        // Try a direct query first - sometimes more reliable than the RPC
+        // Try a direct query first - this is the most reliable approach
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id);
 
-        console.log("[AdminCheck] Direct query result:", { roles, rolesError });
-
+        // If query successful and admin role found, set isAdmin to true
         if (!rolesError && roles) {
           const adminRole = roles.find(role => role.role === 'admin');
-          console.log("[AdminCheck] Found roles:", roles, "Admin role present:", !!adminRole);
           
-          if (isMounted) {
+          if (isMounted && !abortController.signal.aborted) {
             setIsAdmin(!!adminRole);
             setLoading(false);
+            checkAttemptedRef.current = true;
+            
+            if (adminRole) {
+              console.log(`[AdminCheck] User ${session.user.email} confirmed as admin via direct query`);
+            } else {
+              console.log(`[AdminCheck] User ${session.user.email} is not an admin via direct query`);
+            }
           }
-          console.log("[AdminCheck] Admin status set to:", !!adminRole);
           return;
         }
         
-        // Fallback to using the database function if direct query fails
-        console.log("[AdminCheck] Direct query failed, trying is_admin function");
+        // If direct query failed, try the database function as fallback
+        if (rolesError) {
+          console.log(`[AdminCheck] Direct query failed with error: ${rolesError.message}. Trying function.`);
+        }
+        
         const { data: isAdminData, error: isAdminError } = await supabase
           .rpc('is_admin', { user_id: session.user.id });
-
-        console.log("[AdminCheck] is_admin function result:", { isAdminData, isAdminError });
-
-        if (!isAdminError && isAdminData !== null) {
-          if (isMounted) {
-            setIsAdmin(!!isAdminData);
-            setLoading(false);
+        
+        if (!isAdminError && isAdminData !== null && isMounted && !abortController.signal.aborted) {
+          setIsAdmin(!!isAdminData);
+          setLoading(false);
+          checkAttemptedRef.current = true;
+          
+          if (isAdminData) {
+            console.log(`[AdminCheck] User ${session.user.email} confirmed as admin via function`);
+          } else {
+            console.log(`[AdminCheck] User ${session.user.email} is not an admin via function`);
           }
-          console.log("[AdminCheck] Admin status set via function to:", !!isAdminData);
           return;
         }
 
-        // If both approaches failed, log why
-        console.error("Failed to check admin status:", rolesError, isAdminError);
-        
-        if (isMounted) {
-          // Default to false and inform about the error
-          setIsAdmin(false); 
-          setError("Could not verify admin privileges. Please try refreshing the page.");
+        // Both approaches failed, log error and set default values
+        if (isMounted && !abortController.signal.aborted) {
+          console.error("Failed to check admin status:", rolesError, isAdminError);
+          setIsAdmin(false);
+          setError("Could not verify admin privileges");
           setLoading(false);
+          checkAttemptedRef.current = true;
         }
       } catch (err: any) {
-        console.error("Failed to check user role:", err);
-        
-        if (isMounted) {
-          setIsAdmin(false); 
+        if (isMounted && !abortController.signal.aborted) {
+          console.error("Exception checking user role:", err);
+          setIsAdmin(false);
           setError(err.message || "Failed to verify admin privileges");
           setLoading(false);
+          checkAttemptedRef.current = true;
         }
       }
     };
 
     if (session) {
-      checkUserRole();
+      // Reset flag when session changes
+      if (session.user?.id) {
+        checkAttemptedRef.current = false;
+      }
+      
+      // Only check if we haven't already checked for this session
+      if (!checkAttemptedRef.current) {
+        checkUserRole();
+      } else {
+        console.log("[AdminCheck] Admin check already performed for this session");
+        setLoading(false);
+      }
     } else {
       setIsAdmin(false);
       setLoading(false);
@@ -106,6 +127,8 @@ export function useAdminCheck(session: Session | null) {
 
     return () => {
       isMounted = false;
+      abortController.abort();
+      abortControllerRef.current = null;
     };
   }, [session]);
 
