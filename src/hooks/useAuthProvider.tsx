@@ -1,18 +1,33 @@
 
 import { useSession } from "./auth/useSession";
 import { useAdminCheck } from "./auth/useAdminCheck";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export function useAuthProvider() {
   const { session, loading: sessionLoading, error: sessionError, signOut: sessionSignOut } = useSession();
   const { isAdmin, loading: adminLoading, error: adminError } = useAdminCheck(session);
+  const refreshAttemptedRef = useRef(false);
   
   // Refresh function that components can call directly when needed
   const refreshSession = useCallback(async () => {
     try {
+      // Prevent multiple refresh attempts within a short period
+      if (refreshAttemptedRef.current) {
+        console.log("useAuthProvider - Refresh already attempted recently, skipping");
+        return null;
+      }
+      
+      refreshAttemptedRef.current = true;
+      
       console.log("useAuthProvider - Manually refreshing session");
       const { data, error } = await supabase.auth.refreshSession();
+      
+      // Reset the flag after a delay
+      setTimeout(() => {
+        refreshAttemptedRef.current = false;
+      }, 5000);
+      
       if (error) {
         console.error("useAuthProvider - Failed to refresh session:", error);
         return null;
@@ -51,10 +66,6 @@ export function useAuthProvider() {
         console.warn("Could not clear localStorage:", e);
       }
       
-      // Force refresh the page as a last resort if needed
-      // This is optional, but can help ensure a clean state
-      // window.location.href = '/';
-      
     } catch (err) {
       console.error("useAuthProvider - Error signing out:", err);
       
@@ -80,16 +91,7 @@ export function useAuthProvider() {
       isAdmin
     });
     
-    // If we have no session but there appears to be data in localStorage,
-    // attempt to refresh the session
-    if (!session && !sessionLoading) {
-      const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
-      if (sessionStr) {
-        console.log("useAuthProvider - Session missing but localStorage has data, attempting refresh");
-        refreshSession();
-      }
-    }
-  }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError, refreshSession]);
+  }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError]);
 
   return {
     session,

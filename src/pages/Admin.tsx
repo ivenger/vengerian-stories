@@ -10,6 +10,7 @@ import PostEditor from "../components/admin/PostEditor";
 import { BlogEntry } from "../types/blogTypes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MultilingualTitle from "../components/MultilingualTitle";
+import { useAuth } from "@/hooks/auth/useAuth";
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -20,8 +21,10 @@ const Admin = () => {
   const [selectedPost, setSelectedPost] = useState<BlogEntry | null>(null);
   const [activeTab, setActiveTab] = useState("posts");
   const [pageReady, setPageReady] = useState(false);
+  const [adminChecked, setAdminChecked] = useState(false);
   const query = useQuery();
   const editId = query.get("editId");
+  const { isAdmin } = useAuth();
 
   // Ensure smooth transitions when switching to the admin page
   useEffect(() => {
@@ -32,6 +35,14 @@ const Admin = () => {
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Verify admin status once instead of repeatedly
+  useEffect(() => {
+    if (isAdmin !== undefined && !adminChecked) {
+      setAdminChecked(true);
+      console.log("Admin page - Admin status confirmed:", isAdmin);
+    }
+  }, [isAdmin, adminChecked]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -56,23 +67,25 @@ const Admin = () => {
             </TabsList>
             
             <TabsContent value="posts">
-              <PostsTab 
-                editId={editId} 
-                setIsEditing={setIsEditing} 
-                setSelectedPost={setSelectedPost} 
-              />
+              {pageReady && adminChecked && (
+                <PostsTab 
+                  editId={editId} 
+                  setIsEditing={setIsEditing} 
+                  setSelectedPost={setSelectedPost} 
+                />
+              )}
             </TabsContent>
             
             <TabsContent value="about">
-              <AboutEditor />
+              {pageReady && adminChecked && <AboutEditor />}
             </TabsContent>
             
             <TabsContent value="tags">
-              <TagManagement />
+              {pageReady && adminChecked && <TagManagement />}
             </TabsContent>
             
             <TabsContent value="users">
-              <UserManagement />
+              {pageReady && adminChecked && <UserManagement />}
             </TabsContent>
           </Tabs>
         ) : (

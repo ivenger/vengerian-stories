@@ -21,16 +21,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [auth.user, auth.isAdmin, auth.loading, auth.session]);
 
   // Attempt to refresh session when auth loading completes if no session is found
+  // Add a flag to prevent multiple refresh attempts
   useEffect(() => {
-    if (!auth.loading && !auth.session) {
+    let hasAttemptedRefresh = false;
+
+    if (!auth.loading && !auth.session && !hasAttemptedRefresh) {
       console.log("AuthProvider - No active session after loading, checking local storage");
       const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
       
-      if (sessionStr) {
+      if (sessionStr && !hasAttemptedRefresh) {
         console.log("AuthProvider - Found session in localStorage, attempting refresh");
+        hasAttemptedRefresh = true;
         refreshSession();
       }
     }
+
+    return () => {
+      hasAttemptedRefresh = false;
+    };
   }, [auth.loading, auth.session, refreshSession]);
 
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;

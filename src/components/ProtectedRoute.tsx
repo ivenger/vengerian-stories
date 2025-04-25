@@ -3,6 +3,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/auth/useAuth"; 
 import { Button } from "@/components/ui/button";
 import { AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -15,18 +16,31 @@ const ProtectedRoute = ({
   redirectTo = "/auth",
   adminOnly = false
 }: ProtectedRouteProps) => {
-  const { user, loading, isAdmin, error } = useAuth();
+  const { user, loading, isAdmin, error, refreshSession } = useAuth();
+  // Add state to track refresh attempts to prevent loops
+  const [hasAttemptedRefresh, setHasAttemptedRefresh] = useState(false);
 
   // Debug output for admin status
-  if (adminOnly) {
-    console.log("ProtectedRoute - Admin check:", { 
-      isAdmin, 
-      userId: user?.id,
-      email: user?.email,
-      isLoading: loading,
-      error: error || "none"
-    });
-  }
+  useEffect(() => {
+    if (adminOnly) {
+      console.log("ProtectedRoute - Admin check:", { 
+        isAdmin, 
+        userId: user?.id,
+        email: user?.email,
+        isLoading: loading,
+        error: error || "none"
+      });
+    }
+
+    // Attempt refresh only once if needed
+    if (!loading && !user && !hasAttemptedRefresh) {
+      console.log("ProtectedRoute - No user after loading, attempting refresh");
+      setHasAttemptedRefresh(true);
+      refreshSession().catch(() => {
+        console.log("ProtectedRoute - Refresh attempt failed");
+      });
+    }
+  }, [adminOnly, isAdmin, user, loading, error, hasAttemptedRefresh, refreshSession]);
 
   // If there's an authentication error, show error message with retry option
   if (error) {
