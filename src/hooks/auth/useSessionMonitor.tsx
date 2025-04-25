@@ -1,9 +1,8 @@
-
-import { useEffect } from "react";
-import { Session, User } from "@supabase/supabase-js";
+import { useEffect, useRef } from 'react';
+import { User } from '@supabase/supabase-js';
 
 interface SessionMonitorProps {
-  session: Session | null;
+  session: any;
   user: User | null;
   sessionLoading: boolean;
   isAdmin: boolean;
@@ -17,14 +16,31 @@ export function useSessionMonitor({
   isAdmin,
   sessionError
 }: SessionMonitorProps) {
+  const previousState = useRef({
+    hasSession: false,
+    userEmail: null as string | null,
+    userId: null as string | null,
+    isAdmin: false,
+    sessionLoading: true
+  });
+
   useEffect(() => {
-    console.log("Session state changed:", {
+    const currentState = {
       hasSession: !!session,
-      userEmail: session?.user?.email || "no user",
-      userId: session?.user?.id,
-      sessionLoading,
+      userEmail: session?.user?.email || null,
+      userId: session?.user?.id || null,
       isAdmin,
-      sessionError: sessionError || "no error"
-    });
+      sessionLoading
+    };
+
+    // Only log if there's a meaningful change
+    if (JSON.stringify(currentState) !== JSON.stringify(previousState.current)) {
+      console.log("Session state changed:", {
+        ...currentState,
+        sessionError: sessionError || "no error"
+      });
+      
+      previousState.current = currentState;
+    }
   }, [session, sessionLoading, sessionError, isAdmin]);
 }

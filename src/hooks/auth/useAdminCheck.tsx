@@ -1,7 +1,7 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { getAdminCache, setAdminCache } from "./useAdminCache";
 
 export function useAdminCheck(session: Session | null) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -9,6 +9,7 @@ export function useAdminCheck(session: Session | null) {
   const [error, setError] = useState<string | null>(null);
   const checkAttemptedRef = useRef<boolean>(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastCheckedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -38,6 +39,18 @@ export function useAdminCheck(session: Session | null) {
         return;
       }
 
+      // Check cache first
+      const cachedAdmin = getAdminCache();
+      if (cachedAdmin && cachedAdmin.userId === session.user.id) {
+        if (isMounted && !abortController.signal.aborted) {
+          setIsAdmin(cachedAdmin.isAdmin);
+          setLoading(false);
+          checkAttemptedRef.current = true;
+          console.log(`[AdminCheck] Using cached admin status for user ${session.user.email}`);
+          return;
+        }
+      }
+
       try {
         // For debugging purposes, log the user we're checking
         console.log(`[AdminCheck] Checking admin status for user: ${session.user.email} (${session.user.id})`);
@@ -51,11 +64,15 @@ export function useAdminCheck(session: Session | null) {
         // If query successful and admin role found, set isAdmin to true
         if (!rolesError && roles) {
           const adminRole = roles.find(role => role.role === 'admin');
+          const isAdminUser = !!adminRole;
           
           if (isMounted && !abortController.signal.aborted) {
-            setIsAdmin(!!adminRole);
+            setIsAdmin(isAdminUser);
             setLoading(false);
             checkAttemptedRef.current = true;
+            
+            // Cache the result
+            setAdminCache(session.user.id, isAdminUser);
             
             if (adminRole) {
               console.log(`[AdminCheck] User ${session.user.email} confirmed as admin via direct query`);
@@ -75,9 +92,13 @@ export function useAdminCheck(session: Session | null) {
           .rpc('is_admin', { user_id: session.user.id });
         
         if (!isAdminError && isAdminData !== null && isMounted && !abortController.signal.aborted) {
-          setIsAdmin(!!isAdminData);
+          const isAdminUser = !!isAdminData;
+          setIsAdmin(isAdminUser);
           setLoading(false);
           checkAttemptedRef.current = true;
+          
+          // Cache the result
+          setAdminCache(session.user.id, isAdminUser);
           
           if (isAdminData) {
             console.log(`[AdminCheck] User ${session.user.email} confirmed as admin via function`);
@@ -107,8 +128,14 @@ export function useAdminCheck(session: Session | null) {
     };
 
     if (session) {
-      // Reset flag when session changes
+      // Prevent rechecking for same user
+      if (session.user?.id === lastCheckedUserIdRef.current) {
+        console.log("[AdminCheck] Skipping check for same user");
+        return;
+      }
+      
       if (session.user?.id) {
+        lastCheckedUserIdRef.current = session.user.id;
         checkAttemptedRef.current = false;
       }
       
