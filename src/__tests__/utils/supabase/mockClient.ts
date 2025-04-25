@@ -1,6 +1,16 @@
 
-import { createClient } from '@supabase/supabase-js';
 import { vi } from 'vitest';
+
+// Create mock types for better type safety
+type MockFunction = ReturnType<typeof vi.fn>;
+type MockReturnThis = { mockReturnThis: () => any };
+
+// Create a properly typed mock function that can chain
+const createChainableMock = () => {
+  const fn = vi.fn();
+  fn.mockReturnThis = () => fn;
+  return fn as MockFunction & MockReturnThis;
+};
 
 // Mock Supabase client
 export const mockSupabaseClient = {
@@ -10,11 +20,11 @@ export const mockSupabaseClient = {
     refreshSession: vi.fn()
   },
   from: vi.fn(() => ({
-    select: vi.fn().mockReturnThis(),
-    insert: vi.fn().mockReturnThis(),
-    update: vi.fn().mockReturnThis(),
-    delete: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
+    select: createChainableMock(),
+    insert: createChainableMock(),
+    update: createChainableMock(),
+    delete: createChainableMock(),
+    eq: createChainableMock(),
     single: vi.fn(),
     maybeSingle: vi.fn()
   })),
@@ -27,4 +37,3 @@ export const mockSupabaseClient = {
 export const resetMocks = () => {
   vi.clearAllMocks();
 };
-

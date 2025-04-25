@@ -1,6 +1,6 @@
 
 import { renderHook } from '@testing-library/react-hooks';
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockSupabaseClient, resetMocks } from '../../utils/supabase/mockClient';
 import { useSignOut } from '@/hooks/auth/useSignOut';
 
@@ -33,4 +33,3 @@ describe('useSignOut', () => {
     expect(localStorage.removeItem).toHaveBeenCalledWith('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
   });
 });
-

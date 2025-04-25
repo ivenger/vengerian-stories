@@ -1,5 +1,5 @@
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockSupabaseClient, resetMocks } from '../utils/supabase/mockClient';
 import { getUserReadingHistory, isPostRead, togglePostReadStatus } from '@/services/readingHistoryService';
 
@@ -65,4 +65,3 @@ describe('readingHistoryService', () => {
     });
   });
 });
-
