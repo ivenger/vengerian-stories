@@ -1,47 +1,44 @@
-
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useSessionRefresh = () => {
-  // Use a ref to track recent refreshes and prevent multiple calls in quick succession
-  const lastRefreshTimeRef = useRef<number>(0);
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+export function useSessionRefresh() {
   const refreshInProgressRef = useRef<boolean>(false);
-  const refreshIntervalMs = 300000; // Only refresh every 5 minutes at most (increased from 60s)
+  const lastRefreshTimeRef = useRef<number>(0);
+  const refreshAttemptRef = useRef<number>(0);
 
   const refreshSession = useCallback(async () => {
     try {
-      // Prevent concurrent refresh operations
+      // Prevent concurrent refreshes
       if (refreshInProgressRef.current) {
-        console.log("useSessionRefresh: Another refresh already in progress");
         return null;
       }
 
-      // Check if we've refreshed recently to prevent excessive calls
+      // Rate limit refresh attempts
       const now = Date.now();
-      if (now - lastRefreshTimeRef.current < refreshIntervalMs) {
+      if (now - lastRefreshTimeRef.current < REFRESH_INTERVAL_MS) {
         return null;
       }
-      
+
       refreshInProgressRef.current = true;
       lastRefreshTimeRef.current = now;
-      
-      // Attempt to refresh the session
+
       const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
-        console.error("useSessionRefresh: Failed to refresh session:", error.message);
+        console.error("Session refresh failed:", error.message);
         return null;
       }
       
       if (data?.session) {
-        console.log("useSessionRefresh: Session refreshed successfully");
+        refreshAttemptRef.current = 0;
         return data.session;
-      } else {
-        console.warn("useSessionRefresh: No session after refresh attempt");
-        return null;
       }
+
+      return null;
     } catch (err) {
-      console.error("useSessionRefresh: Exception during session refresh:", err);
+      console.error("Session refresh exception:", err);
       return null;
     } finally {
       refreshInProgressRef.current = false;
@@ -50,45 +47,23 @@ export const useSessionRefresh = () => {
 
   const getActiveSession = useCallback(async () => {
     try {
-      // Prevent concurrent operations
-      if (refreshInProgressRef.current) {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      
+      if (error || !session) {
         return null;
       }
-      
-      // Check if we've refreshed recently
+
       const now = Date.now();
-      if (now - lastRefreshTimeRef.current < refreshIntervalMs) {
-        return null;
+      const expiresAt = session.expires_at ? new Date(session.expires_at * 1000) : null;
+      const needsRefresh = expiresAt && (expiresAt.getTime() - now < 5 * 60 * 1000);
+
+      if (needsRefresh) {
+        return refreshSession();
       }
-      
-      // Get current session without refreshing
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("useSessionRefresh: Error getting session:", error.message);
-        return null;
-      }
-      
-      if (data?.session) {
-        const expiresAt = data.session.expires_at ? new Date(data.session.expires_at * 1000) : null;
-        const isExpired = expiresAt ? new Date() > expiresAt : false;
-        const remainingTimeSeconds = expiresAt ? Math.floor((expiresAt.getTime() - Date.now()) / 1000) : null;
-        
-        // Only refresh if the session is expired or about to expire (less than 5 minutes)
-        if (isExpired || (remainingTimeSeconds !== null && remainingTimeSeconds < 300)) {
-          refreshInProgressRef.current = true;
-          lastRefreshTimeRef.current = now;
-          const result = await refreshSession();
-          refreshInProgressRef.current = false;
-          return result;
-        }
-        
-        return data.session;
-      } else {
-        return null;
-      }
+
+      return session;
     } catch (err) {
-      console.error("useSessionRefresh: Exception getting session:", err);
+      console.error("Get active session error:", err);
       return null;
     }
   }, [refreshSession]);
@@ -97,4 +72,4 @@ export const useSessionRefresh = () => {
     refreshSession,
     getActiveSession
   };
-};
+}

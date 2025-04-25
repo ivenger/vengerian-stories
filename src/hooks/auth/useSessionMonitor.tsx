@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
+import { debounce } from 'lodash';
 
 interface SessionMonitorProps {
   session: any;
@@ -9,7 +10,7 @@ interface SessionMonitorProps {
   sessionError: string | null;
 }
 
-const DEBOUNCE_DELAY = 500; // 500ms debounce
+const DEBOUNCE_DELAY = 1000; // Increased to 1 second
 
 export function useSessionMonitor({
   session,
@@ -25,51 +26,37 @@ export function useSessionMonitor({
     isAdmin: false,
     sessionLoading: true
   });
-  const debounceTimerRef = useRef<NodeJS.Timeout>();
-  const isInitialMount = useRef(true);
 
-  useEffect(() => {
-    // Skip the first render to avoid unnecessary state updates
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
-    // Clear existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    // Debounce the state update
-    debounceTimerRef.current = setTimeout(() => {
-      const currentState = {
-        hasSession: !!session,
-        userEmail: session?.user?.email || null,
-        userId: session?.user?.id || null,
-        isAdmin,
-        sessionLoading
-      };
-
-      // Deep comparison of states
+  const logStateChange = useRef(
+    debounce((newState: any) => {
       const prevStateStr = JSON.stringify(previousState.current);
-      const currentStateStr = JSON.stringify(currentState);
+      const newStateStr = JSON.stringify(newState);
 
-      // Only log if there's a meaningful change
-      if (prevStateStr !== currentStateStr) {
+      if (prevStateStr !== newStateStr) {
         console.log("Session state changed:", {
-          ...currentState,
+          ...newState,
           sessionError: sessionError || "no error"
         });
-        
-        previousState.current = currentState;
+        previousState.current = newState;
       }
-    }, DEBOUNCE_DELAY);
+    }, DEBOUNCE_DELAY)
+  ).current;
 
-    // Cleanup
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+  useEffect(() => {
+    const currentState = {
+      hasSession: !!session,
+      userEmail: session?.user?.email || null,
+      userId: session?.user?.id || null,
+      isAdmin,
+      sessionLoading
     };
-  }, [session?.user?.id, session?.expires_at, sessionLoading, sessionError, isAdmin]);
+
+    logStateChange(currentState);
+
+    return () => {
+      logStateChange.cancel();
+    };
+  }, [session?.user?.id, isAdmin, sessionLoading]);
+
+  return null;
 }

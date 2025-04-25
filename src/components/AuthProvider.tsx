@@ -1,65 +1,64 @@
-import { ReactNode, useEffect, useRef, useCallback } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import { useAuthProvider } from "../hooks/useAuthProvider";
 import { useSessionRefresh } from "../hooks/filters/useSessionRefresh";
 import { getAdminCache } from "../hooks/auth/useAdminCache";
+import { debounce } from "lodash";
 
-const DEBOUNCE_DELAY = 500; // 500ms debounce for state updates
+const DEBOUNCE_DELAY = 1000;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useAuthProvider();
   const hasAttemptedRefreshRef = useRef<boolean>(false);
   const lastLoggedStateRef = useRef<string>("");
-  const debounceTimerRef = useRef<NodeJS.Timeout>();
+  const authStateRef = useRef(auth);
   const { refreshSession } = useSessionRefresh();
 
-  // Debounced state logging
-  const logAuthState = useCallback((state: any) => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
+  // Store current auth state in ref to avoid unnecessary effects
+  useEffect(() => {
+    authStateRef.current = auth;
+  }, [auth]);
 
-    debounceTimerRef.current = setTimeout(() => {
-      const stateString = JSON.stringify(state);
+  // Debounced logging of auth state changes
+  const logAuthState = useRef(
+    debounce((newState: any) => {
+      const stateString = JSON.stringify(newState);
       if (stateString !== lastLoggedStateRef.current) {
-        console.log("AuthProvider - auth state:", state);
         lastLoggedStateRef.current = stateString;
+        console.log("Auth state changed:", newState);
       }
-    }, DEBOUNCE_DELAY);
-  }, []);
+    }, DEBOUNCE_DELAY)
+  ).current;
 
-  // Log auth state changes with debouncing
+  // Log meaningful auth state changes only
   useEffect(() => {
     const currentState = {
-      isAuthenticated: !!auth.user,
-      userEmail: auth.user?.email,
-      isAdmin: auth.isAdmin,
-      userId: auth.user?.id,
-      sessionStatus: auth.loading ? "loading" : !!auth.session ? "active" : "no session"
+      type: 'INITIAL_SESSION',
+      email: auth.user?.email || null
     };
 
     logAuthState(currentState);
 
     return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
+      logAuthState.cancel();
     };
-  }, [auth.user?.id, auth.isAdmin, auth.loading, auth.session?.expires_at, logAuthState]);
+  }, [auth.user?.email]);
 
-  // Session refresh logic with deduplication
+  // Session refresh with token verification
   useEffect(() => {
     const attemptSessionRefresh = async () => {
       if (!auth.loading && !auth.session && !hasAttemptedRefreshRef.current) {
         const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
-        
-        if (sessionStr && !hasAttemptedRefreshRef.current) {
+        if (!sessionStr) return;
+
+        try {
+          const tokenData = JSON.parse(sessionStr);
+          if (!tokenData?.access_token) return;
+
           hasAttemptedRefreshRef.current = true;
-          try {
-            await refreshSession();
-          } catch (err) {
-            console.error("AuthProvider - Error refreshing session:", err);
-          }
+          await refreshSession();
+        } catch (err) {
+          console.error("Failed to parse or refresh session:", err);
         }
       }
     };
