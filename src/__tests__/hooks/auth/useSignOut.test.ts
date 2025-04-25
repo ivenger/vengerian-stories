@@ -1,5 +1,5 @@
 
-import { renderHook } from '@testing-library/react-hooks';
+import { renderHook, act } from '@testing-library/react-hooks';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { mockSupabaseClient, resetMocks } from '../../utils/supabase/mockClient';
 import { useSignOut } from '@/hooks/auth/useSignOut';
@@ -18,7 +18,9 @@ describe('useSignOut', () => {
     mockSupabaseClient.auth.signOut.mockResolvedValueOnce({ error: null });
 
     const { result } = renderHook(() => useSignOut());
-    await result.current.signOut();
+    await act(async () => {
+      await result.current.signOut();
+    });
 
     expect(mockSupabaseClient.auth.signOut).toHaveBeenCalled();
     expect(localStorage.removeItem).toHaveBeenCalledWith('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
@@ -28,7 +30,9 @@ describe('useSignOut', () => {
     mockSupabaseClient.auth.signOut.mockRejectedValueOnce(new Error('Sign out failed'));
 
     const { result } = renderHook(() => useSignOut());
-    await result.current.signOut();
+    await act(async () => {
+      await result.current.signOut();
+    });
 
     expect(localStorage.removeItem).toHaveBeenCalledWith('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
   });
