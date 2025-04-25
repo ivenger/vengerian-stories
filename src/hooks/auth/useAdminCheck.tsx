@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,12 +7,13 @@ export function useAdminCheck(session: Session | null) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const checkAttemptedRef = useRef<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
     
     const checkUserRole = async () => {
-      // Reset state on every check
+      // Reset state on every check only if component is mounted
       if (isMounted) {
         setLoading(true);
         setError(null);
@@ -26,7 +28,16 @@ export function useAdminCheck(session: Session | null) {
         return;
       }
 
+      // Only check admin role once per session
+      if (checkAttemptedRef.current) {
+        console.log("[AdminCheck] Already checked admin status for this session, reusing result");
+        setLoading(false);
+        return;
+      }
+
       try {
+        checkAttemptedRef.current = true;
+        
         // First try using the user_roles table directly
         console.log("[AdminCheck] Querying user_roles for user:", session.user.id, session.user.email);
         const { data: roles, error: rolesError } = await supabase
@@ -46,51 +57,21 @@ export function useAdminCheck(session: Session | null) {
           }
           console.log("[AdminCheck] Admin status result for", session.user.email, ":", !!adminRole);
           return;
-        }
-
-        // If the first approach failed, log why
-        console.error("Failed to query roles directly:", rolesError);
-        
-        // Fallback to old method with better error handling
-        /*
-        try {
-          console.log("Step 1: Making RPC call to is_admin");
+        } else {
+          // If the first approach failed, log why
+          console.error("Failed to query roles directly:", rolesError);
           
-          const { data, error, status, statusText } = await supabase.rpc('is_admin', {
-            user_id: session.user.id
-          });
-          
-          console.log("Step 5: Processing response...");
-          
-          if (error) {
-            console.error(" RPC call returned error:", {
-              error,
-              errorMessage: error.message,
-              errorDetails: error.details,
-              status,
-              statusText,
-            });
-            
-            throw new Error(`Admin check failed: ${error.message} (Code: ${error.code})`);
-          }
-
           if (isMounted) {
-            setIsAdmin(!!data);
+            // Default to false and inform about the error
+            setIsAdmin(false); 
+            setError("Could not verify admin privileges. Please try refreshing the page.");
             setLoading(false);
           }
-          
-          console.log("Admin status result for", session.user.email, ":", !!data);
-        } catch (rpcError) {
-          console.error("RPC call failed completely:", rpcError);
-          throw rpcError;
         }
-        */
       } catch (err: any) {
         console.error("Failed to check user role:", err);
-        console.error("=== Finished admin check ===");
         
         if (isMounted) {
-          // Remove fallback: do not check if the user's email contains 'admin'
           setIsAdmin(false); 
           setError(err.message || "Failed to verify admin privileges");
           setLoading(false);

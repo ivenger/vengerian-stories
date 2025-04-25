@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import PostsTab from "../components/admin/PostsTab";
@@ -22,27 +22,33 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState("posts");
   const [pageReady, setPageReady] = useState(false);
   const [adminChecked, setAdminChecked] = useState(false);
+  const initAttemptedRef = useRef(false);
   const query = useQuery();
   const editId = query.get("editId");
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
 
   // Ensure smooth transitions when switching to the admin page
   useEffect(() => {
-    // Short delay to allow components to initialize properly
-    const timer = setTimeout(() => {
-      setPageReady(true);
-    }, 100);
-    
-    return () => clearTimeout(timer);
+    // Only attempt initialization once
+    if (!initAttemptedRef.current) {
+      initAttemptedRef.current = true;
+      
+      // Short delay to allow components to initialize properly
+      const timer = setTimeout(() => {
+        setPageReady(true);
+      }, 300); // Increased from 100ms to 300ms for better reliability
+      
+      return () => clearTimeout(timer);
+    }
   }, []);
 
   // Verify admin status once instead of repeatedly
   useEffect(() => {
-    if (isAdmin !== undefined && !adminChecked) {
+    if (isAdmin !== undefined && !adminChecked && user) {
       setAdminChecked(true);
-      console.log("Admin page - Admin status confirmed:", isAdmin);
+      console.log("Admin page - Admin status confirmed:", isAdmin, "for user:", user.email);
     }
-  }, [isAdmin, adminChecked]);
+  }, [isAdmin, adminChecked, user]);
 
   return (
     <div className="min-h-screen bg-white">

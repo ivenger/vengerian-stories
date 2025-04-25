@@ -5,18 +5,26 @@ import { supabase } from '@/integrations/supabase/client';
 export const useSessionRefresh = () => {
   // Use a ref to track recent refreshes and prevent multiple calls in quick succession
   const lastRefreshTimeRef = useRef<number>(0);
-  const refreshIntervalMs = 30000; // Only refresh every 30 seconds at most
+  const refreshInProgressRef = useRef<boolean>(false);
+  const refreshIntervalMs = 60000; // Only refresh every 60 seconds at most (increased from 30s)
 
   const refreshSession = useCallback(async () => {
     try {
+      // Prevent concurrent refresh operations
+      if (refreshInProgressRef.current) {
+        console.log("useSessionRefresh: Skipping refresh - another refresh already in progress");
+        return null;
+      }
+
       // Check if we've refreshed recently to prevent excessive calls
       const now = Date.now();
       if (now - lastRefreshTimeRef.current < refreshIntervalMs) {
-        console.log("useSessionRefresh: Skipping refresh - too soon since last refresh");
+        console.log(`useSessionRefresh: Skipping refresh - too soon since last refresh (${Math.floor((now - lastRefreshTimeRef.current) / 1000)}s < ${refreshIntervalMs / 1000}s)`);
         return null;
       }
       
       console.log("useSessionRefresh: Starting session refresh");
+      refreshInProgressRef.current = true;
       lastRefreshTimeRef.current = now;
       
       // First check if we have a session stored in localStorage to debug issues
@@ -43,17 +51,25 @@ export const useSessionRefresh = () => {
     } catch (err) {
       console.error("useSessionRefresh: Exception during session refresh:", err);
       return null;
+    } finally {
+      refreshInProgressRef.current = false;
     }
   }, []);
 
   const getActiveSession = useCallback(async () => {
     try {
+      // Prevent concurrent operations
+      if (refreshInProgressRef.current) {
+        console.log("useSessionRefresh: Skipping active session check - refresh in progress");
+        return null;
+      }
+      
       // Check if we've refreshed recently
       const now = Date.now();
       const shouldSkipCheck = (now - lastRefreshTimeRef.current < refreshIntervalMs);
       
       if (shouldSkipCheck) {
-        console.log("useSessionRefresh: Skipping active session check - checked recently");
+        console.log(`useSessionRefresh: Skipping active session check - checked recently (${Math.floor((now - lastRefreshTimeRef.current) / 1000)}s < ${refreshIntervalMs / 1000}s)`);
         return null;
       }
       
@@ -80,8 +96,11 @@ export const useSessionRefresh = () => {
         // Only refresh if the session is expired or about to expire (less than 5 minutes)
         if (isExpired || (remainingTimeSeconds !== null && remainingTimeSeconds < 300)) {
           console.log("useSessionRefresh: Session is expired or about to expire, refreshing");
+          refreshInProgressRef.current = true;
           lastRefreshTimeRef.current = now;
-          return refreshSession();
+          const result = await refreshSession();
+          refreshInProgressRef.current = false;
+          return result;
         }
         
         return data.session;

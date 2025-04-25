@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -8,12 +8,21 @@ export function useSession() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const recoveryAttemptedRef = useRef<boolean>(false);
   const { toast } = useToast();
 
   // Handle session refresh attempts
   const handleSessionRecovery = useCallback(async () => {
     try {
+      // Prevent multiple recovery attempts
+      if (recoveryAttemptedRef.current) {
+        console.log("Session recovery already attempted, skipping");
+        return false;
+      }
+      
+      recoveryAttemptedRef.current = true;
       console.log("Attempting to recover session");
+      
       // Check if we have auth data in localStorage
       const tokenData = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
       
@@ -158,6 +167,7 @@ export function useSession() {
       
       // Always clear session state regardless of API success
       setSession(null);
+      recoveryAttemptedRef.current = false; // Reset recovery flag on sign out
       
       toast({
         title: "Signed out",

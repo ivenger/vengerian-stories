@@ -8,6 +8,7 @@ export function useAuthProvider() {
   const { session, loading: sessionLoading, error: sessionError, signOut: sessionSignOut } = useSession();
   const { isAdmin, loading: adminLoading, error: adminError } = useAdminCheck(session);
   const refreshAttemptedRef = useRef(false);
+  const refreshTimeoutRef = useRef<number | null>(null);
   
   // Refresh function that components can call directly when needed
   const refreshSession = useCallback(async () => {
@@ -24,9 +25,14 @@ export function useAuthProvider() {
       const { data, error } = await supabase.auth.refreshSession();
       
       // Reset the flag after a delay
-      setTimeout(() => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+      
+      refreshTimeoutRef.current = window.setTimeout(() => {
         refreshAttemptedRef.current = false;
-      }, 5000);
+        refreshTimeoutRef.current = null;
+      }, 10000); // Increased timeout to 10 seconds
       
       if (error) {
         console.error("useAuthProvider - Failed to refresh session:", error);
@@ -92,6 +98,16 @@ export function useAuthProvider() {
     });
     
   }, [session, sessionLoading, sessionError, isAdmin, adminLoading, adminError]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   return {
     session,
