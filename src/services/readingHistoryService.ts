@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { ReadingHistoryItem } from "@/types/readingHistory";
 
@@ -117,36 +116,17 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
         read_at: new Date().toISOString()
       };
 
-      // Insert new record - if it fails due to duplicate, we'll update
-      const { error: insertError } = await supabase
+      // Use upsert instead of insert to handle existing records
+      const { error } = await supabase
         .from('reading_history')
-        .insert(payload);
+        .upsert(payload, {
+          onConflict: 'user_id,post_id',
+          ignoreDuplicates: false // We want to update the read_at timestamp
+        });
 
-      if (insertError) {
-        console.error(`[${new Date().toISOString()}] readingHistoryService: Error on insert attempt:`, insertError);
-        
-        if (insertError.code === '23505') { // Unique violation
-          // Update existing record
-          console.log(`[${new Date().toISOString()}] readingHistoryService: Updating existing reading_history record due to unique constraint`);
-          const { error: updateError } = await supabase
-            .from('reading_history')
-            .update({ read_at: payload.read_at })
-            .eq('user_id', userId)
-            .eq('post_id', postId);
-
-          if (updateError) {
-            console.error(`[${new Date().toISOString()}] readingHistoryService: Error updating read status:`, updateError);
-            return false;
-          }
-        } else if (insertError.code === '42501') { // Permission denied
-          console.error(`[${new Date().toISOString()}] readingHistoryService: Permission denied. RLS policy violation:`, insertError);
-          return false;
-        } else {
-          console.error(`[${new Date().toISOString()}] readingHistoryService: Error inserting read status:`, insertError);
-          return false;
-        }
-      } else {
-        console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully inserted new read record for post ${postId}`);
+      if (error) {
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error upserting read status:`, error);
+        return false;
       }
 
       console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`);
@@ -164,7 +144,7 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
         console.error(`[${new Date().toISOString()}] readingHistoryService: Error marking post as unread:`, error);
         return false;
       }
-      
+
       console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as unread`);
       return true;
     }
