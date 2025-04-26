@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useRef } from "react";
 import { AuthContext } from "../contexts/AuthContext";
 import { useAuthProvider } from "../hooks/useAuthProvider";
@@ -6,76 +5,62 @@ import { useSessionRefresh } from "../hooks/filters/useSessionRefresh";
 import { getAdminCache } from "../hooks/auth/useAdminCache";
 import { debounce } from "lodash";
 
-const DEBOUNCE_DELAY = 2000; // Increased debounce delay
+const DEBOUNCE_DELAY = 2000;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const auth = useAuthProvider();
   const hasAttemptedRefreshRef = useRef<boolean>(false);
   const lastLoggedStateRef = useRef<string>("");
-  const authStateRef = useRef(auth);
+  const lastSessionRef = useRef(auth.session);
   const { refreshSession } = useSessionRefresh();
-  const initialLoadRef = useRef(true);
-
-  // Store current auth state in ref to avoid unnecessary effects
-  useEffect(() => {
-    authStateRef.current = auth;
-  }, [auth]);
-
-  // Debounced logging of auth state changes
+  
+  // Debounced logging of meaningful auth state changes
   const logAuthState = useRef(
-    debounce((newState: any) => {
-      const stateString = JSON.stringify(newState);
+    debounce((state: any) => {
+      const stateString = JSON.stringify(state);
       if (stateString !== lastLoggedStateRef.current) {
+        console.log("Auth state changed:", state.type, state.email);
         lastLoggedStateRef.current = stateString;
-        console.log("Auth state changed:", newState);
       }
     }, DEBOUNCE_DELAY)
   ).current;
 
-  // Log meaningful auth state changes only
+  // Only log meaningful auth state changes
   useEffect(() => {
-    // Skip initial render to reduce noise
-    if (initialLoadRef.current) {
-      initialLoadRef.current = false;
+    // Skip if session hasn't actually changed
+    if (auth.session === lastSessionRef.current) {
       return;
     }
+
+    lastSessionRef.current = auth.session;
     
-    const currentState = {
-      type: auth.session ? 'ACTIVE_SESSION' : 'NO_SESSION',
-      email: auth.user?.email || null,
-      loading: auth.loading
+    const state = {
+      type: 'INITIAL_SESSION',
+      email: auth.user?.email || null
     };
 
-    logAuthState(currentState);
+    logAuthState(state);
 
     return () => {
       logAuthState.cancel();
     };
-  }, [auth.user?.email, auth.session, auth.loading, logAuthState]);
+  }, [auth.session, auth.user?.email]);
 
-  // Session refresh with token verification - only runs once
+  // Session refresh with deduplication
   useEffect(() => {
     const attemptSessionRefresh = async () => {
       if (!auth.loading && !auth.session && !hasAttemptedRefreshRef.current) {
         const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
-        if (!sessionStr) {
-          console.log("AuthProvider: No stored token found, skipping refresh");
-          return;
-        }
+        if (!sessionStr) return;
 
         try {
-          console.log("AuthProvider: Attempting to parse and refresh stored session");
           const tokenData = JSON.parse(sessionStr);
-          if (!tokenData?.access_token) {
-            console.log("AuthProvider: No access token in stored data");
-            return;
-          }
+          if (!tokenData?.access_token) return;
 
           hasAttemptedRefreshRef.current = true;
           await refreshSession();
-          console.log("AuthProvider: Session refresh attempt completed");
         } catch (err) {
-          console.error("AuthProvider: Failed to parse or refresh session:", err);
+          console.error("Failed to refresh session:", err);
         }
       }
     };
