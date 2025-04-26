@@ -110,26 +110,57 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
     console.log(`[${new Date().toISOString()}] readingHistoryService: togglePostReadStatus called with userId=${userId}, postId=${postId}, isRead=${isRead}, session auth status: valid`);
     
     if (isRead) {
+      // First check if record already exists
+      const { data: existingRecord, error: checkError } = await supabase
+        .from('reading_history')
+        .select('id, read_at')
+        .eq('user_id', userId)
+        .eq('post_id', postId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error checking existing record:`, checkError);
+      } else {
+        console.log(`[${new Date().toISOString()}] readingHistoryService: Existing record check:`, existingRecord);
+      }
+
       const payload = {
         user_id: userId,
         post_id: postId,
         read_at: new Date().toISOString()
       };
 
-      // Use upsert instead of insert to handle existing records
-      const { error } = await supabase
-        .from('reading_history')
-        .upsert(payload, {
-          onConflict: 'user_id,post_id',
-          ignoreDuplicates: false // We want to update the read_at timestamp
-        });
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Attempting upsert with payload:`, payload);
 
-      if (error) {
-        console.error(`[${new Date().toISOString()}] readingHistoryService: Error upserting read status:`, error);
+      // Try update first if record exists
+      if (existingRecord) {
+        console.log(`[${new Date().toISOString()}] readingHistoryService: Updating existing record with id ${existingRecord.id}`);
+        const { error: updateError } = await supabase
+          .from('reading_history')
+          .update({ read_at: payload.read_at })
+          .eq('id', existingRecord.id);
+
+        if (updateError) {
+          console.error(`[${new Date().toISOString()}] readingHistoryService: Error updating existing record:`, updateError);
+          return false;
+        }
+
+        console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully updated existing record`);
+        return true;
+      }
+
+      // If no existing record, try insert
+      console.log(`[${new Date().toISOString()}] readingHistoryService: No existing record found, attempting insert`);
+      const { error: insertError } = await supabase
+        .from('reading_history')
+        .insert(payload);
+
+      if (insertError) {
+        console.error(`[${new Date().toISOString()}] readingHistoryService: Error inserting new record:`, insertError);
         return false;
       }
 
-      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully marked post ${postId} as read`);
+      console.log(`[${new Date().toISOString()}] readingHistoryService: Successfully inserted new record`);
       return true;
     } else {
       // Mark as unread (delete the record)
@@ -149,7 +180,7 @@ export const togglePostReadStatus = async (userId: string, postId: string, isRea
       return true;
     }
   } catch (error: any) {
-    console.error(`[${new Date().toISOString()}] readingHistoryService: Error toggling post read status:`, error);
+    console.error(`[${new Date().toISOString()}] readingHistoryService: Error toggling post read status:`, error, error.stack);
     return false;
   }
 };
