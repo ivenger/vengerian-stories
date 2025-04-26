@@ -1,4 +1,3 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config';
@@ -27,6 +26,11 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     fetch: createCustomFetch()
   }
 });
+
+// Add function to register auth change callbacks
+export const registerAuthChangeCallback = (callback: (event: string, session: Session | null) => void) => {
+  return supabase.auth.onAuthStateChange(callback);
+};
 
 // Set up auth state monitoring
 supabase.auth.onAuthStateChange((event, session) => {
