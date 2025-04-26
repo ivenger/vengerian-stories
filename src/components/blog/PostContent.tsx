@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { memo } from "react";
 import { Calendar, Tag } from "lucide-react";
 import { BlogEntry } from "../../types/blogTypes";
 import MarkdownPreview from "../MarkdownPreview";
@@ -90,4 +90,5 @@ const PostContent: React.FC<PostContentProps> = ({ post, isUserLoggedIn, user, p
   );
 };
 
-export default PostContent;
+// Use React.memo to prevent unnecessary re-renders
+export default memo(PostContent);
