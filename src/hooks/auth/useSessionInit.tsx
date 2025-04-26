@@ -41,10 +41,8 @@ export function useSessionInit() {
           description: "You've been signed out successfully.",
         });
       }
-    });
-
-    return () => {
-      unsubscribe();
+    });    return () => {
+      unsubscribe.data.subscription.unsubscribe();
     };
   }, [setSession, setLoading, toast]);
 
