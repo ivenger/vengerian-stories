@@ -1,12 +1,24 @@
-
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
 // Fetch all blog posts (for admin purposes)
 export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
-  console.log('Fetching all posts');
+  console.log('Fetching all posts as admin');
   
   try {
+    // First verify admin role
+    const { data: roles, error: rolesError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('role', 'admin')
+      .single();
+
+    if (rolesError || !roles) {
+      console.error('Error verifying admin role:', rolesError);
+      throw new Error('Not authorized to view all posts');
+    }
+
+    // Then fetch all posts with admin privileges
     const { data, error } = await supabase
       .from('entries')
       .select('*')
@@ -14,16 +26,15 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
     
     if (error) {
       console.error('Error fetching all posts:', error);
-      throw new Error(`Failed to fetch posts: ${error.message} (${error.code})`);
+      throw new Error(`Failed to fetch posts: ${error.message}`);
     }
     
-    console.log(`Fetched ${data?.length || 0} posts`);
+    console.log(`Successfully fetched ${data?.length || 0} posts as admin`);
     return data as BlogEntry[] || [];
   } catch (error: any) {
     console.error('Failed to fetch all posts:', error);
-    // Provide more descriptive error message
-    const message = error.message || 'Network or server error occurred';
-    throw new Error(`Failed to fetch posts: ${message}`);
+    const message = error.message || 'Failed to load posts';
+    throw new Error(message);
   }
 };
 
