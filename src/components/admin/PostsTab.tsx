@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BlogEntry } from "@/types/blogTypes";
@@ -16,6 +15,7 @@ const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
   const {
     posts,
     loading,
+    error,
     createNewPost,
     editPost,
     publishPost,
@@ -23,23 +23,42 @@ const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
     handleDeletePost
   } = usePostsManagement(editId, setIsEditing, setSelectedPost);
 
-  // Prevent showing empty state during initial load
-  const [showContent, setShowContent] = useState(false);
-  
-  useEffect(() => {
-    // Only show content after initial loading is complete
-    // or after a short delay to prevent flickering
-    const timer = setTimeout(() => {
-      setShowContent(true);
-    }, 200);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!showContent) {
+  if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="flex flex-col justify-center items-center h-64 space-y-4">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        <p className="text-gray-600">Loading posts...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+        <div className="text-red-500 text-xl">⚠️</div>
+        <h3 className="text-lg font-semibold text-gray-900">Error Loading Posts</h3>
+        <p className="text-gray-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm text-gray-900"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!posts.length) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Posts Yet</h3>
+        <p className="text-gray-600 mb-6">Get started by creating your first blog post.</p>
+        <button
+          onClick={() => createNewPost()}
+          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        >
+          Create New Post
+        </button>
       </div>
     );
   }

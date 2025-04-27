@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { BlogEntry } from "@/types/blogTypes";
@@ -7,60 +6,72 @@ import { fetchAllPosts, savePost, deletePost } from "@/services/postService";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
 
-export const usePostsManagement = (editId: string | null, setIsEditing: (isEditing: boolean) => void, setSelectedPost: (post: BlogEntry | null) => void) => {
+export const usePostsManagement = (
+  editId: string | null, 
+  setIsEditing: (isEditing: boolean) => void, 
+  setSelectedPost: (post: BlogEntry | null) => void
+) => {
   const { toast } = useToast();
   const [posts, setPosts] = useState<BlogEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  const { user, isAdmin } = useAuth();
   const { refreshSession } = useSessionRefresh();
 
   const loadPosts = useCallback(async () => {
+    if (!isAdmin) {
+      console.log("PostsManagement: User is not admin, skipping load");
+      setError("Admin access required");
+      setLoading(false);
+      return [];
+    }
+
     try {
       setLoading(true);
-      console.log("PostsManagement: Loading all posts");
+      setError(null);
+      console.log("PostsManagement: Loading all posts as admin");
       
       // Try to refresh the session before loading posts
       await refreshSession();
       
       const allPosts = await fetchAllPosts();
       setPosts(allPosts);
-      console.log(`PostsManagement: Loaded ${allPosts.length} posts`);
+      console.log(`PostsManagement: Loaded ${allPosts.length} posts successfully`);
       return allPosts;
-    } catch (error) {
+    } catch (error: any) {
       console.error("PostsManagement: Failed to load posts:", error);
+      const errorMessage = error?.message || "Failed to load blog posts";
+      setError(errorMessage);
       toast({
-        title: "Error",
-        description: "Failed to load blog posts. Please try again later.",
+        title: "Error Loading Posts",
+        description: errorMessage,
         variant: "destructive",
       });
       return [];
     } finally {
       setLoading(false);
     }
-  }, [toast, refreshSession]);
+  }, [toast, refreshSession, isAdmin]);
 
+  // Load posts when component mounts or admin status changes
   useEffect(() => {
-    loadPosts();
-  }, [loadPosts]);
+    if (isAdmin) {
+      loadPosts();
+    }
+  }, [loadPosts, isAdmin]);
 
+  // Handle edit mode based on URL param
   useEffect(() => {
     if (editId && posts.length > 0) {
       console.log(`PostsManagement: Looking for post with ID ${editId}`);
       const postToEdit = posts.find(p => p.id === editId);
       if (postToEdit) {
         console.log(`PostsManagement: Found post to edit: ${postToEdit.title}`);
-        setSelectedPost({...postToEdit});
+        setSelectedPost(postToEdit);
         setIsEditing(true);
-      } else {
-        console.error(`PostsManagement: Post with ID ${editId} not found`);
-        toast({
-          title: "Error",
-          description: `Post with ID ${editId} not found.`,
-          variant: "destructive"
-        });
       }
     }
-  }, [editId, posts, toast, setIsEditing, setSelectedPost]);
+  }, [editId, posts, setSelectedPost, setIsEditing]);
 
   const createNewPost = () => {
     if (!user) {
@@ -202,6 +213,7 @@ export const usePostsManagement = (editId: string | null, setIsEditing: (isEditi
   return {
     posts,
     loading,
+    error,
     loadPosts,
     createNewPost,
     editPost,

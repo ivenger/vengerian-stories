@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -59,9 +58,10 @@ const Admin = () => {
           <MultilingualTitle />
         </div>
         
-        {!pageReady ? (
-          <div className="flex justify-center items-center h-64">
+        {!pageReady || !adminChecked ? (
+          <div className="flex flex-col justify-center items-center h-64 space-y-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+            <p className="text-gray-600">Loading admin panel...</p>
           </div>
         ) : !isEditing ? (
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
@@ -73,25 +73,23 @@ const Admin = () => {
             </TabsList>
             
             <TabsContent value="posts">
-              {pageReady && adminChecked && (
-                <PostsTab 
-                  editId={editId} 
-                  setIsEditing={setIsEditing} 
-                  setSelectedPost={setSelectedPost} 
-                />
-              )}
+              <PostsTab 
+                editId={editId} 
+                setIsEditing={setIsEditing} 
+                setSelectedPost={setSelectedPost} 
+              />
             </TabsContent>
             
             <TabsContent value="about">
-              {pageReady && adminChecked && <AboutEditor />}
+              <AboutEditor />
             </TabsContent>
             
             <TabsContent value="tags">
-              {pageReady && adminChecked && <TagManagement />}
+              <TagManagement />
             </TabsContent>
             
             <TabsContent value="users">
-              {pageReady && adminChecked && <UserManagement />}
+              <UserManagement />
             </TabsContent>
           </Tabs>
         ) : (
