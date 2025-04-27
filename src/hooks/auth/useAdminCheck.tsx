@@ -84,13 +84,11 @@ export function useAdminCheck(session: Session | null) {
 
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
-          .select('*')  // Select all fields to see full response
-          .eq('user_id', session.user.id)
-          .single();
+          .select('*')
+          .eq('user_id', session.user.id);
 
-        // Log full response
-        logAdminCheck('Full database query response:', {
-          fullData: roles,
+        logAdminCheck('Database query result:', {
+          roles,
           error: rolesError?.message,
           code: rolesError?.code
         });
@@ -99,13 +97,13 @@ export function useAdminCheck(session: Session | null) {
           throw rolesError;
         }
 
-        const isAdminUser = roles?.role === 'admin';
+        // Check if any role in the array is 'admin'
+        const isAdminUser = Array.isArray(roles) && roles.length > 0 && roles[0].role === 'admin';
         
         logAdminCheck('Role check result:', {
-          hasRole: !!roles,
-          role: roles?.role,
-          isAdmin: isAdminUser,
-          fullRoles: roles
+          hasRole: !!roles?.length,
+          roles: roles,
+          isAdmin: isAdminUser
         });
 
         if (isMounted) {
