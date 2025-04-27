@@ -1,39 +1,43 @@
 import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { getAdminCache, setAdminCache } from "./useAdminCache";
+import { getAdminCache, setAdminCache, clearAdminCache } from "./useAdminCache";
 import { debounce } from "lodash";
 
-const logAdminCheck = debounce((message: string) => {
-  console.log(message);
+// Keep detailed logs for admin checks, but debounce to avoid spam
+const logAdminCheck = debounce((message: string, data?: any) => {
+  if (data) {
+    console.log(`[AdminCheck] ${message}`, data);
+  } else {
+    console.log(`[AdminCheck] ${message}`);
+  }
 }, 1000);
 
 export function useAdminCheck(session: Session | null) {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const lastCheckedRef = useRef<string | null>(null);
   const checkInProgressRef = useRef<boolean>(false);
-  const skipLogRef = useRef<boolean>(false);
-  const checkCountRef = useRef<number>(0);
-  const renderCountRef = useRef(0);
+  const lastCheckTimeRef = useRef<number>(0);
+  const FORCE_CHECK_INTERVAL = 5 * 60 * 1000; // Force fresh check every 5 minutes
 
   useEffect(() => {
     let isMounted = true;
-    renderCountRef.current += 1;
 
     const checkAdmin = async () => {
-      // Log session state
-      console.log(`[AdminCheck] Session state:`, {
+      const now = Date.now();
+      const sessionData = {
         hasSession: !!session,
         userId: session?.user?.id,
         email: session?.user?.email,
         accessToken: !!session?.access_token,
-        renderCount: renderCountRef.current
-      });
+        timestamp: new Date().toISOString()
+      };
+      
+      logAdminCheck('Starting admin check with session:', sessionData);
 
       if (!session?.user?.id) {
-        console.log('[AdminCheck] No active session or user ID');
+        logAdminCheck('No active session, setting isAdmin to false');
         if (isMounted) {
           setIsAdmin(false);
           setLoading(false);
@@ -43,22 +47,26 @@ export function useAdminCheck(session: Session | null) {
 
       // Prevent concurrent checks
       if (checkInProgressRef.current) {
-        console.log('[AdminCheck] Check already in progress, skipping');
+        logAdminCheck('Check already in progress, skipping');
         return;
       }
 
-      // Check cache first
       const cachedStatus = getAdminCache();
-      console.log('[AdminCheck] Cache status:', {
+      const timeSinceLastCheck = now - lastCheckTimeRef.current;
+      const needsFreshCheck = !cachedStatus || 
+                            timeSinceLastCheck > FORCE_CHECK_INTERVAL ||
+                            cachedStatus.userId !== session.user.id;
+
+      logAdminCheck('Cache status:', {
         hasCachedStatus: !!cachedStatus,
+        needsFreshCheck,
+        timeSinceLastCheck,
         cachedUserId: cachedStatus?.userId,
-        cachedIsAdmin: cachedStatus?.isAdmin,
-        cachedTimestamp: cachedStatus ? new Date(cachedStatus.timestamp).toISOString() : null,
         currentUserId: session.user.id
       });
 
-      if (cachedStatus && cachedStatus.userId === session.user.id) {
-        console.log(`[AdminCheck] Using cached admin status: ${cachedStatus.isAdmin}`);
+      if (!needsFreshCheck && cachedStatus) {
+        logAdminCheck(`Using cached admin status: ${cachedStatus.isAdmin}`);
         if (isMounted) {
           setIsAdmin(cachedStatus.isAdmin);
           setLoading(false);
@@ -66,44 +74,24 @@ export function useAdminCheck(session: Session | null) {
         return;
       }
 
-      // Skip if already checked this user
-      if (lastCheckedRef.current === session.user.id) {
-        if (!skipLogRef.current) {
-          logAdminCheck(`[AdminCheck] Skipping check for same user: ${session.user.email}`);
-          skipLogRef.current = true;
-          setTimeout(() => {
-            skipLogRef.current = false;
-          }, 5000);
-        }
-        return;
-      }
-
       checkInProgressRef.current = true;
-      lastCheckedRef.current = session.user.id;
       
-      console.log(`[AdminCheck] Starting admin check for user:`, {
-        email: session.user.email,
-        userId: session.user.id,
-        checkCount: ++checkCountRef.current,
-        timestamp: new Date().toISOString()
-      });
-
       try {
-        // Log the query attempt
-        console.log('[AdminCheck] Querying user_roles table...');
-        
+        logAdminCheck('Performing fresh admin check for user:', {
+          userId: session.user.id,
+          email: session.user.email
+        });
+
         const { data: roles, error: rolesError } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', session.user.id)
           .single();
 
-        // Log the query result
-        console.log('[AdminCheck] Query result:', { 
-          roles, 
-          error: rolesError,
-          errorMessage: rolesError?.message,
-          errorCode: rolesError?.code 
+        logAdminCheck('Database query result:', {
+          roles,
+          error: rolesError?.message,
+          code: rolesError?.code
         });
 
         if (rolesError) {
@@ -111,36 +99,36 @@ export function useAdminCheck(session: Session | null) {
         }
 
         const isAdminUser = roles?.role === 'admin';
-        console.log('[AdminCheck] Admin check result:', {
-          role: roles?.role,
-          isAdmin: isAdminUser,
-          timestamp: new Date().toISOString()
-        });
         
+        logAdminCheck('Role check result:', {
+          hasRole: !!roles,
+          role: roles?.role,
+          isAdmin: isAdminUser
+        });
+
         if (isMounted) {
           setIsAdmin(isAdminUser);
-          setLoading(false);
           setError(null);
           setAdminCache(session.user.id, isAdminUser);
-          console.log('[AdminCheck] State updated and cached:', { isAdmin: isAdminUser });
+          lastCheckTimeRef.current = now;
         }
       } catch (err: any) {
-        console.error("[AdminCheck] Error details:", {
+        logAdminCheck('Error checking admin status:', {
           message: err.message,
           code: err.code,
-          details: err.details,
-          hint: err.hint,
-          stack: err.stack
+          details: err.details
         });
         
         if (isMounted) {
           setIsAdmin(false);
           setError(err.message);
-          setLoading(false);
+          clearAdminCache(); // Clear cache on error
         }
       } finally {
         checkInProgressRef.current = false;
-        console.log('[AdminCheck] Check completed');
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 

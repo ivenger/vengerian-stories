@@ -30,3 +30,11 @@ export function setAdminCache(userId: string, isAdmin: boolean) {
     console.warn('Error setting admin cache:', e);
   }
 }
+
+export function clearAdminCache() {
+  try {
+    localStorage.removeItem(ADMIN_CACHE_KEY);
+  } catch (e) {
+    console.warn('Error clearing admin cache:', e);
+  }
+}
