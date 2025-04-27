@@ -178,12 +178,10 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
     if (!postData.user_id) {
       console.error("savePost: No user_id available for the post");
       throw new Error("User ID is required to save a post. Please log in again.");
-    }
-
-    if (post.id) {
+    }      if (post.id) {
       // Update existing post
       console.log(`savePost: Updating post with ID: ${post.id}`);
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('entries')
         .update(postData)
         .eq('id', post.id)
@@ -201,12 +199,18 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         }
       }
 
+      // If we got a 204 status, the update was successful but no data was returned
+      // In this case, return the original post data as it was successfully saved
+      if (status === 204 || !data) {
+        console.log('savePost: Post updated successfully (no data returned)');
+        return postData as BlogEntry;
+      }
+
       console.log('savePost: Post updated successfully:', data.id);
       return data as BlogEntry;
-    } else {
-      // Create a new post
+    } else {      // Create a new post
       console.log('savePost: Creating a new post');
-      const { data, error } = await supabase
+      const { data, error, status } = await supabase
         .from('entries')
         .insert([postData])
         .select('*')
@@ -221,6 +225,13 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
         } else {
           throw new Error(`Failed to create post: ${error.message} (${error.code})`);
         }
+      }
+
+      // If we got a 204 status, the insert was successful but no data was returned
+      // In this case, return the original post data as it was successfully saved
+      if (status === 204 || !data) {
+        console.log('savePost: Post created successfully (no data returned)');
+        return postData as BlogEntry;
       }
 
       console.log('savePost: Post created successfully:', data.id);
