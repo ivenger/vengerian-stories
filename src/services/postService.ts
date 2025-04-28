@@ -1,21 +1,42 @@
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
 
+// Add rate limiting for admin role checks
+const adminRoleCheckCache = new Map<string, { timestamp: number, isAdmin: boolean }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
 // Fetch all blog posts (for admin purposes)
 export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
   console.log('Fetching all posts as admin');
   
   try {
-    // First verify admin role
-    const { data: roles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('role', 'admin')
-      .single();
+    // Check cache first
+    const userId = supabase.auth.getUser()?.data?.user?.id;
+    if (!userId) {
+      console.error('No user ID found when checking admin role');
+      throw new Error('Authentication required');
+    }
 
-    if (rolesError || !roles) {
-      console.error('Error verifying admin role:', rolesError);
-      throw new Error('Not authorized to view all posts');
+    const cachedRole = adminRoleCheckCache.get(userId);
+    if (cachedRole && (Date.now() - cachedRole.timestamp < CACHE_DURATION)) {
+      if (!cachedRole.isAdmin) {
+        throw new Error('Not authorized to view all posts');
+      }
+    } else {
+      // Verify admin role with rate limiting
+      const { data: roles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('role', 'admin')
+        .single();
+
+      if (rolesError || !roles) {
+        console.error('Error verifying admin role:', rolesError);
+        adminRoleCheckCache.set(userId, { timestamp: Date.now(), isAdmin: false });
+        throw new Error('Not authorized to view all posts');
+      }
+
+      adminRoleCheckCache.set(userId, { timestamp: Date.now(), isAdmin: true });
     }
 
     // Then fetch all posts with admin privileges
@@ -29,13 +50,34 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
       throw new Error(`Failed to fetch posts: ${error.message}`);
     }
     
-    console.log(`Successfully fetched ${data?.length || 0} posts as admin`);
-    return data as BlogEntry[] || [];
+    // Sanitize the data before returning
+    const sanitizedData = data?.map(post => ({
+      ...post,
+      title: sanitizeHtml(post.title),
+      content: sanitizeHtml(post.content),
+      excerpt: post.excerpt ? sanitizeHtml(post.excerpt) : null
+    })) || [];
+    
+    console.log(`Successfully fetched ${sanitizedData.length} posts as admin`);
+    return sanitizedData as BlogEntry[];
   } catch (error: any) {
     console.error('Failed to fetch all posts:', error);
     const message = error.message || 'Failed to load posts';
     throw new Error(message);
   }
+};
+
+// Helper function to sanitize HTML content
+const sanitizeHtml = (html: string): string => {
+  if (!html) return '';
+  return html
+    .replace(/[&<>"']/g, (match) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[match] || match);
 };
 
 // Fetch a blog post by ID
@@ -87,7 +129,6 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
 
     if (tags && tags.length > 0) {
       console.log(`Applying tag filters: ${tags.join(', ')}`);
-      // Use a single contains query for all tags instead of multiple queries
       query = query.contains('tags', tags);
     }
 
@@ -98,8 +139,16 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
       throw new Error(`Failed to fetch filtered posts: ${error.message} (${error.code})`);
     }
 
-    console.log(`Fetched ${data?.length || 0} filtered posts`);
-    return data as BlogEntry[] || [];
+    // Sanitize the data before returning
+    const sanitizedData = data?.map(post => ({
+      ...post,
+      title: sanitizeHtml(post.title),
+      content: sanitizeHtml(post.content),
+      excerpt: post.excerpt ? sanitizeHtml(post.excerpt) : null
+    })) || [];
+
+    console.log(`Fetched ${sanitizedData.length} filtered posts`);
+    return sanitizedData as BlogEntry[];
   } catch (error: any) {
     console.error('Failed to fetch filtered posts:', error);
     const message = error.message || 'Network or server error occurred';
