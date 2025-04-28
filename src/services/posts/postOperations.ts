@@ -72,3 +72,4 @@ export const fetchFilteredPosts = async (tags?: string[]): Promise<BlogEntry[]> 
     throw new Error(`Failed to fetch filtered posts: ${error.message || 'Network or server error occurred'}`);
   }
 };
+
