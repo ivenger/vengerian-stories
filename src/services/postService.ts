@@ -1,5 +1,7 @@
+
 import { supabase } from "../integrations/supabase/client";
 import { BlogEntry } from "../types/blogTypes";
+import { sanitizeInput } from "../utils/security";
 
 // Add rate limiting for admin role checks
 const adminRoleCheckCache = new Map<string, { timestamp: number, isAdmin: boolean }>();
@@ -11,7 +13,9 @@ export const fetchAllPosts = async (): Promise<BlogEntry[]> => {
   
   try {
     // Check cache first
-    const userId = supabase.auth.getUser()?.data?.user?.id;
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData?.user?.id;
+    
     if (!userId) {
       console.error('No user ID found when checking admin role');
       throw new Error('Authentication required');

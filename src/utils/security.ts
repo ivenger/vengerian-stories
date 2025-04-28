@@ -71,10 +71,11 @@ export const validateAndSanitizeData = <T extends Record<string, any>>(
   
   for (const field of allowedFields) {
     if (field in data) {
-      if (typeof data[field] === 'string') {
-        sanitized[field] = sanitizeInput(data[field]) as T[keyof T];
+      const value = data[field];
+      if (typeof value === 'string') {
+        sanitized[field as keyof T] = sanitizeInput(value) as any;
       } else {
-        sanitized[field] = data[field];
+        sanitized[field as keyof T] = value;
       }
     }
   }
