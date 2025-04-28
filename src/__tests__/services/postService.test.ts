@@ -2,6 +2,7 @@
 import { fetchAllPosts, fetchPostById, fetchFilteredPosts, savePost, deletePost } from '../../services/postService';
 import { supabase } from '../../integrations/supabase/client';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { BlogEntry } from '../../types/blogTypes';
 
 // Mock Supabase client
 vi.mock('../../integrations/supabase/client', () => ({
@@ -122,10 +123,16 @@ describe('postService', () => {
   });
 
   describe('savePost', () => {
-    const mockPost = {
+    // Create a complete mock BlogEntry object for testing
+    const mockPost: BlogEntry = {
       id: '1',
       title: 'Test Post',
+      title_language: ['en'],
       content: 'Test content',
+      excerpt: null,
+      date: new Date().toISOString(),
+      language: ['en'],
+      status: 'draft',
       user_id: 'test-user-id'
     };
 
@@ -145,8 +152,13 @@ describe('postService', () => {
     });
 
     it('updates an existing post', async () => {
+      const updatedPost: BlogEntry = {
+        ...mockPost,
+        title: 'Updated Title'
+      };
+      
       const updateMock = vi.fn().mockResolvedValue({ 
-        data: { ...mockPost, title: 'Updated Title' },
+        data: updatedPost,
         error: null 
       });
       (supabase.from as any).mockImplementation(() => ({
@@ -156,7 +168,7 @@ describe('postService', () => {
         single: updateMock
       }));
 
-      const result = await savePost({ ...mockPost, title: 'Updated Title' });
+      const result = await savePost(updatedPost);
       expect(result.title).toBe('Updated Title');
     });
   });

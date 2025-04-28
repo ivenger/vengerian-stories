@@ -1,4 +1,5 @@
 
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { RateLimiter, validateSession, sanitizeInput, validateAndSanitizeData } from '../../utils/security';
 import { Session } from '@supabase/supabase-js';
 
@@ -9,20 +10,20 @@ describe('RateLimiter', () => {
     rateLimiter = new RateLimiter(3, 1000); // 3 attempts per second
   });
 
-  test('allows initial attempts within limit', () => {
+  it('allows initial attempts within limit', () => {
     expect(rateLimiter.checkLimit('test-key')).toBe(true);
     expect(rateLimiter.checkLimit('test-key')).toBe(true);
     expect(rateLimiter.checkLimit('test-key')).toBe(true);
   });
 
-  test('blocks attempts over limit', () => {
+  it('blocks attempts over limit', () => {
     rateLimiter.checkLimit('test-key');
     rateLimiter.checkLimit('test-key');
     rateLimiter.checkLimit('test-key');
     expect(rateLimiter.checkLimit('test-key')).toBe(false);
   });
 
-  test('resets after window expires', async () => {
+  it('resets after window expires', async () => {
     rateLimiter.checkLimit('test-key');
     rateLimiter.checkLimit('test-key');
     rateLimiter.checkLimit('test-key');
@@ -31,7 +32,7 @@ describe('RateLimiter', () => {
     expect(rateLimiter.checkLimit('test-key')).toBe(true);
   });
 
-  test('handles multiple keys independently', () => {
+  it('handles multiple keys independently', () => {
     expect(rateLimiter.checkLimit('key1')).toBe(true);
     expect(rateLimiter.checkLimit('key2')).toBe(true);
   });
@@ -61,11 +62,11 @@ describe('validateSession', () => {
     }
   };
 
-  test('returns true for valid session', () => {
+  it('returns true for valid session', () => {
     expect(validateSession(mockValidSession)).toBe(true);
   });
 
-  test('returns false for expired session', () => {
+  it('returns false for expired session', () => {
     const expiredSession = {
       ...mockValidSession,
       expires_at: Math.floor(Date.now() / 1000) - 3600
@@ -73,26 +74,26 @@ describe('validateSession', () => {
     expect(validateSession(expiredSession)).toBe(false);
   });
 
-  test('returns false for null session', () => {
+  it('returns false for null session', () => {
     expect(validateSession(null)).toBe(false);
   });
 });
 
 describe('sanitizeInput', () => {
-  test('sanitizes HTML special characters', () => {
+  it('sanitizes HTML special characters', () => {
     const input = '<script>alert("xss")</script>';
     expect(sanitizeInput(input)).toBe('&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;');
   });
 
-  test('handles empty input', () => {
+  it('handles empty input', () => {
     expect(sanitizeInput('')).toBe('');
   });
 
-  test('handles null/undefined input', () => {
+  it('handles null/undefined input', () => {
     expect(sanitizeInput(undefined as any)).toBe('');
   });
 
-  test('preserves normal text', () => {
+  it('preserves normal text', () => {
     expect(sanitizeInput('Hello World')).toBe('Hello World');
   });
 });
@@ -104,7 +105,7 @@ describe('validateAndSanitizeData', () => {
     description: string;
   }
 
-  test('sanitizes allowed string fields', () => {
+  it('sanitizes allowed string fields', () => {
     const data: TestData = {
       name: '<script>alert("xss")</script>',
       age: 25,
@@ -117,7 +118,7 @@ describe('validateAndSanitizeData', () => {
     expect(result.description).toBe('Normal text');
   });
 
-  test('excludes non-allowed fields', () => {
+  it('excludes non-allowed fields', () => {
     const data: TestData = {
       name: 'John',
       age: 25,
@@ -131,7 +132,7 @@ describe('validateAndSanitizeData', () => {
     expect(result).not.toHaveProperty('description');
   });
 
-  test('preserves non-string values', () => {
+  it('preserves non-string values', () => {
     const data: TestData = {
       name: 'John',
       age: 25,

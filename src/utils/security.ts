@@ -73,6 +73,7 @@ export const validateAndSanitizeData = <T extends Record<string, any>>(
     if (field in data) {
       const value = data[field];
       if (typeof value === 'string') {
+        // Use type assertion to fix the TypeScript error with Partial<T>
         sanitized[field as keyof T] = sanitizeInput(value) as any;
       } else {
         sanitized[field as keyof T] = value;
