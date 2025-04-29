@@ -2,9 +2,6 @@
 import { useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-const CACHE_TTL = 2 * 60 * 1000; // 2 minutes cache TTL
-
 export function useSessionRefresh() {
   const refreshInProgressRef = useRef<boolean>(false);
   const lastRefreshTimeRef = useRef<number>(0);
@@ -21,6 +18,7 @@ export function useSessionRefresh() {
 
       // Rate limit refresh attempts
       const now = Date.now();
+      const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
       if (now - lastRefreshTimeRef.current < REFRESH_INTERVAL_MS) {
         console.log(`Session refresh: Rate limited (${Math.round((now - lastRefreshTimeRef.current) / 1000)}s < ${REFRESH_INTERVAL_MS / 1000}s)`);
         return null;
@@ -54,6 +52,7 @@ export function useSessionRefresh() {
 
   const getActiveSession = useCallback(async () => {
     const now = Date.now();
+    const CACHE_TTL = 2 * 60 * 1000; // 2 minutes cache TTL
     
     // Return cached session if valid
     if (sessionCacheRef.current && (now - sessionCacheRef.current.time) < CACHE_TTL) {
