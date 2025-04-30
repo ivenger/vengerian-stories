@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useSessionRefresh } from "@/hooks/filters/useSessionRefresh";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PostEditorProps {
   selectedPost: BlogEntry;
@@ -23,6 +24,9 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
   const [isSaving, setIsSaving] = useState(false);
   const [sessionOk, setSessionOk] = useState(false);
   const { getActiveSession, refreshSession } = useSessionRefresh();
+  const isMobile = useIsMobile();
+
+  console.log("PostEditor: Rendering with screen type:", isMobile ? "mobile" : "desktop");
 
   // Check session on mount
   useEffect(() => {
@@ -152,12 +156,14 @@ const PostEditor = ({ selectedPost, setIsEditing, setSelectedPost, editId }: Pos
   }
 
   return (
-    <MarkdownEditor 
-      post={selectedPost} 
-      onSave={handleSavePost}
-      onCancel={handleCancelEditing}
-      disabled={isSaving}
-    />
+    <div className={isMobile ? "px-1" : ""}>
+      <MarkdownEditor 
+        post={selectedPost} 
+        onSave={handleSavePost}
+        onCancel={handleCancelEditing}
+        disabled={isSaving}
+      />
+    </div>
   );
 };
 

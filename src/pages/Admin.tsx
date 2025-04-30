@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import Navigation from "../components/Navigation";
@@ -10,6 +11,7 @@ import { BlogEntry } from "../types/blogTypes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import MultilingualTitle from "../components/MultilingualTitle";
 import { useAuth } from "@/hooks/auth/useAuth";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const useQuery = () => {
   return new URLSearchParams(useLocation().search);
@@ -22,6 +24,9 @@ const Admin = () => {
   const query = useQuery();
   const editId = query.get("editId");
   const { isAdmin, user, loading } = useAuth();
+  const isMobile = useIsMobile();
+  
+  console.log("Admin: Rendering with screen type:", isMobile ? "mobile" : "desktop");
 
   if (loading) {
     return (
@@ -49,21 +54,21 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
-      <main className="container mx-auto px-4 py-8">
+      <main className={`container mx-auto ${isMobile ? 'px-2' : 'px-4'} py-8`}>
         <div className="text-center mb-8">
           <MultilingualTitle />
         </div>
         
         {!isEditing ? (
           <Tabs defaultValue="posts" value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6">
-              <TabsTrigger value="posts">Posts</TabsTrigger>
-              <TabsTrigger value="about">About</TabsTrigger>
-              <TabsTrigger value="tags">Tags</TabsTrigger>
-              <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsList className="mb-6 w-full overflow-x-auto flex">
+              <TabsTrigger value="posts" className="flex-1">Posts</TabsTrigger>
+              <TabsTrigger value="about" className="flex-1">About</TabsTrigger>
+              <TabsTrigger value="tags" className="flex-1">Tags</TabsTrigger>
+              <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="posts">
+            <TabsContent value="posts" className="w-full">
               <PostsTab 
                 editId={editId}
                 setIsEditing={setIsEditing}
@@ -71,15 +76,15 @@ const Admin = () => {
               />
             </TabsContent>
             
-            <TabsContent value="about">
+            <TabsContent value="about" className="w-full">
               <AboutEditor />
             </TabsContent>
             
-            <TabsContent value="tags">
+            <TabsContent value="tags" className="w-full">
               <TagManagement />
             </TabsContent>
             
-            <TabsContent value="users">
+            <TabsContent value="users" className="w-full">
               <UserManagement />
             </TabsContent>
           </Tabs>

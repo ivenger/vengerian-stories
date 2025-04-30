@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { BlogEntry } from "@/types/blogTypes";
 import PostsList from "./posts/PostsList";
 import { usePostsManagement } from "./posts/usePostsManagement";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PostsTabProps {
   editId: string | null;
@@ -12,6 +14,7 @@ interface PostsTabProps {
 
 const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const {
     posts,
     loading,
@@ -22,6 +25,8 @@ const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
     unpublishPost,
     handleDeletePost
   } = usePostsManagement(editId, setIsEditing, setSelectedPost);
+
+  console.log("PostsTab: Rendering with screen type:", isMobile ? "mobile" : "desktop");
 
   if (loading) {
     return (
@@ -64,12 +69,12 @@ const PostsTab = ({ editId, setIsEditing, setSelectedPost }: PostsTabProps) => {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-semibold">All Posts</h2>
+    <div className="w-full">
+      <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-center mb-6`}>
+        <h2 className={`text-xl font-semibold ${isMobile ? 'mb-4' : ''}`}>All Posts</h2>
         <button
           onClick={createNewPost}
-          className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+          className="bg-gray-900 text-white px-4 py-2 rounded hover:bg-gray-700 transition-colors w-full sm:w-auto"
         >
           Create New Post
         </button>

@@ -3,6 +3,7 @@ import React from "react";
 import { Tag, Globe, XCircle, Trash2 } from "lucide-react";
 import { BlogEntry } from "@/types/blogTypes";
 import PostStatus from "./PostStatus";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface PostCardProps {
   post: BlogEntry;
@@ -13,12 +14,15 @@ interface PostCardProps {
 }
 
 const PostCard = ({ post, onEdit, onDelete, onPublish, onUnpublish }: PostCardProps) => {
+  const isMobile = useIsMobile();
+  console.log("PostCard: Rendering with screen type:", isMobile ? "mobile" : "desktop");
+
   return (
     <div 
       key={post.id}
       className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
     >
-      <div className="flex justify-between items-start">
+      <div className={`flex ${isMobile ? 'flex-col' : 'justify-between'} items-start`}>
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h3 className="font-medium text-lg">{post.title}</h3>
@@ -41,11 +45,11 @@ const PostCard = ({ post, onEdit, onDelete, onPublish, onUnpublish }: PostCardPr
             </div>
           )}
         </div>
-        <div className="flex items-center space-x-2">
+        <div className={`flex ${isMobile ? 'flex-wrap mt-3 w-full' : 'items-center'} space-x-2`}>
           {post.status === "draft" ? (
             <button
               onClick={() => onPublish(post)}
-              className="text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1"
+              className={`text-sm bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 transition-colors flex items-center gap-1 ${isMobile ? 'flex-grow' : ''}`}
               title="Publish post"
             >
               <Globe size={14} />
@@ -54,7 +58,7 @@ const PostCard = ({ post, onEdit, onDelete, onPublish, onUnpublish }: PostCardPr
           ) : (
             <button
               onClick={() => onUnpublish(post)}
-              className="text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1"
+              className={`text-sm bg-amber-100 text-amber-700 px-3 py-1 rounded hover:bg-amber-200 transition-colors flex items-center gap-1 ${isMobile ? 'flex-grow' : ''}`}
               title="Unpublish post"
             >
               <XCircle size={14} />
@@ -63,13 +67,13 @@ const PostCard = ({ post, onEdit, onDelete, onPublish, onUnpublish }: PostCardPr
           )}
           <button
             onClick={() => onEdit(post)}
-            className="text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors"
+            className={`text-sm bg-gray-100 px-3 py-1 rounded hover:bg-gray-200 transition-colors ${isMobile ? 'flex-grow' : ''}`}
           >
             Edit
           </button>
           <button
             onClick={() => onDelete(post.id)}
-            className="text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1"
+            className={`text-sm bg-red-100 text-red-700 px-3 py-1 rounded hover:bg-red-200 transition-colors flex items-center gap-1 ${isMobile ? 'flex-grow' : ''}`}
             title="Delete post"
           >
             <Trash2 size={14} />

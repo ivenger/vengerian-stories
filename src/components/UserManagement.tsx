@@ -10,10 +10,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type User = {
   id: string;
-  email?: string; // Make email optional to match Supabase's User type
+  email?: string; 
   created_at: string;
   last_sign_in_at: string | null;
   email_confirmed_at: string | null;
@@ -23,6 +24,9 @@ const UserManagement = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  
+  console.log("UserManagement: Rendering with screen type:", isMobile ? "mobile" : "desktop");
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -78,22 +82,22 @@ const UserManagement = () => {
           <p className="text-gray-600">No users found.</p>
         </div>
       ) : (
-        <div className="overflow-hidden border border-gray-200 rounded-lg">
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Email</TableHead>
-                <TableHead>Created At</TableHead>
-                <TableHead>Last Sign In</TableHead>
-                <TableHead>Email Confirmed</TableHead>
+                {!isMobile && <TableHead>Created At</TableHead>}
+                {!isMobile && <TableHead>Last Sign In</TableHead>}
+                <TableHead>Email Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.email || "No email"}</TableCell>
-                  <TableCell>{formatDate(user.created_at)}</TableCell>
-                  <TableCell>{user.last_sign_in_at ? formatDate(user.last_sign_in_at) : "Never"}</TableCell>
+                  {!isMobile && <TableCell>{formatDate(user.created_at)}</TableCell>}
+                  {!isMobile && <TableCell>{user.last_sign_in_at ? formatDate(user.last_sign_in_at) : "Never"}</TableCell>}
                   <TableCell>
                     {user.email_confirmed_at ? (
                       <span className="text-green-600">Confirmed</span>
