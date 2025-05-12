@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { getAdminCache, setAdminCache, clearAdminCache } from "./useAdminCache";
-import { debounce } from "lodash";
+import { debounce } from "../../lib/utils";
 
 // Keep detailed logs for admin checks, but debounce to avoid spam
 const logAdminCheck = debounce((message: string, data?: any) => {

@@ -4,7 +4,7 @@ import { AuthContext } from "../contexts/AuthContext";
 import { useAuthProvider } from "../hooks/useAuthProvider";
 import { useSessionRefresh } from "../hooks/filters/useSessionRefresh";
 import { getAdminCache } from "../hooks/auth/useAdminCache";
-import { debounce } from "lodash";
+import { debounce } from "../lib/utils";
 
 const DEBOUNCE_DELAY = 2000;
 
