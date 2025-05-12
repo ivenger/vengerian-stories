@@ -40,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: auth.user?.email || null
     };
 
+    console.log("AuthProvider: Logging auth state change");
     logAuthState(state);
 
     return () => {
@@ -52,14 +53,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const attemptSessionRefresh = async () => {
       if (!auth.loading && !auth.session && !hasAttemptedRefreshRef.current) {
         const sessionStr = localStorage.getItem('sb-dvalgsvmkrqzwfcxvbxg-auth-token');
-        if (!sessionStr) return;
+        if (!sessionStr) {
+          console.log("AuthProvider: No session token found in localStorage");
+          return;
+        }
 
         try {
+          console.log("AuthProvider: Found session token, attempting refresh");
           const tokenData = JSON.parse(sessionStr);
-          if (!tokenData?.access_token) return;
+          if (!tokenData?.access_token) {
+            console.log("AuthProvider: No access token in session data");
+            return;
+          }
 
           hasAttemptedRefreshRef.current = true;
           await refreshSession();
+          console.log("AuthProvider: Session refresh completed");
         } catch (err) {
           console.error("Failed to refresh session:", err);
         }

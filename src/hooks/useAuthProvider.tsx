@@ -31,15 +31,25 @@ export function useAuthProvider() {
   const { signOut } = useSignOut();
 
   // Create memoized state object to prevent unnecessary re-renders
-  const authState = useMemo(() => ({
-    session,
-    user: session?.user || null,
-    loading: sessionLoading || adminLoading,
-    signOut,
-    isAdmin,
-    error: sessionError || adminError,
-    refreshSession
-  }), [session, sessionLoading, adminLoading, signOut, isAdmin, sessionError, adminError, refreshSession]);
+  const authState = useMemo(() => {
+    console.log("useAuthProvider: Creating new auth state object:", {
+      hasSession: !!session,
+      email: session?.user?.email || null,
+      isAdmin,
+      loading: sessionLoading || adminLoading,
+      hasError: !!sessionError || !!adminError
+    });
+    
+    return {
+      session,
+      user: session?.user || null,
+      loading: sessionLoading || adminLoading,
+      signOut,
+      isAdmin,
+      error: sessionError || adminError,
+      refreshSession
+    };
+  }, [session, sessionLoading, adminLoading, signOut, isAdmin, sessionError, adminError, refreshSession]);
 
   // Monitor session state changes with less frequency
   useSessionMonitor({
