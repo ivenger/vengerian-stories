@@ -154,6 +154,16 @@ const BlogCard: React.FC<BlogCardProps> = ({ post, readPostIds, onReadStatusChan
                 <span>{post.date}</span>
               </div>
               
+              {/* Add excerpt display here */}
+              {post.excerpt && (
+                <p 
+                  className={`text-sm text-gray-600 mb-2 line-clamp-2 ${isRtl ? 'text-right' : 'text-left'}`}
+                  dir={isRtl ? 'rtl' : 'ltr'}
+                >
+                  {post.excerpt}
+                </p>
+              )}
+              
               {post.tags && post.tags.length > 0 && (
                 <div className={`flex flex-wrap gap-1 mt-2 ${isRtl ? 'justify-end' : 'justify-start'}`}>
                   {post.tags.map((tag, index) => (
