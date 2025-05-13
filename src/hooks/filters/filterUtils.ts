@@ -22,22 +22,26 @@ export const applyFiltersToData = (
   
   let filteredPosts = [...postsToFilter];
   
-  // Apply tag filtering
+  // Apply tag filtering - "OR" logic between tags
   if (selectedTags.length > 0) {
-    console.log(`[${new Date().toISOString()}] Filtering by tags:`, selectedTags);
+    console.log(`[${new Date().toISOString()}] Filtering by tags with OR logic:`, selectedTags);
     filteredPosts = filteredPosts.filter(post => {
       if (!post.tags) return false;
+      
+      // Check if ANY of the selected tags match the post's tags (OR logic)
       return selectedTags.some(tag => post.tags?.includes(tag));
     });
     console.log(`[${new Date().toISOString()}] ${filteredPosts.length} posts after tag filtering`);
   }
   
-  // Apply language filtering
+  // Apply language filtering - "OR" logic between languages
   if (selectedLanguages.length > 0) {
-    console.log(`[${new Date().toISOString()}] Filtering by languages:`, selectedLanguages);
+    console.log(`[${new Date().toISOString()}] Filtering by languages with OR logic:`, selectedLanguages);
     filteredPosts = filteredPosts.filter(post => {
       if (!post.language) return false;
-      return selectedLanguages.some(lang => post.language.includes(lang));
+      
+      // Check if ANY of the selected languages match the post's languages (OR logic)
+      return selectedLanguages.some(lang => post.language?.includes(lang));
     });
     console.log(`[${new Date().toISOString()}] ${filteredPosts.length} posts after language filtering`);
   }
