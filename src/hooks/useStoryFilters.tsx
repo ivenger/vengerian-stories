@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useReadingHistory } from './filters/useReadingHistory';
@@ -19,7 +18,16 @@ export const useStoryFilters = (user: User | null) => {
   const { allTags, selectedTags, toggleTag, clearTags } = useTagsManagement();
   const { connectionStatus, checkConnection, handleConnectionError } = useConnectionStatus();
   const { loading, error, lastLoad, loadPosts: originalLoadPosts } = usePostsLoading(user);
-  const { posts, originalPosts, showUnreadOnly, toggleUnreadFilter, updateFilteredPosts } = useFilterState(user);
+  const { 
+    posts, 
+    originalPosts, 
+    showUnreadOnly, 
+    selectedLanguages,
+    toggleLanguage,
+    toggleUnreadFilter, 
+    updateFilteredPosts,
+    clearAllFilters
+  } = useFilterState(user);
 
   // Component lifecycle management
   useEffect(() => {
@@ -70,7 +78,7 @@ export const useStoryFilters = (user: User | null) => {
   useEffect(() => {
     if (!isMountedRef.current || loading) return;
     updateFilteredPosts(originalPosts, selectedTags, readPostIds);
-  }, [selectedTags, showUnreadOnly, readPostIds]);
+  }, [selectedTags, selectedLanguages, showUnreadOnly, readPostIds]);
 
   // Set up refresh timer
   useEffect(() => {
@@ -114,17 +122,29 @@ export const useStoryFilters = (user: User | null) => {
     }
   }, [connectionStatus, loading, handleConnectionError]);
 
-  const clearFilters = () => {
-    clearTags();
-    if (showUnreadOnly) {
-      toggleUnreadFilter();
+  // Extract all unique languages from posts
+  const allLanguages = useRef<string[]>([]);
+  useEffect(() => {
+    if (originalPosts.length > 0) {
+      const uniqueLanguages = new Set<string>();
+      originalPosts.forEach(post => {
+        if (post.language) {
+          post.language.forEach(lang => uniqueLanguages.add(lang));
+        }
+      });
+      allLanguages.current = Array.from(uniqueLanguages).sort();
+      console.log(`[${new Date().toISOString()}] Extracted languages:`, allLanguages.current);
     }
+  }, [originalPosts]);
+
+  const clearFilters = () => {
+    clearAllFilters();
     if (originalPosts.length > 0) {
       updateFilteredPosts(originalPosts, [], readPostIds);
     }
   };
 
-  const hasActiveFilters = selectedTags.length > 0 || showUnreadOnly;
+  const hasActiveFilters = selectedTags.length > 0 || showUnreadOnly || selectedLanguages.length > 0;
 
   return {
     posts,
@@ -138,6 +158,9 @@ export const useStoryFilters = (user: User | null) => {
     clearFilters,
     hasActiveFilters,
     loadPosts,
-    connectionStatus
+    connectionStatus,
+    allLanguages: allLanguages.current,
+    selectedLanguages,
+    toggleLanguage
   };
 };

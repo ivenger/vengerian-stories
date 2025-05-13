@@ -9,17 +9,20 @@ export const applyFiltersToData = (
   selectedTags: string[],
   showUnreadOnly: boolean,
   readPostIds: string[],
-  user: any | null
+  user: any | null,
+  selectedLanguages: string[] = []
 ) => {
   console.log(`[${new Date().toISOString()}] Applying filters to posts`, {
     totalPosts: postsToFilter.length,
     selectedTags,
+    selectedLanguages,
     showUnreadOnly,
     readIdsCount: readPostIds.length
   });
   
   let filteredPosts = [...postsToFilter];
   
+  // Apply tag filtering
   if (selectedTags.length > 0) {
     console.log(`[${new Date().toISOString()}] Filtering by tags:`, selectedTags);
     filteredPosts = filteredPosts.filter(post => {
@@ -27,6 +30,16 @@ export const applyFiltersToData = (
       return selectedTags.some(tag => post.tags?.includes(tag));
     });
     console.log(`[${new Date().toISOString()}] ${filteredPosts.length} posts after tag filtering`);
+  }
+  
+  // Apply language filtering
+  if (selectedLanguages.length > 0) {
+    console.log(`[${new Date().toISOString()}] Filtering by languages:`, selectedLanguages);
+    filteredPosts = filteredPosts.filter(post => {
+      if (!post.language) return false;
+      return selectedLanguages.some(lang => post.language.includes(lang));
+    });
+    console.log(`[${new Date().toISOString()}] ${filteredPosts.length} posts after language filtering`);
   }
   
   // Apply read/unread filter if enabled

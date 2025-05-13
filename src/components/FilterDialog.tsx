@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -23,6 +24,9 @@ interface FilterDialogProps {
   hasActiveFilters: boolean;
   showUnreadOnly?: boolean;
   toggleUnreadFilter?: () => void;
+  allLanguages?: string[];
+  selectedLanguages?: string[];
+  toggleLanguage?: (language: string) => void;
 }
 
 const FilterDialog: React.FC<FilterDialogProps> = ({
@@ -32,7 +36,10 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
   clearFilters,
   hasActiveFilters,
   showUnreadOnly = false,
-  toggleUnreadFilter
+  toggleUnreadFilter,
+  allLanguages = [],
+  selectedLanguages = [],
+  toggleLanguage
 }) => {
   const { user } = useAuth();
   const [open, setOpen] = React.useState(false);
@@ -41,10 +48,20 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
     toggleTag(tag);
   };
   
+  const handleLanguageToggle = (language: string) => {
+    if (toggleLanguage) {
+      toggleLanguage(language);
+    }
+  };
+  
   const handleClearFilters = () => {
     clearFilters();
     setOpen(false); // Close dialog after clearing
   };
+
+  const totalActiveFilters = selectedTags.length + 
+    (showUnreadOnly ? 1 : 0) + 
+    (selectedLanguages?.length || 0);
   
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -58,7 +75,7 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
           {hasActiveFilters ? "Filters Active" : "Filter Stories"}
           {hasActiveFilters && (
             <Badge className="ml-2 bg-blue-200 text-blue-800 hover:bg-blue-200">
-              {selectedTags.length + (showUnreadOnly ? 1 : 0)}
+              {totalActiveFilters}
             </Badge>
           )}
         </Button>
@@ -82,6 +99,25 @@ const FilterDialog: React.FC<FilterDialogProps> = ({
                     onClick={() => handleTagToggle(tag)}
                   >
                     {tag}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {allLanguages.length > 0 && (
+            <div>
+              <Separator className="my-2" />
+              <h3 className="text-sm font-medium mb-2">By Language</h3>
+              <div className="flex flex-wrap gap-1">
+                {allLanguages.map(language => (
+                  <Badge
+                    key={language}
+                    variant={(selectedLanguages || []).includes(language) ? "default" : "outline"}
+                    className="cursor-pointer"
+                    onClick={() => handleLanguageToggle(language)}
+                  >
+                    {language}
                   </Badge>
                 ))}
               </div>

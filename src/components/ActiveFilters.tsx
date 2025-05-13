@@ -8,13 +8,17 @@ interface ActiveFiltersProps {
   toggleTag: (tag: string) => void;
   clearFilters: () => void;
   hasActiveFilters: boolean;
+  selectedLanguages?: string[];
+  toggleLanguage?: (language: string) => void;
 }
 
 const ActiveFilters: React.FC<ActiveFiltersProps> = ({
   selectedTags,
   toggleTag,
   clearFilters,
-  hasActiveFilters
+  hasActiveFilters,
+  selectedLanguages = [],
+  toggleLanguage
 }) => {
   if (!hasActiveFilters) return null;
   
@@ -22,9 +26,10 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
     <div className="flex flex-wrap gap-2 justify-center mt-3 mb-2 bg-blue-50 p-2 rounded-md">
       <div className="flex items-center flex-wrap gap-1">
         <span className="text-sm text-blue-700 mr-2 font-medium">Active filters:</span>
+        
         {selectedTags.map(tag => (
           <span 
-            key={tag} 
+            key={`tag-${tag}`} 
             className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full flex items-center mr-1"
           >
             {tag}
@@ -41,6 +46,27 @@ const ActiveFilters: React.FC<ActiveFiltersProps> = ({
             </button>
           </span>
         ))}
+        
+        {selectedLanguages.map(language => (
+          <span 
+            key={`lang-${language}`} 
+            className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full flex items-center mr-1"
+          >
+            {language}
+            <button 
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (toggleLanguage) toggleLanguage(language);
+              }} 
+              className="ml-1 text-green-600 hover:text-green-800 p-0.5"
+              aria-label={`Remove ${language} filter`}
+            >
+              <X size={12} />
+            </button>
+          </span>
+        ))}
+        
         <Button 
           variant="ghost" 
           size="sm" 

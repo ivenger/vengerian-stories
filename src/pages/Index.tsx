@@ -29,13 +29,15 @@ const Index = () => {
     clearFilters,
     hasActiveFilters,
     loadPosts,
-    connectionStatus
+    connectionStatus,
+    allLanguages,
+    selectedLanguages,
+    toggleLanguage
   } = useStoryFilters(user);
   
   // Force reload posts when readPostIds changes
   useEffect(() => {
     if (showUnreadOnly && readPostIds) {
-      // Fixed: removed the boolean argument
       loadPosts();
     }
   }, [readPostIds, showUnreadOnly, loadPosts]);
@@ -53,7 +55,6 @@ const Index = () => {
       title: "Refreshing stories...",
       duration: 2000,
     });
-    // Fixed: removed the boolean argument
     loadPosts();
   };
   
@@ -88,6 +89,9 @@ const Index = () => {
               hasActiveFilters={hasActiveFilters}
               showUnreadOnly={showUnreadOnly}
               toggleUnreadFilter={toggleUnreadFilter}
+              allLanguages={allLanguages}
+              selectedLanguages={selectedLanguages}
+              toggleLanguage={toggleLanguage}
             />
           </div>
           
@@ -96,6 +100,8 @@ const Index = () => {
             toggleTag={toggleTag}
             clearFilters={clearFilters}
             hasActiveFilters={hasActiveFilters}
+            selectedLanguages={selectedLanguages}
+            toggleLanguage={toggleLanguage}
           />
         </div>
 
