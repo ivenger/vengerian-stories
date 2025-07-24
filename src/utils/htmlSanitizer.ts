@@ -18,6 +18,13 @@ const createDOMPurify = () => {
     FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover', 'style']
   };
 
+  // Helper function to decode HTML entities
+  const decodeHtmlEntities = (str: string): string => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = str;
+    return textarea.value;
+  };
+
   return {
     sanitizeHtml: (dirty: string): string => {
       console.log('htmlSanitizer: Sanitizing HTML content', { 
@@ -30,10 +37,13 @@ const createDOMPurify = () => {
         return '';
       }
       
-      const clean = purify.sanitize(dirty, blogConfig);
+      // First decode HTML entities, then sanitize
+      const decoded = decodeHtmlEntities(dirty);
+      const clean = purify.sanitize(decoded, blogConfig);
       console.log('htmlSanitizer: HTML sanitization complete', {
         outputLength: clean.length,
-        removedContent: dirty.length !== clean.length
+        removedContent: dirty.length !== clean.length,
+        decodedEntities: dirty !== decoded
       });
       
       return clean;
