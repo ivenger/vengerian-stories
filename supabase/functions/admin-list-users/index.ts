@@ -34,11 +34,42 @@ serve(async (req) => {
   );
 
   if (authError || !user) {
+    console.error("admin-list-users: Authentication failed", { error: authError?.message });
     return new Response(
       JSON.stringify({ error: "Unauthorized" }),
       { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
+
+  // CRITICAL SECURITY FIX: Verify the user is an admin
+  console.log("admin-list-users: Checking admin status for user", { userId: user.id, email: user.email });
+  
+  const { data: userRoles, error: roleError } = await supabaseAdmin
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', user.id)
+    .eq('role', 'admin');
+
+  if (roleError) {
+    console.error("admin-list-users: Error checking user role", { error: roleError });
+    return new Response(
+      JSON.stringify({ error: "Permission check failed" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  if (!userRoles || userRoles.length === 0) {
+    console.warn("admin-list-users: Non-admin user attempted to access admin function", { 
+      userId: user.id, 
+      email: user.email 
+    });
+    return new Response(
+      JSON.stringify({ error: "Access denied. Admin privileges required." }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  console.log("admin-list-users: Admin access confirmed", { userId: user.id });
 
   try {
     // Fetch all users using the admin API
