@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Tag, Calendar } from 'lucide-react';
+import { sanitizeHtml } from '../utils/htmlSanitizer';
 
 interface MarkdownPreviewProps {
   title: string;
@@ -154,7 +155,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
       <div 
         className={`prose max-w-none mt-8 ${isRtlContent ? 'text-right' : 'text-left'}`}
         dir={isRtlContent ? 'rtl' : 'ltr'}
-        dangerouslySetInnerHTML={{ __html: getFormattedContent(content || '') }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(getFormattedContent(content || '')) }}
       />
     </article>
   );

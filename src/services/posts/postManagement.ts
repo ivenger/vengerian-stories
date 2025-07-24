@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { BlogEntry } from "@/types/blogTypes";
+import { sanitizeHtml, sanitizeText, validateInput } from "@/utils/htmlSanitizer";
 
 export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
   try {
@@ -23,7 +24,17 @@ export const savePost = async (post: BlogEntry): Promise<BlogEntry> => {
       throw new Error("Authentication required. Please log in again.");
     }
 
-    const { created_at, ...postData } = post;
+    const { created_at, ...originalPostData } = post;
+
+    // SECURITY FIX: Sanitize all user input before saving
+    console.log("savePost: Sanitizing post data for security");
+    const postData = {
+      ...originalPostData,
+      title: validateInput.title(originalPostData.title || ''),
+      content: validateInput.content(originalPostData.content || ''),
+      excerpt: validateInput.excerpt(originalPostData.excerpt || ''),
+      tags: validateInput.tags(originalPostData.tags || [])
+    };
 
     if (!postData.user_id && currentSession?.user?.id) {
       postData.user_id = currentSession.user.id;

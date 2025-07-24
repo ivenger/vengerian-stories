@@ -50,8 +50,9 @@ export const validateSession = (session: Session | null): boolean => {
   return session.expires_at ? session.expires_at > now : false;
 };
 
-// Content security helpers
+// DEPRECATED: Use htmlSanitizer.ts instead for comprehensive XSS protection
 export const sanitizeInput = (input: string): string => {
+  console.warn('security.ts: sanitizeInput is deprecated, use htmlSanitizer.ts instead');
   if (!input) return '';
   return input
     .replace(/[&<>"']/g, (match) => ({
@@ -67,19 +68,31 @@ export const validateAndSanitizeData = <T extends Record<string, any>>(
   data: T, 
   allowedFields: string[]
 ): Partial<T> => {
+  console.log('security.ts: Validating and sanitizing data', { 
+    fields: allowedFields,
+    dataKeys: Object.keys(data)
+  });
+  
   const sanitized: Partial<T> = {};
   
   for (const field of allowedFields) {
     if (field in data) {
       const value = data[field];
       if (typeof value === 'string') {
+        console.log(`security.ts: Sanitizing string field: ${field}`);
         // Use type assertion to fix the TypeScript error with Partial<T>
         sanitized[field as keyof T] = sanitizeInput(value) as any;
       } else {
+        console.log(`security.ts: Preserving non-string field: ${field}`);
         sanitized[field as keyof T] = value;
       }
     }
   }
+  
+  console.log('security.ts: Data validation complete', {
+    originalFields: Object.keys(data).length,
+    sanitizedFields: Object.keys(sanitized).length
+  });
   
   return sanitized;
 };
