@@ -61,7 +61,7 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
-          date: string
+          date?: string
           excerpt?: string | null
           id?: string
           image_url?: string | null
